@@ -7,7 +7,12 @@ def show(label, obj, n=700):
     txt = json.dumps(obj, default=str)
     print(f"\n--- {label}\n{txt[:n]}")
 
-DS = "dataset1_stored"
+DS = os.environ.get("CHIRON_MCP_TEST_DATASET") or next(
+    (d["dataset_id"] for d in S.chiron_datasets()["datasets"] if d.get("accessible")),
+    None,
+)
+if not DS:
+    sys.exit("No dataset reachable by this identity.")
 show("datasets", S.chiron_datasets())
 c = S.chiron_find_concepts(DS, limit=6)
 show("find_concepts", c)

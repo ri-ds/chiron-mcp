@@ -1,10 +1,10 @@
 # chiron-mcp
 
-An [MCP](https://modelcontextprotocol.io) server that exposes **Chiron** — a cohort-discovery
-platform for human-subject research data — to an LLM client such as Claude.
+An [MCP](https://modelcontextprotocol.io) server that exposes **Chiron**, a cohort-discovery
+platform for human-subject research data, to an LLM client such as Claude.
 
 Ask *"how many asthma patients are there, and what were their diagnosis dates?"* and the model
-finds the right variable, builds the cohort, counts it, and pulls the rows — without anyone
+finds the right variable, builds the cohort, counts it, and pulls the rows, without anyone
 writing SQL, and without bypassing Chiron's own access rules.
 
 ```
@@ -23,6 +23,7 @@ writing SQL, and without bypassing Chiron's own access rules.
 - [What this server does](#what-this-server-does)
 - [Why it runs in-process](#why-it-runs-in-process-and-not-over-chirons-rest-api)
 - [Install](#install)
+- [Setup guide for an AI agent](#setup-guide-for-an-ai-agent)
 - [Configuration](#configuration)
 - [The tools](#the-tools)
 - [How a query actually gets built](#how-a-query-actually-gets-built)
@@ -43,17 +44,17 @@ Its defining idea is that **the data dictionary is database rows, not a config f
 
 | Layer | Holds | Reached via |
 |---|---|---|
-| **Metadata database** | The data dictionary — `Dataset` → `Collection` → `Concept` — plus users, access grants, saved reports and ETL logs | Django ORM |
+| **Metadata database** | The data dictionary (`Dataset` → `Collection` → `Concept`), plus users, access grants, saved reports and ETL logs | Django ORM |
 | **Warehouse** | The actual subject data, one Postgres **schema per dataset** | SQLAlchemy only |
 
 The warehouse's tables and columns are **generated at runtime from the dictionary rows**, not
-migrated. The two databases cannot be joined — there is no Django database router — so the ORM
+migrated. The two databases cannot be joined, because there is no Django database router, so the ORM
 describes the *shape* of the data while SQLAlchemy queries the data itself.
 
 A researcher's work is expressed as two JSON documents:
 
-- **`cohort_def`** — which subjects qualify
-- **`table_def`** — which columns to show
+- **`cohort_def`**: which subjects qualify
+- **`table_def`**: which columns to show
 
 Chiron compiles those into a single SELECT against the warehouse, injecting the user's
 subject-visibility filter into the WHERE clause. A saved "report" is just a stored
@@ -75,13 +76,13 @@ Three findings from reading the Chiron source, in order of how much they constra
 
 **1. The query API cannot accept a cohort you give it.**
 `QueryToolsViewSet._get_cohort_def` (`chiron/api/viewsets/query_tools.py:204-214`) discards any
-supplied definition and returns the caller's *active server-side snapshot* — despite a docstring
+supplied definition and returns the caller's *active server-side snapshot*, despite a docstring
 promising otherwise. An HTTP wrapper would therefore have to overwrite a researcher's live
 workspace on every turn, and `CohortDefSnapshot.save` deletes their redo stack
 (`chiron/models/user_models.py:189-193`).
 
 **2. Chiron has no token authentication.** No `rest_framework.authtoken`, no JWT, no OAuth, no
-API key, no service-account concept, and no login *endpoint* — `rest_framework.urls` is commented
+API key, no service-account concept, and no login *endpoint*. `rest_framework.urls` is commented
 out. `REST_FRAMEWORK` is unset, so DRF's stock defaults (Session + Basic) apply by accident.
 
 The result is an API split down the middle. HTTP Basic works on the metadata endpoints and is
@@ -91,11 +92,11 @@ rather than extending it:
 
 | Basic auth works | Session cookie only |
 |---|---|
-| `/api/v2/auth/`, `/api/v2/dataset/` | `query_tools/` — count, preview, export |
+| `/api/v2/auth/`, `/api/v2/dataset/` | `query_tools/` (count, preview, export) |
 | `{ds}/concepts/`, `{ds}/collections/` | `cohort_def/`, `table_def/`, `analysis_def/` |
 | `{ds}/concept_categories/` | `reports/`, `report_tools/`, `analysis_tools/` |
 
-**3. The operator surface has no HTTP API at all** — ETL logs, dictionary validation and the
+**3. The operator surface has no HTTP API at all.** ETL logs, dictionary validation and the
 schema visualiser exist only as staff HTML pages and management commands.
 
 So the server calls Chiron's own Python in the same interpreter, binding to one Django user and
@@ -122,7 +123,7 @@ Then confirm the deployment resolves, before touching any MCP client:
 CHIRON_MCP_USERNAME=<user> .venv/bin/python scripts/harness.py
 ```
 
-It prints the Chiron source, both database locations, and every dataset that user can reach —
+It prints the Chiron source, both database locations, and every dataset that user can reach,
 including the ones it refuses and why. **If this doesn't work, nothing else will.**
 
 ### Register with Claude
@@ -162,6 +163,166 @@ The server **never** creates access records. A Django user needs a `ChironUser` 
 .venv/bin/python scripts/grant_access.py --user <user> --datasets <dataset> --revoke
 ```
 
+## Setup guide for an AI agent
+
+This section is written for an AI assistant setting this up on someone's machine. Follow it in
+order. Every step has a check. Do not skip a check, and do not continue past a failed one.
+
+### Before you start, establish these four facts
+
+This server runs inside Chiron's own Python, so it is not self-contained. Confirm each of these
+before running anything, asking the user where you cannot determine it yourself:
+
+1. **Python 3.12 or newer** is available.
+2. **A Chiron checkout** exists on this machine (a directory containing a `chiron/` package).
+   Ask the user for the path if you cannot find one.
+3. **A Chiron metadata database** exists (usually a SQLite file). This holds datasets, users and
+   access grants.
+4. **A Chiron warehouse** is reachable (a Postgres database holding the subject data).
+
+If any of 2 to 4 is missing, stop and tell the user. This server cannot create them. Setting up a
+Chiron deployment is a separate task, and installing this repo alone will not produce a working
+tool.
+
+### Step 1: install
+
+```bash
+git clone https://github.com/rohzzn/chiron-mcp.git
+cd chiron-mcp
+./install.sh
+```
+
+If `install.sh` reports that it cannot find Chiron, rerun it with the path:
+
+```bash
+CHIRON_MCP_CHIRON_SRC=/path/to/is4r-chiron ./install.sh
+```
+
+**Check:** `.venv/bin/python -c "import mcp, django; print(django.__version__)"` prints a version.
+
+### Step 2: find out which Django user to bind to
+
+The server acts as exactly one Django user and never creates access for itself. List what exists:
+
+```bash
+CHIRON_MCP_USERNAME=any .venv/bin/python scripts/grant_access.py --list
+```
+
+This prints every existing `ChironUser` row as `user / dataset / level`. Choose a non-superuser
+at `deid` level if one exists. If none does, ask the user which account to use and whether to
+grant it access. Do not pick a superuser: the server refuses to start as one in analyst mode,
+and that refusal is deliberate.
+
+**Check:** you can name one Django user and at least one dataset it already has a row for.
+
+### Step 3: verify the deployment resolves
+
+This is the single most important step. It exercises everything except the MCP protocol itself.
+
+```bash
+CHIRON_MCP_USERNAME=<user> .venv/bin/python scripts/harness.py
+```
+
+Add the database paths if the host project's own settings do not already point at the deployment
+you want:
+
+```bash
+CHIRON_MCP_USERNAME=<user> \
+CHIRON_MCP_METADATA_DB=/path/to/chiron_metadata.sqlite3 \
+CHIRON_MCP_WAREHOUSE_URL=postgresql://user:pass@host:5432/chiron \
+.venv/bin/python scripts/harness.py
+```
+
+**Check:** the output ends with `N dataset(s) reachable by this identity` where N is at least 1.
+
+Lines marked `[refused]` are not failures. A refusal means that user has no access record for
+that dataset, which is correct behaviour. If **every** dataset is refused, grant one:
+
+```bash
+.venv/bin/python scripts/grant_access.py --user <user> --datasets <dataset> --level deid
+```
+
+Treat granting access as a change that needs the user's agreement, because it alters the
+deployment's metadata database. Say which user and which dataset before doing it.
+
+### Step 4: confirm the warehouse actually answers
+
+The harness proves metadata resolves. This proves the warehouse does too:
+
+```bash
+CHIRON_MCP_USERNAME=<user> .venv/bin/python -c "
+import sys; sys.path.insert(0, '.')
+from chiron_mcp import server as S
+print(S.chiron_count_cohort('<dataset>', []))"
+```
+
+**Check:** a subject count comes back, not an `error` key. An empty `cohort_def` means every
+subject, so this is the dataset's total.
+
+### Step 5: register with Claude
+
+Locate the config file:
+
+| Client | Path |
+|---|---|
+| Claude Desktop, macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop, Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Claude Code | `.mcp.json` in the project, or the user config |
+
+Add the `chiron` entry from `claude_mcp_config.example.json`, merging it into any existing
+`mcpServers` object rather than replacing the file. Back the file up first.
+
+Three rules that prevent almost every reported failure:
+
+- **Use absolute paths everywhere.** The `command`, the `cwd`, and every path in `env`. A relative
+  path fails silently because the client does not launch from your shell's directory.
+- **Point `command` at `.venv/bin/python`**, not a system `python`. The dependencies are in the
+  venv.
+- **Set the database variables explicitly** if the host project's settings do not already point at
+  the right deployment. Otherwise the server will start successfully against the wrong database
+  and the mistake will look like missing data rather than a config error.
+
+**Check:** restart the client, then confirm sixteen `chiron_*` tools are listed. If you cannot see
+the client's tool list, run the protocol test instead, which uses the real MCP transport:
+
+```bash
+.venv/bin/python -m tests.protocol
+```
+
+It should print `16 tools registered` followed by a live tool call result.
+
+### Step 6: confirm the safety gates are active
+
+Do not skip this. The server re-implements three permission checks that Chiron normally enforces
+only in its web layer, and they are what keeps it from handing out data Chiron itself would
+refuse.
+
+```bash
+CHIRON_MCP_USERNAME=<deid-user> .venv/bin/python tests/safety.py
+```
+
+**Check:** every line reads `PASS`. If an aggregate-level account exists, run it as that user too
+and confirm the row-level tools are refused.
+
+### If something goes wrong
+
+| Symptom | What it means | Fix |
+|---|---|---|
+| `Could not find the Chiron source tree` | Discovery failed | Set `CHIRON_MCP_CHIRON_SRC` to the directory containing `chiron/` |
+| `No Django project settings at ...` | Wrong host project | Set `CHIRON_MCP_PROJECT_DIR` to the directory with `manage.py`, and `CHIRON_MCP_BASE_SETTINGS` if its settings module is not `project.settings` |
+| `has no ChironUser on dataset` | Working as designed | Grant it with `scripts/grant_access.py`, with the user's agreement |
+| `is a superuser. Refusing to start` | Working as designed | Use a dedicated service account |
+| `cannot see subject-level data` | The account is `agg` | Correct behaviour. Use `chiron_crosstab` or `chiron_concept_values` |
+| Tools missing after restart | Config not loaded | Check the JSON parses, paths are absolute, and you edited the right file |
+| Server starts but datasets look empty | Pointing at the wrong metadata database | Set `CHIRON_MCP_METADATA_DB` explicitly |
+| `ModuleNotFoundError: mcp.server.fastmcp` | `mcp` 1.x code against 2.x | This project targets `mcp>=2.0.0`, which renamed `FastMCP` to `MCPServer` |
+
+### What to tell the user when you are done
+
+Report which Django user the server is bound to, its access ceiling, and exactly which datasets
+are reachable. If you granted any access during setup, say so explicitly, including the level.
+That grant is a change to their deployment, not just to this tool.
+
 ## Configuration
 
 Every setting is an environment variable. Defaults are the conservative end of each choice.
@@ -180,7 +341,7 @@ Every setting is an environment variable. Defaults are the conservative end of e
 | `CHIRON_MCP_METADATA_DB` | *(host project's)* | Metadata SQLite |
 | `CHIRON_MCP_WAREHOUSE_URL` | *(host project's)* | SQLAlchemy warehouse URL |
 
-See `.env.example`. A superuser is refused in analyst mode — point it at a dedicated service user.
+See `.env.example`. A superuser is refused in analyst mode; point it at a dedicated service user.
 
 ## The tools
 
@@ -190,7 +351,7 @@ See `.env.example`. A superuser is refused in analyst mode — point it at a ded
 |---|---|
 | `chiron_datasets` | Datasets this identity can reach, its access level on each, and why anything is refused |
 | `chiron_find_concepts` | Search a dataset's variables by name or description |
-| `chiron_describe_concept` | One variable in full — **including the exact field names required to filter on it** |
+| `chiron_describe_concept` | One variable in full, **including the exact field names required to filter on it** |
 | `chiron_concept_values` | Distinct values with subject counts |
 
 ### Build a cohort
@@ -217,7 +378,7 @@ Gated behind `CHIRON_MCP_OPERATOR` **and** a staff account.
 
 | Tool | Purpose |
 |---|---|
-| `chiron_validate_dictionary` | Run Chiron's own validator — non-empty means the next ETL will refuse to run |
+| `chiron_validate_dictionary` | Run Chiron's own validator. Non-empty means the next ETL will refuse to run |
 | `chiron_schema_diagram` | The dataset's shape as a Mermaid ER diagram |
 | `chiron_etl_history` | The ETL audit trail, which has no HTTP API |
 | `chiron_explain_access` | Why this identity can or cannot use a variable, Chiron's verdicts verbatim |
@@ -271,13 +432,13 @@ rather than relying on a transcription, so it cannot drift from the code.
 
 ## Access model and safety
 
-Access in Chiron is not a login check — it is a `ChironUser` record per (Django user, dataset),
+Access in Chiron is not a login check. It is a `ChironUser` record per (Django user, dataset),
 carrying one of three levels plus `PermissionGroup` memberships.
 
 | Level | Subject rows | Counts / crosstabs |
 |---|---|---|
-| `phi` | yes — identifiable | yes |
-| `deid` | yes — PHI variables automatically swapped for de-identified forms | yes |
+| `phi` | yes, identifiable | yes |
+| `deid` | yes, with PHI variables automatically swapped for de-identified forms | yes |
 | `agg` | **refused** | yes |
 
 ### Gates re-implemented here
@@ -287,9 +448,9 @@ layer. They are re-implemented in `chiron_mcp/identity.py`, and every tool calls
 
 | Gate | Mirrors |
 |---|---|
-| `require_subject_level` | `SubjectLevelAccess` — `chiron/api/permissions.py:64-79` |
-| `require_workspace` | `CanViewWorkspacePermission` — `chiron/api_v2/permissions.py:37-45` |
-| `require_analysis_view` | `AnalysisViewOn` — `chiron/api/permissions.py:55-62` |
+| `require_subject_level` | `SubjectLevelAccess` (`chiron/api/permissions.py:64-79`) |
+| `require_workspace` | `CanViewWorkspacePermission` (`chiron/api_v2/permissions.py:37-45`) |
+| `require_analysis_view` | `AnalysisViewOn` (`chiron/api/permissions.py:55-62`) |
 
 `Concept.user_can_view_concept_stats` is **not** a substitute for the first: it explicitly
 *allows* agg users for non-PHI concepts (`data_definition_models.py:1114-1120`). The agg block is
@@ -298,7 +459,7 @@ the DRF class, and only the DRF class.
 ### Four hazards handled explicitly
 
 1. **No silent provisioning.** `get_request_chironuser` (`chiron/authorization.py:61-72`) writes a
-   `ChironUser` as a side effect of a *read*, granting at `Dataset.auto_access_level` — which is
+   `ChironUser` as a side effect of a *read*, granting at `Dataset.auto_access_level`, which is
    `phi` on some datasets. This server refuses instead and says what to create deliberately.
 2. **Never a `None` chironuser.** `CohortDefProcessor.__init__:42` substitutes `SystemChironUser`
    (hardcoded PHI, every permission group, all datasets) when passed `None`.
@@ -321,7 +482,7 @@ CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusal
 ## Known limits
 
 - **`chiron_save_cohort_as_report` is not implemented.** `CHIRON_MCP_ALLOW_SAVE` is reserved but
-  currently does nothing — there is no path from the model back into the Chiron UI.
+  currently does nothing; there is no path from the model back into the Chiron UI.
 - **Crosstab needs a configured root collection.** `run_analysis` reads
   `dataset.root_collection.event_id_field` and dereferences it without a null check. Datasets that
   leave it unset get a clear refusal instead of an `AttributeError`.
@@ -334,7 +495,7 @@ CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusal
 - **Most variables are multi-value**, living in their own lookup table joined one-to-many, so a
   filter matches a subject if *any* of their values match. "No white race value" and "a non-white
   race value" are different questions.
-- **`chiron_crosstab` returns preformatted text**, not structured rows — that is what Chiron's
+- **`chiron_crosstab` returns preformatted text**, not structured rows. That is what Chiron's
   analysis engine hands back.
 - **Remote deployment is not supported.** The transport is stdio and execution is in-process, so
   the server must run where it can reach both databases. Serving it remotely would need HTTP
@@ -349,7 +510,7 @@ CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusal
 | `has no ChironUser on dataset` | Expected. Grant it with `scripts/grant_access.py` |
 | `is a superuser. Refusing to start` | Use a dedicated service user, or set `CHIRON_MCP_OPERATOR=1` deliberately |
 | `cannot see subject-level data` | The identity is `agg`. Use `chiron_crosstab` or `chiron_concept_values` |
-| `Please select at least one value` | Wrong field name — call `chiron_describe_concept` and use its `filter_input` |
+| `Please select at least one value` | Wrong field name; call `chiron_describe_concept` and use its `filter_input` |
 | Tools missing in the client | Restart it; check the paths in the config are absolute |
 
 ## Project layout

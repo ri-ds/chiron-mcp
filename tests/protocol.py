@@ -1,23 +1,60 @@
-"""Drive the server over real MCP stdio: initialize, list tools, call one."""
-import asyncio, json, os, sys
+"""Drive the server over the real MCP stdio transport: initialize, list tools, call one.
+
+Uses whatever CHIRON_MCP_* environment you already have, so it exercises the same
+configuration your MCP client will use.
+
+    CHIRON_MCP_USERNAME=<user> .venv/bin/python -m tests.protocol
+"""
+
+import asyncio
+import json
+import os
+import sys
+
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-async def main():
-    env = dict(os.environ, CHIRON_MCP_USERNAME="demouser")
+VENV_PY = os.path.join(".venv", "bin", "python")
+
+
+async def main() -> int:
+    if not os.environ.get("CHIRON_MCP_USERNAME"):
+        print("Set CHIRON_MCP_USERNAME first.", file=sys.stderr)
+        return 1
+
     params = StdioServerParameters(
-        command=".venv/bin/python", args=["-m", "chiron_mcp.server"], env=env)
-    async with stdio_client(params) as (r, w):
-        async with ClientSession(r, w) as s:
-            await s.initialize()
-            tools = await s.list_tools()
+        command=VENV_PY if os.path.exists(VENV_PY) else sys.executable,
+        args=["-m", "chiron_mcp.server"],
+        env=dict(os.environ),
+    )
+    async with stdio_client(params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            tools = await session.list_tools()
             names = [t.name for t in tools.tools]
             print(f"{len(names)} tools registered:")
-            for n in names: print("  -", n)
-            res = await s.call_tool("chiron_count_cohort",
-                                    {"dataset_id": "dataset1_stored", "cohort_def": []})
-            print("\ncall chiron_count_cohort ->", str(res.content[0].text)[:200])
-            res2 = await s.call_tool("chiron_datasets", {})
-            print("call chiron_datasets ->", str(res2.content[0].text)[:160])
+            for n in names:
+                print("  -", n)
 
-asyncio.run(main())
+            # Discover a dataset rather than assuming one exists.
+            res = await session.call_tool("chiron_datasets", {})
+            payload = json.loads(res.content[0].text)
+            usable = [d for d in payload.get("datasets", []) if d.get("accessible")]
+            print(f"\nidentity: {payload.get('identity')} "
+                  f"| ceiling: {payload.get('access_ceiling')}")
+            if not usable:
+                print("No dataset reachable by this identity; "
+                      "grant one with scripts/grant_access.py")
+                return 1
+
+            ds = usable[0]["dataset_id"]
+            res = await session.call_tool(
+                "chiron_count_cohort", {"dataset_id": ds, "cohort_def": []}
+            )
+            print(f"\nchiron_count_cohort({ds}) -> {res.content[0].text[:200]}")
+            return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(asyncio.run(main()))
