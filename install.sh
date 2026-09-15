@@ -13,7 +13,25 @@ if [ ! -f "$CHIRON_SRC/chiron/__init__.py" ]; then
 fi
 echo "Chiron source: $CHIRON_SRC"
 
-python3 -m venv .venv
+# Find a Python 3.12+. The system python3 on macOS is 3.9, which cannot install mcp.
+PY=""
+for c in python3.14 python3.13 python3.12 python3; do
+  if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3,12) else 1)' 2>/dev/null; then
+    PY="$c"; break
+  fi
+done
+if [ -z "$PY" ]; then
+  echo
+  echo "No Python 3.12 or newer found (found: $(python3 -V 2>&1))."
+  echo "Install one, then re-run:"
+  echo "  macOS    brew install python@3.12"
+  echo "  Ubuntu   sudo apt install python3.12 python3.12-venv"
+  exit 1
+fi
+echo "Python: $($PY -V) at $(command -v $PY)"
+
+rm -rf .venv
+"$PY" -m venv .venv
 .venv/bin/pip install -q --upgrade pip
 echo "Installing dependencies (takes a minute)..."
 .venv/bin/pip install -q "mcp>=2.0.0" -r "$CHIRON_SRC/requirements/base.txt"
