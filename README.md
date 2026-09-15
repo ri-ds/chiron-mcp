@@ -17,8 +17,30 @@ writing SQL, and without bypassing Chiron's own access rules.
 
 ---
 
+## Quickstart (self-contained, no Chiron deployment needed)
+
+Chiron is vendored at `vendor/is4r-chiron`, so this repo stands up a working demo on its own:
+
+```bash
+git clone https://github.com/rohzzn/chiron-mcp.git
+cd chiron-mcp
+./install.sh
+docker compose up -d
+.venv/bin/python scripts/bootstrap_demo.py
+```
+
+That builds a metadata database, runs a real Chiron ETL over the bundled CSVs into Postgres,
+creates demo accounts (`demo` at deid, `demo_agg` at agg, `demo_admin` at phi), verifies each
+dataset answers, and prints the exact Claude config block to paste. Restart Claude and sixteen
+`chiron_*` tools appear.
+
+The demo dictionary is Chiron's own test fixture, so the datasets are small (a handful of
+subjects). It exercises the full pipeline end to end. To work against a real deployment instead,
+set `CHIRON_MCP_METADATA_DB` and `CHIRON_MCP_WAREHOUSE_URL` and skip the bootstrap.
+
 ## Table of contents
 
+- [Quickstart](#quickstart-self-contained-no-chiron-deployment-needed)
 - [What Chiron is](#what-chiron-is)
 - [What this server does](#what-this-server-does)
 - [Why it runs in-process](#why-it-runs-in-process-and-not-over-chirons-rest-api)
@@ -170,12 +192,17 @@ order. Every step has a check. Do not skip a check, and do not continue past a f
 
 ### Before you start, establish these four facts
 
-> **Do not `pip install chiron`.** The `chiron` package on PyPI is an unrelated DNA
-> basecaller. CCHMC's Chiron is not published to PyPI and must come from a source
-> checkout of `is4r-chiron`, which is a private repository behind organisation SSO.
+> **Chiron is already vendored at `vendor/is4r-chiron`.** Do not try to clone or
+> `pip install` it. The `chiron` package on PyPI is an unrelated DNA basecaller, and the
+> real repository is behind organisation SSO.
 
-This server runs inside Chiron's own Python, so it is not self-contained. Confirm each of these
-before running anything, asking the user where you cannot determine it yourself:
+**If the user just wants it working, follow [Quickstart](#quickstart-self-contained-no-chiron-deployment-needed):
+`./install.sh`, `docker compose up -d`, `scripts/bootstrap_demo.py`. That needs nothing
+external and prints the config block. The steps below are for pointing at an existing
+deployment instead.**
+
+Confirm each of these before running anything, asking the user where you cannot determine it
+yourself:
 
 1. **Python 3.12 or newer** is available.
 2. **A Chiron checkout** exists on this machine (a directory containing a `chiron/` package).
