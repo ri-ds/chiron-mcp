@@ -1,0 +1,465 @@
+<title>Chiron MCP Field Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #f5f7f8;
+    --surface: #ffffff;
+    --ink: #161a1f;
+    --ink-soft: #4a5560;
+    --rule: #dbe2e6;
+    --rule-soft: #e8edef;
+    --accent: #0f6b63;
+    --accent-soft: #e2efed;
+    --restrict: #a8420f;
+    --restrict-soft: #f7e9e2;
+    --neutral: #5d6873;
+
+    --display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #101418;
+      --surface: #171c21;
+      --ink: #e6ebee;
+      --ink-soft: #9aa7b1;
+      --rule: #2a3138;
+      --rule-soft: #222831;
+      --accent: #4fb3a6;
+      --accent-soft: #14312e;
+      --restrict: #e08a5c;
+      --restrict-soft: #2e2019;
+      --neutral: #8996a1;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #101418;
+    --surface: #171c21;
+    --ink: #e6ebee;
+    --ink-soft: #9aa7b1;
+    --rule: #2a3138;
+    --rule-soft: #222831;
+    --accent: #4fb3a6;
+    --accent-soft: #14312e;
+    --restrict: #e08a5c;
+    --restrict-soft: #2e2019;
+    --neutral: #8996a1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding-block: 56px 80px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(30px, 5.2vw, 42px);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 16px;
+  }
+  .standfirst {
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 23px;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 4px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+  }
+  h3 {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 15px;
+    margin: 0 0 6px;
+  }
+  p { margin: 0; max-width: 68ch; }
+  section { margin-top: 52px; display: flex; flex-direction: column; gap: 18px; }
+  .lede { color: var(--ink-soft); max-width: 66ch; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.875em;
+    background: var(--rule-soft);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  strong { font-weight: 600; }
+
+  /* model diagram */
+  .model { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .model > div {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .model .tag {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--neutral);
+  }
+  .model p { font-size: 14.5px; color: var(--ink-soft); }
+  .model .what { font-family: var(--display); font-size: 17px; font-weight: 600; color: var(--ink); }
+
+  /* tool groups */
+  .group { display: flex; flex-direction: column; gap: 0; }
+  .group-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; padding-bottom: 8px; flex-wrap: wrap;
+  }
+  .group-head h3 { margin: 0; }
+  .group-note { font-size: 13px; color: var(--neutral); }
+  .tool {
+    display: grid; grid-template-columns: 210px 1fr; gap: 6px 22px;
+    padding: 11px 0; border-top: 1px solid var(--rule-soft); align-items: baseline;
+  }
+  .tool code {
+    background: none; padding: 0; color: var(--accent);
+    font-weight: 500; font-size: 13px; overflow-wrap: anywhere;
+  }
+  .tool span { font-size: 14.5px; color: var(--ink-soft); }
+
+  /* worked example — a genuine sequence, so it is numbered */
+  ol.walk { list-style: none; counter-reset: step; margin: 0; padding: 0;
+            display: flex; flex-direction: column; gap: 2px; }
+  ol.walk li {
+    counter-increment: step; display: grid;
+    grid-template-columns: 30px 1fr; gap: 16px;
+    padding: 13px 0; border-top: 1px solid var(--rule-soft);
+  }
+  ol.walk li::before {
+    content: counter(step); font-family: var(--mono); font-size: 12px;
+    color: var(--neutral); padding-top: 2px;
+  }
+  .step-body { display: flex; flex-direction: column; gap: 5px; }
+  .step-body .say { font-size: 15px; }
+  .step-body .did { font-family: var(--mono); font-size: 12.5px; color: var(--neutral); }
+  .out {
+    font-family: var(--mono); font-size: 12.5px; color: var(--accent);
+    background: var(--accent-soft); padding: 5px 9px; align-self: start;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* tables */
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 460px; }
+  th {
+    text-align: left; font-family: var(--mono); font-weight: 400;
+    font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--neutral); padding: 0 16px 8px 0; border-bottom: 1px solid var(--rule);
+  }
+  td { padding: 10px 16px 10px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  td.num { font-variant-numeric: tabular-nums; }
+  tr td:last-child, tr th:last-child { padding-right: 0; }
+
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    padding: 2px 7px; letter-spacing: 0.04em;
+  }
+  .pill.ok { background: var(--accent-soft); color: var(--accent); }
+  .pill.no { background: var(--restrict-soft); color: var(--restrict); }
+
+  .note {
+    border-left: 2px solid var(--accent); padding: 2px 0 2px 16px;
+    color: var(--ink-soft); font-size: 15px; max-width: 66ch;
+  }
+  .note.warn { border-left-color: var(--restrict); }
+
+  pre {
+    background: var(--surface); border: 1px solid var(--rule);
+    padding: 14px 16px; overflow-x: auto; margin: 0;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  ul.plain { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+  ul.plain li { max-width: 66ch; color: var(--ink-soft); font-size: 15px; }
+  ul.plain li strong { color: var(--ink); }
+
+  footer {
+    margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule);
+    font-size: 13px; color: var(--neutral);
+  }
+
+  @media (max-width: 620px) {
+    .model { grid-template-columns: 1fr; }
+    .tool { grid-template-columns: 1fr; gap: 3px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Field guide</p>
+    <h1>Chiron MCP</h1>
+    <p class="standfirst">
+      Sixteen tools that let Claude explore your Chiron research warehouse — find variables,
+      build a patient cohort, count it, and pull rows — without anyone writing SQL.
+    </p>
+  </header>
+
+  <section>
+    <h2>What it is</h2>
+    <p class="lede">
+      Chiron is a cohort-discovery tool for human-subject research data. A researcher picks
+      filters to describe <em>which patients</em> and <em>which columns</em>, and Chiron compiles
+      that into one query against a clinical warehouse. This server exposes that machinery to
+      Claude, so the picking can happen in conversation.
+    </p>
+
+    <div class="model">
+      <div>
+        <span class="tag">Metadata database</span>
+        <span class="what">The data dictionary</span>
+        <p>Dataset → Collection → Concept, stored as database rows. Describes the
+        <em>shape</em> of the data and who may see it. No patient rows live here.</p>
+      </div>
+      <div>
+        <span class="tag">Warehouse</span>
+        <span class="what">The patient data</span>
+        <p>A separate Postgres, one schema per dataset, with tables generated at runtime
+        from those dictionary rows. Reached only through SQLAlchemy.</p>
+      </div>
+    </div>
+
+    <p class="note">
+      Everything you build is two JSON documents: a <strong>cohort_def</strong> (who is in) and a
+      <strong>table_def</strong> (what columns). The server is stateless — every tool takes a
+      cohort_def and hands one back, so Claude holds the working query and Chiron keeps none of it.
+      Nothing you do here touches a researcher's saved workspace.
+    </p>
+  </section>
+
+  <section>
+    <h2>What it can do</h2>
+
+    <div class="group">
+      <div class="group-head">
+        <h3>Orient</h3>
+        <span class="group-note">Start here — what exists and what you may see</span>
+      </div>
+      <div class="tool"><code>chiron_datasets</code><span>Datasets you can reach, your access level on each, and why anything is refused.</span></div>
+      <div class="tool"><code>chiron_find_concepts</code><span>Search the variables in a dataset by name or description.</span></div>
+      <div class="tool"><code>chiron_describe_concept</code><span>One variable in full — <strong>including the exact field names needed to filter on it</strong>. Call this before building any filter.</span></div>
+      <div class="tool"><code>chiron_concept_values</code><span>Distinct values with patient counts. Answers "what can I filter this on?"</span></div>
+    </div>
+
+    <div class="group" style="margin-top:26px">
+      <div class="group-head">
+        <h3>Build a cohort</h3>
+        <span class="group-note">Functional — nothing is saved</span>
+      </div>
+      <div class="tool"><code>chiron_edit_cohort</code><span>Apply one transformation and get the new cohort_def back, with a plain-English description of what it now means.</span></div>
+      <div class="tool"><code>chiron_event_rule_options</code><span>Which date/age restrictions apply to a criteria set — asks Chiron, so it can't go stale.</span></div>
+      <div class="tool"><code>chiron_count_cohort</code><span>How many patients match. The cheap check before pulling anything.</span></div>
+    </div>
+
+    <div class="group" style="margin-top:26px">
+      <div class="group-head">
+        <h3>Get results</h3>
+      </div>
+      <div class="tool"><code>chiron_run_table</code><span>One page of rows. Columns are a plain list of concept ids — you never author table_def JSON.</span></div>
+      <div class="tool"><code>chiron_export_table</code><span>The complete result set. Requires an acknowledged row count first, because Chiron applies no limit of its own.</span></div>
+      <div class="tool"><code>chiron_crosstab</code><span>Break a cohort down by one or two variables. The aggregate-safe path.</span></div>
+      <div class="tool"><code>chiron_saved_reports</code><span>Browse saved reports, or open one's stored definitions to branch from.</span></div>
+      <div class="tool"><code>chiron_run_saved_report</code><span>Run a saved report by id.</span></div>
+    </div>
+
+    <div class="group" style="margin-top:26px">
+      <div class="group-head">
+        <h3>Operations</h3>
+        <span class="group-note">Off by default — needs <code>CHIRON_MCP_OPERATOR</code> and a staff account</span>
+      </div>
+      <div class="tool"><code>chiron_validate_dictionary</code><span>Run Chiron's own validator. Non-empty means the next ETL will refuse to run.</span></div>
+      <div class="tool"><code>chiron_schema_diagram</code><span>The dataset's shape as a Mermaid diagram.</span></div>
+      <div class="tool"><code>chiron_etl_history</code><span>The ETL audit trail, which has no HTTP API at all.</span></div>
+      <div class="tool"><code>chiron_explain_access</code><span>Why can or can't this identity use this variable — Chiron's own verdicts, verbatim.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>A real session</h2>
+    <p class="lede">
+      Every number below is an actual result from <code>synthea-10k</code>, not an illustration.
+    </p>
+    <ol class="walk">
+      <li>
+        <div class="step-body">
+          <span class="say">"What datasets can I look at?"</span>
+          <span class="did">chiron_datasets</span>
+        </div>
+        <span class="out">3 accessible</span>
+      </li>
+      <li>
+        <div class="step-body">
+          <span class="say">"How many patients in synthea-10k?"</span>
+          <span class="did">chiron_count_cohort · empty cohort = everyone</span>
+        </div>
+        <span class="out">10,000</span>
+      </li>
+      <li>
+        <div class="step-body">
+          <span class="say">"What conditions are most common?"</span>
+          <span class="did">chiron_concept_values · condition__description</span>
+        </div>
+        <span class="out">obesity 2,421 · hypertension 2,134</span>
+      </li>
+      <li>
+        <div class="step-body">
+          <span class="say">"Build me a cohort of asthma patients."</span>
+          <span class="did">chiron_describe_concept → chiron_edit_cohort</span>
+        </div>
+        <span class="out">cohort_def returned</span>
+      </li>
+      <li>
+        <div class="step-body">
+          <span class="say">"How many is that?"</span>
+          <span class="did">chiron_count_cohort</span>
+        </div>
+        <span class="out">838 of 10,000</span>
+      </li>
+      <li>
+        <div class="step-body">
+          <span class="say">"Show me their diagnoses and dates."</span>
+          <span class="did">chiron_run_table · description, start</span>
+        </div>
+        <span class="out">829 records · 838 subjects</span>
+      </li>
+    </ol>
+    <p class="note">
+      Step 4 matters most. Chiron publishes <em>no</em> machine-readable schema for filter inputs —
+      a filter is submitted as HTML form field names like <code>selected_categories</code> or
+      <code>cd_numeric_min</code>, and which one applies depends on the variable's type.
+      <code>chiron_describe_concept</code> is the only thing that answers that, which is why
+      Claude calls it first.
+    </p>
+  </section>
+
+  <section>
+    <h2>Who can see what</h2>
+    <p class="lede">
+      Access is not a login check — it's a per-(user, dataset) record carrying one of three levels.
+      Because this server calls Chiron's Python directly rather than its web API, three checks
+      that live only in the web layer are re-implemented and applied on every call.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Level</th><th>Patient rows</th><th>Counts &amp; crosstabs</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>phi</code></td>
+            <td><span class="pill ok">yes</span></td>
+            <td><span class="pill ok">yes</span></td>
+            <td>Identifiable data. Opt-in only — the ceiling defaults to <code>deid</code>.</td>
+          </tr>
+          <tr>
+            <td><code>deid</code></td>
+            <td><span class="pill ok">yes</span></td>
+            <td><span class="pill ok">yes</span></td>
+            <td>De-identified. PHI variables are swapped for their de-identified form automatically.</td>
+          </tr>
+          <tr>
+            <td><code>agg</code></td>
+            <td><span class="pill no">refused</span></td>
+            <td><span class="pill ok">yes</span></td>
+            <td>Aggregate only. Row-level tools refuse outright, matching Chiron's own behaviour.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><strong>It never grants access.</strong> Chiron's web UI quietly creates an access record the first time you touch certain datasets — at <code>phi</code> level on the synthea ones. This server refuses instead and tells you what to create deliberately.</li>
+      <li><strong>An errored cohort is never run.</strong> A broken definition collapses to an empty one, and an empty cohort means <em>every patient</em>. The server refuses rather than silently returning the whole dataset.</li>
+      <li><strong>A failed filter returns no reusable cohort.</strong> It hands back <code>unchanged_cohort_def</code> under a different name, so a failure can't be chained into an accidental whole-dataset query.</li>
+      <li><strong>It is read-only.</strong> No saved report is written, no ETL runs, no schema changes.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What's live now</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Dataset</th><th>Patients</th><th>Content</th><th>Crosstab</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>synthea-10k</code></td><td class="num">10,000</td><td>Synthetic clinical records — conditions, encounters, medications, procedures, observations</td><td><span class="pill no">no</span></td></tr>
+          <tr><td><code>synthea-small</code></td><td class="num">300</td><td>Same shape, smaller — good for quick iteration</td><td><span class="pill no">no</span></td></tr>
+          <tr><td><code>dataset1_stored</code></td><td class="num">6</td><td>Test fixture — the only one with event-date rules configured</td><td><span class="pill ok">yes</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note warn">
+      Crosstab needs the dataset's root collection to declare an event id field. The synthea
+      dictionaries don't, so <code>chiron_crosstab</code> returns a clear explanation there rather
+      than a crash. Use <code>chiron_concept_values</code> for single-variable counts instead.
+    </p>
+  </section>
+
+  <section>
+    <h2>Setup</h2>
+    <p class="lede">Already registered in Claude Desktop. It appears after a restart.</p>
+    <pre><code>"chiron": {
+  "command": ".../chiron-mcp/.venv/bin/python",
+  "args": ["-m", "chiron_mcp.server"],
+  "cwd": ".../chiron-mcp",
+  "env": {
+    "CHIRON_MCP_USERNAME": "demouser",
+    "CHIRON_MCP_MAX_ACCESS_LEVEL": "deid"
+  }
+}</code></pre>
+    <p class="lede">To check the connection before debugging anything else:</p>
+    <pre><code>CHIRON_MCP_USERNAME=demouser .venv/bin/python scripts/harness.py</code></pre>
+    <p class="lede">To open another dataset to an account:</p>
+    <pre><code>.venv/bin/python scripts/grant_access.py \
+    --user demouser --datasets synthea-10k --level deid</code></pre>
+  </section>
+
+  <section>
+    <h2>Known limits</h2>
+    <ul class="plain">
+      <li><strong>Regex text filters are broken upstream.</strong> Chiron's own tests document <code>/slash-wrapped/</code> terms as returning wrong answers. Avoid them.</li>
+      <li><strong>Terms absent from the data are rejected.</strong> Pass <code>ignore_warnings</code> to accept a filter anyway — useful for values that exist in one dataset but not another.</li>
+      <li><strong>Most variables are multi-value.</strong> They live in their own lookup table, so a filter matches a patient if <em>any</em> of their values match. "No white race value" and "a non-white race value" are different questions.</li>
+      <li><strong>Crosstab returns preformatted text</strong>, not structured rows — that's what Chiron's analysis engine hands back.</li>
+      <li><strong>Saving isn't implemented.</strong> There's no way to push a cohort back into the Chiron UI yet.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Chiron 6.5.4 · 16 tools · read-only · verified against the live instance
+  </footer>
+
+</div>
