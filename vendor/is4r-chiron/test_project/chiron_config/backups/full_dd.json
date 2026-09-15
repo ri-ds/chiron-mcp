@@ -75,6 +75,31 @@
     }
 },
 {
+    "model": "chiron.dataset",
+    "pk": 12,
+    "fields": {
+        "unique_id": "synthea-small",
+        "display_name": "Synthea 300",
+        "database_name": "synthea_small",
+        "description": "Synthetic patient data (Synthea CSV layout).",
+        "root_collection": 62,
+        "subject_id_fields_to_index": "id",
+        "autocreate_chiron_user": true,
+        "auto_access_level": "phi",
+        "auto_can_view_workspace": true,
+        "auto_can_view_subject_details": true,
+        "list_visible": true,
+        "contact_email": "",
+        "override_site_title": null,
+        "override_footer_template": null,
+        "override_data_summary_function_path": null,
+        "override_infobar": null,
+        "override_infobar_type": null,
+        "logo_url": null,
+        "extra_header_links": null
+    }
+},
+{
     "model": "chiron.permissiongroup",
     "pk": 1,
     "fields": {
@@ -1123,6 +1148,102 @@
     }
 },
 {
+    "model": "chiron.collection",
+    "pk": 62,
+    "fields": {
+        "dataset": 12,
+        "permanent_id": "subject",
+        "name": "subject",
+        "name_plural": "subjects",
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": null,
+        "event_name_field": null,
+        "event_date_field": null,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 63,
+    "fields": {
+        "dataset": 12,
+        "permanent_id": "encounter",
+        "name": "encounter",
+        "name_plural": "encounters",
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": null,
+        "event_name_field": null,
+        "event_date_field": null,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 64,
+    "fields": {
+        "dataset": 12,
+        "permanent_id": "observation",
+        "name": "observation",
+        "name_plural": "observations",
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": null,
+        "event_name_field": null,
+        "event_date_field": null,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 65,
+    "fields": {
+        "dataset": 12,
+        "permanent_id": "condition",
+        "name": "condition",
+        "name_plural": "conditions",
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": null,
+        "event_name_field": null,
+        "event_date_field": null,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 66,
+    "fields": {
+        "dataset": 12,
+        "permanent_id": "medication",
+        "name": "medication",
+        "name_plural": "medications",
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": null,
+        "event_name_field": null,
+        "event_date_field": null,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 67,
+    "fields": {
+        "dataset": 12,
+        "permanent_id": "procedure",
+        "name": "procedure",
+        "name_plural": "procedures",
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": null,
+        "event_name_field": null,
+        "event_date_field": null,
+        "event_end_date_field": null
+    }
+},
+{
     "model": "chiron.collectionrelationship",
     "pk": 1,
     "fields": {
@@ -1426,6 +1547,72 @@
         "collection": 33,
         "processor": 234,
         "execution_order": 201,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 68,
+    "fields": {
+        "name": "synthea_subject",
+        "collection": 62,
+        "processor": 45,
+        "execution_order": 10,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 69,
+    "fields": {
+        "name": "synthea_encounter",
+        "collection": 63,
+        "processor": 45,
+        "execution_order": 20,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 70,
+    "fields": {
+        "name": "synthea_observation",
+        "collection": 64,
+        "processor": 45,
+        "execution_order": 30,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 71,
+    "fields": {
+        "name": "synthea_condition",
+        "collection": 65,
+        "processor": 45,
+        "execution_order": 40,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 72,
+    "fields": {
+        "name": "synthea_medication",
+        "collection": 66,
+        "processor": 45,
+        "execution_order": 50,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 73,
+    "fields": {
+        "name": "synthea_procedure",
+        "collection": 67,
+        "processor": 45,
+        "execution_order": 60,
         "exclude_from_etl": false
     }
 },
@@ -1790,6 +1977,72 @@
         "unique_id": "M2MSubColComplexSubjectMatching",
         "name": "M2MSubColComplexSubjectMatching",
         "order": 100.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 112,
+    "fields": {
+        "dataset": 12,
+        "parent": null,
+        "unique_id": "demographics",
+        "name": "demographics",
+        "order": 1.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 113,
+    "fields": {
+        "dataset": 12,
+        "parent": null,
+        "unique_id": "encounters",
+        "name": "encounters",
+        "order": 2.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 114,
+    "fields": {
+        "dataset": 12,
+        "parent": null,
+        "unique_id": "observations",
+        "name": "observations",
+        "order": 3.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 115,
+    "fields": {
+        "dataset": 12,
+        "parent": null,
+        "unique_id": "conditions",
+        "name": "conditions",
+        "order": 4.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 116,
+    "fields": {
+        "dataset": 12,
+        "parent": null,
+        "unique_id": "medications",
+        "name": "medications",
+        "order": 5.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 117,
+    "fields": {
+        "dataset": 12,
+        "parent": null,
+        "unique_id": "procedures",
+        "name": "procedures",
+        "order": 6.0
     }
 },
 {
@@ -5753,6 +6006,1230 @@
     }
 },
 {
+    "model": "chiron.concept",
+    "pk": 759,
+    "fields": {
+        "permanent_id": "synthea_small__subject__birthdate",
+        "name": "birthdate",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 43,
+        "collection": 62,
+        "category": 112,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 760,
+    "fields": {
+        "permanent_id": "synthea_small__subject__deathdate",
+        "name": "deathdate",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 43,
+        "collection": 62,
+        "category": 112,
+        "order": 2.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 761,
+    "fields": {
+        "permanent_id": "synthea_small__subject__first",
+        "name": "first",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 41,
+        "collection": 62,
+        "category": 112,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 762,
+    "fields": {
+        "permanent_id": "synthea_small__subject__last",
+        "name": "last",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 41,
+        "collection": 62,
+        "category": 112,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 763,
+    "fields": {
+        "permanent_id": "synthea_small__subject__gender",
+        "name": "gender",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 5.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 764,
+    "fields": {
+        "permanent_id": "synthea_small__subject__race",
+        "name": "race",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 6.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 765,
+    "fields": {
+        "permanent_id": "synthea_small__subject__ethnicity",
+        "name": "ethnicity",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 7.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 766,
+    "fields": {
+        "permanent_id": "synthea_small__subject__married",
+        "name": "married",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 8.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 767,
+    "fields": {
+        "permanent_id": "synthea_small__subject__city",
+        "name": "city",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 9.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 768,
+    "fields": {
+        "permanent_id": "synthea_small__subject__state",
+        "name": "state",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 10.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 769,
+    "fields": {
+        "permanent_id": "synthea_small__subject__county",
+        "name": "county",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 11.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 770,
+    "fields": {
+        "permanent_id": "synthea_small__subject__zip",
+        "name": "zip",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 41,
+        "collection": 62,
+        "category": 112,
+        "order": 12.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 771,
+    "fields": {
+        "permanent_id": "synthea_small__subject__healthcare_expenses",
+        "name": "healthcare expenses",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 37,
+        "collection": 62,
+        "category": 112,
+        "order": 13.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 772,
+    "fields": {
+        "permanent_id": "synthea_small__subject__healthcare_coverage",
+        "name": "healthcare coverage",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 37,
+        "collection": 62,
+        "category": 112,
+        "order": 14.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 773,
+    "fields": {
+        "permanent_id": "synthea_small__subject__income",
+        "name": "income",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 36,
+        "collection": 62,
+        "category": 112,
+        "order": 15.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 774,
+    "fields": {
+        "permanent_id": "synthea_small__subject__study_group_a",
+        "name": "study group a",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 16.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 775,
+    "fields": {
+        "permanent_id": "synthea_small__subject__study_group_b",
+        "name": "study group b",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 17.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 776,
+    "fields": {
+        "permanent_id": "synthea_small__subject__study_group_c",
+        "name": "study group c",
+        "name_plural": null,
+        "description": null,
+        "source": 68,
+        "concept_handler": 40,
+        "collection": 62,
+        "category": 112,
+        "order": 18.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 777,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__start",
+        "name": "start",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 43,
+        "collection": 63,
+        "category": 113,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 778,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__stop",
+        "name": "stop",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 43,
+        "collection": 63,
+        "category": 113,
+        "order": 2.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 779,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__encounterclass",
+        "name": "encounterclass",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 40,
+        "collection": 63,
+        "category": 113,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 780,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__code",
+        "name": "code",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 40,
+        "collection": 63,
+        "category": 113,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 781,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__description",
+        "name": "description",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 40,
+        "collection": 63,
+        "category": 113,
+        "order": 5.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 782,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__base_encounter_cost",
+        "name": "base encounter cost",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 37,
+        "collection": 63,
+        "category": 113,
+        "order": 6.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 783,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__total_claim_cost",
+        "name": "total claim cost",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 37,
+        "collection": 63,
+        "category": 113,
+        "order": 7.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 784,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__payer_coverage",
+        "name": "payer coverage",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 37,
+        "collection": 63,
+        "category": 113,
+        "order": 8.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 785,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__organization",
+        "name": "organization",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 40,
+        "collection": 63,
+        "category": 113,
+        "order": 9.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 786,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__provider",
+        "name": "provider",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 41,
+        "collection": 63,
+        "category": 113,
+        "order": 10.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 787,
+    "fields": {
+        "permanent_id": "synthea_small__encounter__payer",
+        "name": "payer",
+        "name_plural": null,
+        "description": null,
+        "source": 69,
+        "concept_handler": 40,
+        "collection": 63,
+        "category": 113,
+        "order": 11.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 788,
+    "fields": {
+        "permanent_id": "synthea_small__observation__date",
+        "name": "date",
+        "name_plural": null,
+        "description": null,
+        "source": 70,
+        "concept_handler": 43,
+        "collection": 64,
+        "category": 114,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 789,
+    "fields": {
+        "permanent_id": "synthea_small__observation__category",
+        "name": "category",
+        "name_plural": null,
+        "description": null,
+        "source": 70,
+        "concept_handler": 40,
+        "collection": 64,
+        "category": 114,
+        "order": 2.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 790,
+    "fields": {
+        "permanent_id": "synthea_small__observation__code",
+        "name": "code",
+        "name_plural": null,
+        "description": null,
+        "source": 70,
+        "concept_handler": 40,
+        "collection": 64,
+        "category": 114,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 791,
+    "fields": {
+        "permanent_id": "synthea_small__observation__description",
+        "name": "description",
+        "name_plural": null,
+        "description": null,
+        "source": 70,
+        "concept_handler": 40,
+        "collection": 64,
+        "category": 114,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 792,
+    "fields": {
+        "permanent_id": "synthea_small__observation__value",
+        "name": "value",
+        "name_plural": null,
+        "description": null,
+        "source": 70,
+        "concept_handler": 37,
+        "collection": 64,
+        "category": 114,
+        "order": 5.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 793,
+    "fields": {
+        "permanent_id": "synthea_small__observation__units",
+        "name": "units",
+        "name_plural": null,
+        "description": null,
+        "source": 70,
+        "concept_handler": 40,
+        "collection": 64,
+        "category": 114,
+        "order": 6.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 794,
+    "fields": {
+        "permanent_id": "synthea_small__condition__start",
+        "name": "start",
+        "name_plural": null,
+        "description": null,
+        "source": 71,
+        "concept_handler": 43,
+        "collection": 65,
+        "category": 115,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 795,
+    "fields": {
+        "permanent_id": "synthea_small__condition__stop",
+        "name": "stop",
+        "name_plural": null,
+        "description": null,
+        "source": 71,
+        "concept_handler": 43,
+        "collection": 65,
+        "category": 115,
+        "order": 2.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 796,
+    "fields": {
+        "permanent_id": "synthea_small__condition__code",
+        "name": "code",
+        "name_plural": null,
+        "description": null,
+        "source": 71,
+        "concept_handler": 40,
+        "collection": 65,
+        "category": 115,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 797,
+    "fields": {
+        "permanent_id": "synthea_small__condition__description",
+        "name": "description",
+        "name_plural": null,
+        "description": null,
+        "source": 71,
+        "concept_handler": 40,
+        "collection": 65,
+        "category": 115,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 798,
+    "fields": {
+        "permanent_id": "synthea_small__medication__start",
+        "name": "start",
+        "name_plural": null,
+        "description": null,
+        "source": 72,
+        "concept_handler": 43,
+        "collection": 66,
+        "category": 116,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 799,
+    "fields": {
+        "permanent_id": "synthea_small__medication__stop",
+        "name": "stop",
+        "name_plural": null,
+        "description": null,
+        "source": 72,
+        "concept_handler": 43,
+        "collection": 66,
+        "category": 116,
+        "order": 2.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 800,
+    "fields": {
+        "permanent_id": "synthea_small__medication__code",
+        "name": "code",
+        "name_plural": null,
+        "description": null,
+        "source": 72,
+        "concept_handler": 40,
+        "collection": 66,
+        "category": 116,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 801,
+    "fields": {
+        "permanent_id": "synthea_small__medication__description",
+        "name": "description",
+        "name_plural": null,
+        "description": null,
+        "source": 72,
+        "concept_handler": 40,
+        "collection": 66,
+        "category": 116,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 802,
+    "fields": {
+        "permanent_id": "synthea_small__medication__base_cost",
+        "name": "base cost",
+        "name_plural": null,
+        "description": null,
+        "source": 72,
+        "concept_handler": 37,
+        "collection": 66,
+        "category": 116,
+        "order": 5.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 803,
+    "fields": {
+        "permanent_id": "synthea_small__medication__dispenses",
+        "name": "dispenses",
+        "name_plural": null,
+        "description": null,
+        "source": 72,
+        "concept_handler": 36,
+        "collection": 66,
+        "category": 116,
+        "order": 6.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 804,
+    "fields": {
+        "permanent_id": "synthea_small__medication__totalcost",
+        "name": "totalcost",
+        "name_plural": null,
+        "description": null,
+        "source": 72,
+        "concept_handler": 37,
+        "collection": 66,
+        "category": 116,
+        "order": 7.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 805,
+    "fields": {
+        "permanent_id": "synthea_small__medication__reasondescription",
+        "name": "reasondescription",
+        "name_plural": null,
+        "description": null,
+        "source": 72,
+        "concept_handler": 40,
+        "collection": 66,
+        "category": 116,
+        "order": 8.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 806,
+    "fields": {
+        "permanent_id": "synthea_small__procedure__start",
+        "name": "start",
+        "name_plural": null,
+        "description": null,
+        "source": 73,
+        "concept_handler": 43,
+        "collection": 67,
+        "category": 117,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 807,
+    "fields": {
+        "permanent_id": "synthea_small__procedure__code",
+        "name": "code",
+        "name_plural": null,
+        "description": null,
+        "source": 73,
+        "concept_handler": 40,
+        "collection": 67,
+        "category": 117,
+        "order": 2.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 808,
+    "fields": {
+        "permanent_id": "synthea_small__procedure__description",
+        "name": "description",
+        "name_plural": null,
+        "description": null,
+        "source": 73,
+        "concept_handler": 40,
+        "collection": 67,
+        "category": 117,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 809,
+    "fields": {
+        "permanent_id": "synthea_small__procedure__base_cost",
+        "name": "base cost",
+        "name_plural": null,
+        "description": null,
+        "source": 73,
+        "concept_handler": 37,
+        "collection": 67,
+        "category": 117,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
     "model": "chiron.concepthandlerarg",
     "pk": 1,
     "fields": {
@@ -7523,6 +9000,516 @@
     }
 },
 {
+    "model": "chiron.concepthandlerarg",
+    "pk": 770,
+    "fields": {
+        "concept": 759,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "BIRTHDATE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 771,
+    "fields": {
+        "concept": 760,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "DEATHDATE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 772,
+    "fields": {
+        "concept": 761,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "FIRST"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 773,
+    "fields": {
+        "concept": 762,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "LAST"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 774,
+    "fields": {
+        "concept": 763,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "GENDER"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 775,
+    "fields": {
+        "concept": 764,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "RACE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 776,
+    "fields": {
+        "concept": 765,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "ETHNICITY"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 777,
+    "fields": {
+        "concept": 766,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "MARRIED"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 778,
+    "fields": {
+        "concept": 767,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "CITY"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 779,
+    "fields": {
+        "concept": 768,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "STATE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 780,
+    "fields": {
+        "concept": 769,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "COUNTY"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 781,
+    "fields": {
+        "concept": 770,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "ZIP"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 782,
+    "fields": {
+        "concept": 771,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "HEALTHCARE_EXPENSES"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 783,
+    "fields": {
+        "concept": 772,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "HEALTHCARE_COVERAGE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 784,
+    "fields": {
+        "concept": 773,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "INCOME"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 785,
+    "fields": {
+        "concept": 774,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "STUDY_GROUP_A"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 786,
+    "fields": {
+        "concept": 775,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "STUDY_GROUP_B"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 787,
+    "fields": {
+        "concept": 776,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "STUDY_GROUP_C"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 788,
+    "fields": {
+        "concept": 777,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "START"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 789,
+    "fields": {
+        "concept": 778,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "STOP"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 790,
+    "fields": {
+        "concept": 779,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "ENCOUNTERCLASS"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 791,
+    "fields": {
+        "concept": 780,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "CODE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 792,
+    "fields": {
+        "concept": 781,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "DESCRIPTION"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 793,
+    "fields": {
+        "concept": 782,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "BASE_ENCOUNTER_COST"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 794,
+    "fields": {
+        "concept": 783,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "TOTAL_CLAIM_COST"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 795,
+    "fields": {
+        "concept": 784,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "PAYER_COVERAGE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 796,
+    "fields": {
+        "concept": 785,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "ORGANIZATION"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 797,
+    "fields": {
+        "concept": 786,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "PROVIDER"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 798,
+    "fields": {
+        "concept": 787,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "PAYER"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 799,
+    "fields": {
+        "concept": 788,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "DATE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 800,
+    "fields": {
+        "concept": 789,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "CATEGORY"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 801,
+    "fields": {
+        "concept": 790,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "CODE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 802,
+    "fields": {
+        "concept": 791,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "DESCRIPTION"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 803,
+    "fields": {
+        "concept": 792,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "VALUE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 804,
+    "fields": {
+        "concept": 793,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "UNITS"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 805,
+    "fields": {
+        "concept": 794,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "START"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 806,
+    "fields": {
+        "concept": 795,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "STOP"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 807,
+    "fields": {
+        "concept": 796,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "CODE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 808,
+    "fields": {
+        "concept": 797,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "DESCRIPTION"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 809,
+    "fields": {
+        "concept": 798,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "START"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 810,
+    "fields": {
+        "concept": 799,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "STOP"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 811,
+    "fields": {
+        "concept": 800,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "CODE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 812,
+    "fields": {
+        "concept": 801,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "DESCRIPTION"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 813,
+    "fields": {
+        "concept": 802,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "BASE_COST"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 814,
+    "fields": {
+        "concept": 803,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "DISPENSES"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 815,
+    "fields": {
+        "concept": 804,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "TOTALCOST"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 816,
+    "fields": {
+        "concept": 805,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "REASONDESCRIPTION"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 817,
+    "fields": {
+        "concept": 806,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "START"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 818,
+    "fields": {
+        "concept": 807,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "CODE"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 819,
+    "fields": {
+        "concept": 808,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "DESCRIPTION"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 820,
+    "fields": {
+        "concept": 809,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "BASE_COST"
+    }
+},
+{
     "model": "chiron.sourceprocessorarg",
     "pk": 1,
     "fields": {
@@ -8240,6 +10227,146 @@
         "name": "collection_id_field",
         "data_type": "string",
         "value": "id"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 225,
+    "fields": {
+        "source": 68,
+        "name": "filepath",
+        "data_type": "string",
+        "value": "source_data_import/synthea-300/patients.csv"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 226,
+    "fields": {
+        "source": 68,
+        "name": "subject_matching_source_id_field",
+        "data_type": "string",
+        "value": "Id"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 227,
+    "fields": {
+        "source": 68,
+        "name": "collection_id_field",
+        "data_type": "string",
+        "value": "Id"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 228,
+    "fields": {
+        "source": 69,
+        "name": "filepath",
+        "data_type": "string",
+        "value": "source_data_import/synthea-300/encounters.csv"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 229,
+    "fields": {
+        "source": 69,
+        "name": "subject_matching_source_id_field",
+        "data_type": "string",
+        "value": "PATIENT"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 230,
+    "fields": {
+        "source": 69,
+        "name": "collection_id_field",
+        "data_type": "string",
+        "value": "Id"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 231,
+    "fields": {
+        "source": 70,
+        "name": "filepath",
+        "data_type": "string",
+        "value": "source_data_import/synthea-300/observations.csv"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 232,
+    "fields": {
+        "source": 70,
+        "name": "subject_matching_source_id_field",
+        "data_type": "string",
+        "value": "PATIENT"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 233,
+    "fields": {
+        "source": 71,
+        "name": "filepath",
+        "data_type": "string",
+        "value": "source_data_import/synthea-300/conditions.csv"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 234,
+    "fields": {
+        "source": 71,
+        "name": "subject_matching_source_id_field",
+        "data_type": "string",
+        "value": "PATIENT"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 235,
+    "fields": {
+        "source": 72,
+        "name": "filepath",
+        "data_type": "string",
+        "value": "source_data_import/synthea-300/medications.csv"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 236,
+    "fields": {
+        "source": 72,
+        "name": "subject_matching_source_id_field",
+        "data_type": "string",
+        "value": "PATIENT"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 237,
+    "fields": {
+        "source": 73,
+        "name": "filepath",
+        "data_type": "string",
+        "value": "source_data_import/synthea-300/procedures.csv"
+    }
+},
+{
+    "model": "chiron.sourceprocessorarg",
+    "pk": 238,
+    "fields": {
+        "source": 73,
+        "name": "subject_matching_source_id_field",
+        "data_type": "string",
+        "value": "PATIENT"
     }
 },
 {

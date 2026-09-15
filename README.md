@@ -8,11 +8,11 @@ finds the right variable, builds the cohort, counts it, and pulls the rows, with
 writing SQL, and without bypassing Chiron's own access rules.
 
 ```
-"How many patients in this dataset?"          -> 10,000
-"What conditions are most common?"            -> obesity 2,421 · hypertension 2,134
+"How many patients in this dataset?"          -> 300
+"What conditions are most common?"            -> obesity 64 · hypertension 57
 "Build a cohort of asthma patients"           -> cohort_def
-"How many is that?"                           -> 838
-"Show me their diagnoses and dates"           -> 829 records across 838 subjects
+"How many is that?"                           -> 20
+"Show me their diagnoses and dates"           -> 20 records with diagnosis dates
 ```
 
 ---
@@ -34,9 +34,20 @@ creates demo accounts (`demo` at deid, `demo_agg` at agg, `demo_admin` at phi), 
 dataset answers, and prints the exact Claude config block to paste. Restart Claude and sixteen
 `chiron_*` tools appear.
 
-The demo dictionary is Chiron's own test fixture, so the datasets are small (a handful of
-subjects). It exercises the full pipeline end to end. To work against a real deployment instead,
-set `CHIRON_MCP_METADATA_DB` and `CHIRON_MCP_WAREHOUSE_URL` and skip the bootstrap.
+You get four datasets, including **300 synthetic patients** (Synthea) with conditions,
+encounters, observations, medications and procedures:
+
+| Dataset | Subjects | Content |
+|---|---|---|
+| `synthea-small` | 300 | Synthetic clinical records. The one to demo with |
+| `dataset2_stored` | 6 | Chiron's own test fixture |
+| `dataset1_stored` | 2 | Test fixture, the only one with event-date rules configured |
+| `dataset3_stored` | 0 | Dictionary only, no rows |
+
+Real results, out of the box: obesity 64, hypertension 57, depression 35, asthma 20.
+
+To work against a real deployment instead, set `CHIRON_MCP_METADATA_DB` and
+`CHIRON_MCP_WAREHOUSE_URL` and skip the bootstrap.
 
 ## Table of contents
 

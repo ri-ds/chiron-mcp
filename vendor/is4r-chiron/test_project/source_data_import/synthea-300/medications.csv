@@ -1,0 +1,175 @@
+START,STOP,PATIENT,PAYER,ENCOUNTER,CODE,DESCRIPTION,BASE_COST,PAYER_COVERAGE,DISPENSES,TOTALCOST,REASONCODE,REASONDESCRIPTION
+2006-03-08,,6513270e-269e-0d37-f2a7-4de452e6b438,self-pay,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.69,248,2033.60,59621000,Essential hypertension
+2006-02-08,,6513270e-269e-0d37-f2a7-4de452e6b438,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,3.04,249,1593.60,59621000,Essential hypertension
+2018-06-28,,6513270e-269e-0d37-f2a7-4de452e6b438,bcbs,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,1.16,99,900.90,44054006,Type 2 diabetes mellitus
+2018-03-15,,6513270e-269e-0d37-f2a7-4de452e6b438,medicare,,847232,Insulin glargine 100 UNT/ML Injection,142.50,113.49,102,14535.00,44054006,Type 2 diabetes mellitus
+2020-11-27,,7376bffb-4b09-fb6c-4a09-bd7523683bcd,medicare,,197361,Atorvastatin 20 MG Oral Tablet,10.60,2.70,69,731.40,53741008,Coronary arteriosclerosis
+2017-11-05,,88426a58-67b3-19c3-6b76-ace1f0f2a696,self-pay,,314076,Lisinopril 10 MG Oral Tablet,8.20,0.18,106,869.20,59621000,Essential hypertension
+1993-05-12,2002-04-27,a17b1afa-d5d8-6501-3295-276255d78e7a,unitedhealth,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.27,109,697.60,59621000,Essential hypertension
+2000-11-23,,6846028a-8cbd-469b-7672-3b509a2f104c,medicaid,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.14,313,2003.20,59621000,Essential hypertension
+2018-07-04,,75aa5be0-c4b3-3295-b104-4784aedd5b30,self-pay,,847232,Insulin glargine 100 UNT/ML Injection,142.50,117.71,98,13965.00,44054006,Type 2 diabetes mellitus
+2026-08-03,,5016b395-2d5e-cc69-dc7e-94ca780aa958,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,3.40,1,6.40,59621000,Essential hypertension
+1992-05-23,,d4d1010c-2450-8610-65c4-77c144addd3b,aetna,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,2.49,416,3785.60,44054006,Type 2 diabetes mellitus
+1992-06-03,,d4d1010c-2450-8610-65c4-77c144addd3b,self-pay,,847232,Insulin glargine 100 UNT/ML Injection,142.50,0.59,416,59280.00,44054006,Type 2 diabetes mellitus
+2026-08-07,,56ae9d7a-6d35-022c-f338-a3bbca33361a,aetna,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,0.31,1,9.10,44054006,Type 2 diabetes mellitus
+2022-04-29,,fc62247f-6ed8-f81d-d8ab-f5dbf6fa775f,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,5.15,52,426.40,59621000,Essential hypertension
+2010-10-21,,cb598a70-ac93-a4c1-496a-18c30e3b7725,self-pay,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,4.49,192,1747.20,44054006,Type 2 diabetes mellitus
+1970-07-02,,cb598a70-ac93-a4c1-496a-18c30e3b7725,aetna,,312961,Sertraline 50 MG Oral Tablet,11.30,8.78,683,7717.90,370143000,Major depressive disorder
+2013-07-25,,cb598a70-ac93-a4c1-496a-18c30e3b7725,medicare,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,29.08,159,5525.25,13645005,Chronic obstructive pulmonary disease
+2015-07-21,,a0d0fb08-159d-f620-27a1-7d3335566526,unitedhealth,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,5.99,134,1219.40,44054006,Type 2 diabetes mellitus
+2015-01-11,,a0d0fb08-159d-f620-27a1-7d3335566526,bcbs,,847232,Insulin glargine 100 UNT/ML Injection,142.50,1.60,141,20092.50,44054006,Type 2 diabetes mellitus
+2023-06-02,,5d4e0598-7dce-00e8-f719-71a9d935df53,bcbs,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.95,39,319.80,59621000,Essential hypertension
+2023-09-12,,5d4e0598-7dce-00e8-f719-71a9d935df53,medicaid,,197361,Amlodipine 5 MG Oral Tablet,6.40,0.47,35,224.00,59621000,Essential hypertension
+2025-03-21,,b091b84a-b6b5-1047-cb64-d40f75830a72,medicaid,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.28,17,139.40,59621000,Essential hypertension
+1999-10-08,,1cd1a818-ee72-7602-17c6-9e15d64fd2f1,bcbs,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,3.37,327,2975.70,44054006,Type 2 diabetes mellitus
+1999-09-29,,1cd1a818-ee72-7602-17c6-9e15d64fd2f1,unitedhealth,,847232,Insulin glargine 100 UNT/ML Injection,142.50,31.43,327,46597.50,44054006,Type 2 diabetes mellitus
+2001-04-09,,5edf6553-09ba-2668-976d-27400470756c,self-pay,,312961,Sertraline 50 MG Oral Tablet,11.30,3.79,308,3480.40,370143000,Major depressive disorder
+2026-06-30,,917329f0-6278-d9ef-ae35-c8c80e7339da,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,6.94,1,8.20,59621000,Essential hypertension
+2026-05-15,,917329f0-6278-d9ef-ae35-c8c80e7339da,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,2.07,3,19.20,59621000,Essential hypertension
+2012-02-03,,fde37f2a-97ff-9c7a-cd9f-84f5ed47788e,aetna,,966221,Levothyroxine sodium 75 MCG Oral Tablet,7.85,2.98,176,1381.60,40930008,Hypothyroidism
+2023-04-02,,61ba6906-4afc-817d-88bb-4d7b7a1b6413,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,5.93,41,336.20,59621000,Essential hypertension
+2011-07-21,,0fd5cffa-2d38-e9b0-9327-8ee57a8727c6,unitedhealth,,197361,Amlodipine 5 MG Oral Tablet,6.40,0.78,183,1171.20,59621000,Essential hypertension
+2008-01-08,,0fd5cffa-2d38-e9b0-9327-8ee57a8727c6,self-pay,,312961,Sertraline 50 MG Oral Tablet,11.30,7.71,226,2553.80,370143000,Major depressive disorder
+2022-02-21,,dd2098f7-4df9-68f2-ab3c-04cab637d4f8,medicaid,,314076,Lisinopril 10 MG Oral Tablet,8.20,5.70,54,442.80,59621000,Essential hypertension
+1982-11-18,,dd2098f7-4df9-68f2-ab3c-04cab637d4f8,unitedhealth,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,11.57,532,18487.00,195967001,Asthma
+2012-04-10,,dc43bae7-c4c8-9af1-4199-3240d7a95497,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,1.54,174,1426.80,59621000,Essential hypertension
+2023-11-24,,ea97f5fe-0366-75c3-d1c8-cc678c5bb651,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,2.72,33,270.60,59621000,Essential hypertension
+2023-10-24,,ea97f5fe-0366-75c3-d1c8-cc678c5bb651,bcbs,,197361,Amlodipine 5 MG Oral Tablet,6.40,0.20,34,217.60,59621000,Essential hypertension
+2021-02-20,,94bff413-1e29-0390-169e-feefb0a64c7d,self-pay,,314076,Lisinopril 10 MG Oral Tablet,8.20,1.74,66,541.20,59621000,Essential hypertension
+2025-05-23,,94bff413-1e29-0390-169e-feefb0a64c7d,bcbs,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,7.00,15,136.50,44054006,Type 2 diabetes mellitus
+2020-10-29,,2d4a1a2c-b532-87b3-482e-a1cf10e0e570,medicaid,,197361,Atorvastatin 20 MG Oral Tablet,10.60,1.34,70,742.00,53741008,Coronary arteriosclerosis
+2022-05-24,,3b721696-d190-6367-6faf-29695381c837,self-pay,,314076,Lisinopril 10 MG Oral Tablet,8.20,1.46,51,418.20,59621000,Essential hypertension
+2022-04-22,,3b721696-d190-6367-6faf-29695381c837,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,3.17,52,332.80,59621000,Essential hypertension
+2026-06-07,,81f416d3-075b-0b20-1cb4-d1eeaa019031,unitedhealth,,312961,Sertraline 50 MG Oral Tablet,11.30,0.02,2,22.60,370143000,Major depressive disorder
+2026-08-10,,509dba1a-b939-bd8a-b071-f1ba938e25c7,medicare,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,1.13,1,9.10,44054006,Type 2 diabetes mellitus
+2026-03-24,,509dba1a-b939-bd8a-b071-f1ba938e25c7,medicare,,847232,Insulin glargine 100 UNT/ML Injection,142.50,119.32,4,570.00,44054006,Type 2 diabetes mellitus
+2024-06-26,,ca191e7f-939d-e785-3e7b-910e3b165741,medicaid,,197361,Amlodipine 5 MG Oral Tablet,6.40,2.61,26,166.40,59621000,Essential hypertension
+2021-06-25,,ab11beb9-c077-d03b-d50c-d350bcd07968,bcbs,,312961,Sertraline 50 MG Oral Tablet,11.30,4.03,62,700.60,370143000,Major depressive disorder
+1984-01-13,,8d1bc7c0-eadd-caee-e971-fa324f5fd60f,bcbs,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,18.88,518,18000.50,195967001,Asthma
+2009-11-01,,b6c3998b-dfb1-cdb3-6880-3bf49748bdf0,aetna,,312961,Sertraline 50 MG Oral Tablet,11.30,2.92,204,2305.20,370143000,Major depressive disorder
+2000-08-17,,954ccb4d-2fc8-ce28-ddb7-d53a4c20ddf8,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,5.20,316,2591.20,59621000,Essential hypertension
+2000-12-03,,954ccb4d-2fc8-ce28-ddb7-d53a4c20ddf8,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.63,312,1996.80,59621000,Essential hypertension
+2017-03-16,,ea65377b-6043-5c9c-403d-2ba3acd0dc8c,bcbs,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.94,114,934.80,59621000,Essential hypertension
+2016-11-16,,ea65377b-6043-5c9c-403d-2ba3acd0dc8c,bcbs,,197361,Amlodipine 5 MG Oral Tablet,6.40,0.63,118,755.20,59621000,Essential hypertension
+2020-02-19,,ea65377b-6043-5c9c-403d-2ba3acd0dc8c,medicare,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,5.26,79,718.90,44054006,Type 2 diabetes mellitus
+2019-11-05,,ea65377b-6043-5c9c-403d-2ba3acd0dc8c,medicare,,847232,Insulin glargine 100 UNT/ML Injection,142.50,87.10,82,11685.00,44054006,Type 2 diabetes mellitus
+1996-10-27,,ea65377b-6043-5c9c-403d-2ba3acd0dc8c,unitedhealth,,312961,Sertraline 50 MG Oral Tablet,11.30,0.06,362,4090.60,370143000,Major depressive disorder
+2001-10-15,2020-08-25,8f3f7553-5eab-e691-cef0-ed9cc091a865,self-pay,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,0.15,229,2083.90,44054006,Type 2 diabetes mellitus
+2001-08-30,2020-08-25,8f3f7553-5eab-e691-cef0-ed9cc091a865,medicare,,847232,Insulin glargine 100 UNT/ML Injection,142.50,80.08,231,32917.50,44054006,Type 2 diabetes mellitus
+2014-05-20,,814d3878-11e5-9dfa-e38e-3bcd132b9cd2,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,6.78,149,1221.80,59621000,Essential hypertension
+2014-02-20,,814d3878-11e5-9dfa-e38e-3bcd132b9cd2,unitedhealth,,197361,Amlodipine 5 MG Oral Tablet,6.40,2.35,152,972.80,59621000,Essential hypertension
+2026-03-22,,4d85c965-ef86-d9a3-6610-06e3dac21b2e,bcbs,,197361,Atorvastatin 20 MG Oral Tablet,10.60,6.62,4,42.40,53741008,Coronary arteriosclerosis
+2019-05-21,,f47fa260-cd7b-0a9e-7fc9-374ad78d3caf,unitedhealth,,966221,Levothyroxine sodium 75 MCG Oral Tablet,7.85,5.08,88,690.80,40930008,Hypothyroidism
+2022-04-11,,da675d19-52fd-d818-cbb1-f97aa81c7006,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,5.22,52,332.80,59621000,Essential hypertension
+2011-03-30,,fb401c71-5397-36e8-6306-602824026df3,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,0.18,187,1533.40,59621000,Essential hypertension
+2011-03-19,,fb401c71-5397-36e8-6306-602824026df3,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.62,187,1196.80,59621000,Essential hypertension
+2021-01-24,,fb401c71-5397-36e8-6306-602824026df3,aetna,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,4.40,67,609.70,44054006,Type 2 diabetes mellitus
+2020-12-31,,fb401c71-5397-36e8-6306-602824026df3,medicaid,,847232,Insulin glargine 100 UNT/ML Injection,142.50,89.86,68,9690.00,44054006,Type 2 diabetes mellitus
+2022-04-14,,b987da5d-2d7e-736f-fa85-1137b076c169,aetna,,314076,Lisinopril 10 MG Oral Tablet,8.20,5.99,52,426.40,59621000,Essential hypertension
+2021-10-27,,b987da5d-2d7e-736f-fa85-1137b076c169,aetna,,197361,Amlodipine 5 MG Oral Tablet,6.40,5.09,58,371.20,59621000,Essential hypertension
+2003-09-23,,c274204e-3697-2628-e8a2-7a55cbb5bc33,medicaid,,312961,Sertraline 50 MG Oral Tablet,11.30,9.55,278,3141.40,370143000,Major depressive disorder
+2001-03-06,,8d5e2040-9c9a-418d-2366-e8424c3c08e1,medicaid,,312961,Sertraline 50 MG Oral Tablet,11.30,3.01,309,3491.70,370143000,Major depressive disorder
+1954-09-15,1995-12-27,08a28627-c0a7-43e2-df20-60a4aead5abc,self-pay,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,6.98,502,17444.50,195967001,Asthma
+2011-03-11,,b2bb70b3-8f9e-713a-a6f0-22cc2048befa,self-pay,,314076,Lisinopril 10 MG Oral Tablet,8.20,4.42,187,1533.40,59621000,Essential hypertension
+2010-12-10,,b2bb70b3-8f9e-713a-a6f0-22cc2048befa,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.29,190,1216.00,59621000,Essential hypertension
+2009-09-24,,7b4b2c13-67b1-4c22-e716-ca28c966f0d7,medicaid,,314076,Lisinopril 10 MG Oral Tablet,8.20,6.80,205,1681.00,59621000,Essential hypertension
+2009-05-15,,7b4b2c13-67b1-4c22-e716-ca28c966f0d7,medicaid,,197361,Amlodipine 5 MG Oral Tablet,6.40,0.45,210,1344.00,59621000,Essential hypertension
+2024-05-03,,7b4b2c13-67b1-4c22-e716-ca28c966f0d7,bcbs,,197361,Atorvastatin 20 MG Oral Tablet,10.60,4.83,27,286.20,53741008,Coronary arteriosclerosis
+2022-07-13,,8f700060-3a19-62e2-e29d-60973d0ba214,self-pay,,966221,Levothyroxine sodium 75 MCG Oral Tablet,7.85,1.76,49,384.65,40930008,Hypothyroidism
+2006-03-01,,fc41a47c-ab22-7d03-49b8-c8d71245fe0a,bcbs,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,5.13,249,2265.90,44054006,Type 2 diabetes mellitus
+2006-01-07,,fc41a47c-ab22-7d03-49b8-c8d71245fe0a,aetna,,847232,Insulin glargine 100 UNT/ML Injection,142.50,37.32,250,35625.00,44054006,Type 2 diabetes mellitus
+2015-07-10,,9f50dce1-4acc-40f4-d35d-fcb1cf894b52,aetna,,312961,Sertraline 50 MG Oral Tablet,11.30,1.87,135,1525.50,370143000,Major depressive disorder
+2022-09-01,,694cd6ea-ee58-33a5-4e33-df893b185653,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,6.11,48,393.60,59621000,Essential hypertension
+2022-10-23,,694cd6ea-ee58-33a5-4e33-df893b185653,aetna,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.81,46,294.40,59621000,Essential hypertension
+1986-10-19,,694cd6ea-ee58-33a5-4e33-df893b185653,aetna,,312961,Sertraline 50 MG Oral Tablet,11.30,3.97,484,5469.20,370143000,Major depressive disorder
+2026-06-08,,ee674451-a186-8607-d16b-6b1965abdad6,medicare,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,5.04,2,18.20,44054006,Type 2 diabetes mellitus
+1986-11-26,,a152bb5e-c121-e3ef-06d5-77fbd01089e3,medicaid,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.29,483,3960.60,59621000,Essential hypertension
+2002-05-01,,a152bb5e-c121-e3ef-06d5-77fbd01089e3,aetna,,312961,Sertraline 50 MG Oral Tablet,11.30,5.52,295,3333.50,370143000,Major depressive disorder
+2026-01-03,,0aea62e8-05a8-d59a-d9fe-9fdafa16f7c7,aetna,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,19.55,7,243.25,195967001,Asthma
+2009-11-25,,cd90f9cf-a37a-b971-1a10-bb0ae64f7fdd,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,2.09,203,1664.60,59621000,Essential hypertension
+2010-04-13,,cd90f9cf-a37a-b971-1a10-bb0ae64f7fdd,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,3.87,199,1273.60,59621000,Essential hypertension
+1992-11-09,,b10ab4b6-ee50-39e9-e4cd-7197c3a5c1cc,aetna,,966221,Levothyroxine sodium 75 MCG Oral Tablet,7.85,1.28,411,3226.35,40930008,Hypothyroidism
+2026-01-13,,146f69d9-4c39-4061-9793-ce33b0db076d,unitedhealth,,966221,Levothyroxine sodium 75 MCG Oral Tablet,7.85,3.25,7,54.95,40930008,Hypothyroidism
+2024-12-22,,94e1b1e8-833c-d984-66be-7422ac9e5114,medicaid,,312961,Sertraline 50 MG Oral Tablet,11.30,6.90,20,226.00,370143000,Major depressive disorder
+2013-02-20,,1bffcc8e-3c7b-5df3-f554-8a2fb63461b2,aetna,,847232,Insulin glargine 100 UNT/ML Injection,142.50,84.18,164,23370.00,44054006,Type 2 diabetes mellitus
+2010-03-03,,633ec1d9-02dd-4e57-1a80-14df259eca18,self-pay,,312961,Sertraline 50 MG Oral Tablet,11.30,5.96,200,2260.00,370143000,Major depressive disorder
+2020-12-09,,233f04a9-9fa7-fb22-8352-705dc81ec9a5,medicaid,,312961,Sertraline 50 MG Oral Tablet,11.30,8.69,69,779.70,370143000,Major depressive disorder
+2009-11-28,,a18e5224-9a73-016c-6d61-f4c0b13cbbd3,medicaid,,314076,Lisinopril 10 MG Oral Tablet,8.20,4.72,203,1664.60,59621000,Essential hypertension
+2009-05-07,,a18e5224-9a73-016c-6d61-f4c0b13cbbd3,medicaid,,197361,Amlodipine 5 MG Oral Tablet,6.40,2.69,210,1344.00,59621000,Essential hypertension
+2023-06-13,,8b605378-90cd-c7a8-9ff4-a85437c24488,bcbs,,314076,Lisinopril 10 MG Oral Tablet,8.20,2.57,38,311.60,59621000,Essential hypertension
+2023-07-05,,8b605378-90cd-c7a8-9ff4-a85437c24488,aetna,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.73,37,236.80,59621000,Essential hypertension
+2006-12-04,,42704e12-9512-9119-dcda-3d30e3236c43,medicaid,,314076,Lisinopril 10 MG Oral Tablet,8.20,1.67,239,1959.80,59621000,Essential hypertension
+2006-11-27,,42704e12-9512-9119-dcda-3d30e3236c43,aetna,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.08,240,1536.00,59621000,Essential hypertension
+2005-02-13,,42704e12-9512-9119-dcda-3d30e3236c43,self-pay,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,5.69,261,2375.10,44054006,Type 2 diabetes mellitus
+2004-12-25,,42704e12-9512-9119-dcda-3d30e3236c43,aetna,,847232,Insulin glargine 100 UNT/ML Injection,142.50,55.67,263,37477.50,44054006,Type 2 diabetes mellitus
+2025-04-04,,ce35492d-07e5-6951-cd5d-bbe5a792434b,unitedhealth,,312961,Sertraline 50 MG Oral Tablet,11.30,0.00,16,180.80,370143000,Major depressive disorder
+2019-06-25,,ffc10672-8bce-1227-ab90-8fef7f842397,medicaid,,314076,Lisinopril 10 MG Oral Tablet,8.20,1.42,87,713.40,59621000,Essential hypertension
+2021-09-06,,b0ade156-3c1e-db7f-9b20-e13ea8d26153,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,1.09,60,492.00,59621000,Essential hypertension
+2021-10-05,,b0ade156-3c1e-db7f-9b20-e13ea8d26153,bcbs,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.97,59,377.60,59621000,Essential hypertension
+2025-07-26,,a13b2b45-65cd-4e07-952e-f871cd3e2760,aetna,,314076,Lisinopril 10 MG Oral Tablet,8.20,6.65,12,98.40,59621000,Essential hypertension
+2025-07-12,,a13b2b45-65cd-4e07-952e-f871cd3e2760,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.86,13,83.20,59621000,Essential hypertension
+2020-08-15,,a13b2b45-65cd-4e07-952e-f871cd3e2760,bcbs,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,5.77,73,664.30,44054006,Type 2 diabetes mellitus
+2020-08-20,,a13b2b45-65cd-4e07-952e-f871cd3e2760,medicaid,,847232,Insulin glargine 100 UNT/ML Injection,142.50,106.38,72,10260.00,44054006,Type 2 diabetes mellitus
+2019-04-21,,a13b2b45-65cd-4e07-952e-f871cd3e2760,unitedhealth,,312961,Sertraline 50 MG Oral Tablet,11.30,4.07,89,1005.70,370143000,Major depressive disorder
+2018-09-02,,01ad5505-c8c3-a94d-3fd9-fdc7dc13fbf9,bcbs,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,6.79,96,873.60,44054006,Type 2 diabetes mellitus
+2018-01-23,,01ad5505-c8c3-a94d-3fd9-fdc7dc13fbf9,medicaid,,847232,Insulin glargine 100 UNT/ML Injection,142.50,57.65,104,14820.00,44054006,Type 2 diabetes mellitus
+1974-10-08,2021-03-06,ed57dc50-3986-1de0-ffd1-432c687af586,bcbs,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,3.29,565,19633.75,195967001,Asthma
+2000-04-13,,ae36b55e-961d-c9cd-6862-99c1204f81a4,medicaid,,314076,Lisinopril 10 MG Oral Tablet,8.20,4.42,320,2624.00,59621000,Essential hypertension
+2017-01-02,,1f84ea32-15a6-7866-1134-a9d73d5ebc36,aetna,,312961,Sertraline 50 MG Oral Tablet,11.30,8.97,117,1322.10,370143000,Major depressive disorder
+2024-01-02,,4f69d728-89b6-7d82-999c-2743a8d18f91,bcbs,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.62,31,198.40,59621000,Essential hypertension
+2019-02-15,,6a54bfae-561c-71a3-d1fd-ad7e571f2ddf,unitedhealth,,312961,Sertraline 50 MG Oral Tablet,11.30,2.30,91,1028.30,370143000,Major depressive disorder
+2015-11-07,,6be4ddde-c5f3-3e94-37e0-51091eab0033,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,1.74,131,1074.20,59621000,Essential hypertension
+2015-07-09,,6be4ddde-c5f3-3e94-37e0-51091eab0033,aetna,,197361,Amlodipine 5 MG Oral Tablet,6.40,0.58,135,864.00,59621000,Essential hypertension
+2019-11-15,,1d431b08-f184-24eb-0c08-6ebdf9a30f34,self-pay,,314076,Lisinopril 10 MG Oral Tablet,8.20,5.51,82,672.40,59621000,Essential hypertension
+2019-08-21,,1d431b08-f184-24eb-0c08-6ebdf9a30f34,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,3.80,85,544.00,59621000,Essential hypertension
+2016-02-06,,be9199b0-baf4-ebeb-1a53-16fff12fe311,aetna,,314076,Lisinopril 10 MG Oral Tablet,8.20,0.22,128,1049.60,59621000,Essential hypertension
+2015-06-28,,be9199b0-baf4-ebeb-1a53-16fff12fe311,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.75,135,864.00,59621000,Essential hypertension
+2018-06-07,,1623e9ed-0bcb-4cf0-b354-c1e117e2e821,aetna,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,3.42,99,3440.25,195967001,Asthma
+1996-10-13,,0eebe42c-a6f4-8136-9eeb-9f08e2a86d07,aetna,,314076,Lisinopril 10 MG Oral Tablet,8.20,0.27,363,2976.60,59621000,Essential hypertension
+1996-09-04,,0eebe42c-a6f4-8136-9eeb-9f08e2a86d07,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,5.11,364,2329.60,59621000,Essential hypertension
+2014-02-27,,8c749431-dc1f-7253-f0f0-90e931fd4725,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,2.40,151,1238.20,59621000,Essential hypertension
+2013-09-15,,8c749431-dc1f-7253-f0f0-90e931fd4725,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,0.25,157,1004.80,59621000,Essential hypertension
+1991-01-24,,da0f3a4c-bb2c-ff4f-e914-d7a1e3037519,self-pay,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,23.27,432,15012.00,195967001,Asthma
+1991-02-07,,413d2a06-2c16-40ce-49dd-ce712a973779,unitedhealth,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,13.33,432,15012.00,195967001,Asthma
+2025-12-24,,413d2a06-2c16-40ce-49dd-ce712a973779,medicare,,966221,Levothyroxine sodium 75 MCG Oral Tablet,7.85,0.92,7,54.95,40930008,Hypothyroidism
+2026-01-01,,1acb1fb6-ee15-6f3f-2e57-e47226c5d46d,medicare,,312961,Sertraline 50 MG Oral Tablet,11.30,6.38,7,79.10,370143000,Major depressive disorder
+1987-05-01,,85e7e1ea-ac39-304e-48d8-2488c029a395,bcbs,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,19.82,478,16610.50,195967001,Asthma
+2025-05-22,,09d5f9c5-1148-9c3d-4539-beba166a60ce,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.20,15,123.00,59621000,Essential hypertension
+2011-12-13,,aa098385-00b7-f606-444b-31b57f90d8d7,bcbs,,314076,Lisinopril 10 MG Oral Tablet,8.20,0.62,178,1459.60,59621000,Essential hypertension
+2012-01-29,,aa098385-00b7-f606-444b-31b57f90d8d7,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.22,177,1132.80,59621000,Essential hypertension
+2016-08-27,,f03b41f2-c645-4a7d-ef45-caf7144f1acc,aetna,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,2.56,121,1101.10,44054006,Type 2 diabetes mellitus
+2016-12-05,,f03b41f2-c645-4a7d-ef45-caf7144f1acc,medicare,,847232,Insulin glargine 100 UNT/ML Injection,142.50,103.92,118,16815.00,44054006,Type 2 diabetes mellitus
+2015-01-28,,f03b41f2-c645-4a7d-ef45-caf7144f1acc,medicare,,312961,Sertraline 50 MG Oral Tablet,11.30,3.32,140,1582.00,370143000,Major depressive disorder
+2001-09-22,,14d39578-5416-e865-bc13-6beb14f3f7a0,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.94,303,2484.60,59621000,Essential hypertension
+2002-01-12,,14d39578-5416-e865-bc13-6beb14f3f7a0,medicaid,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.58,299,1913.60,59621000,Essential hypertension
+2015-01-11,,23cad0de-0e57-c236-a7b1-49e65e5be3aa,bcbs,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,6.97,141,1283.10,44054006,Type 2 diabetes mellitus
+2015-03-24,,23cad0de-0e57-c236-a7b1-49e65e5be3aa,bcbs,,847232,Insulin glargine 100 UNT/ML Injection,142.50,27.93,138,19665.00,44054006,Type 2 diabetes mellitus
+2011-03-10,,325bd277-be31-0e7e-70f6-e88d69257294,medicaid,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.32,187,1196.80,59621000,Essential hypertension
+2022-05-13,,325bd277-be31-0e7e-70f6-e88d69257294,self-pay,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,25.45,51,1772.25,13645005,Chronic obstructive pulmonary disease
+2026-02-12,,a8e53e00-e1a2-b1b1-38e0-5ed68bd50b90,self-pay,,314076,Lisinopril 10 MG Oral Tablet,8.20,6.55,6,49.20,59621000,Essential hypertension
+2026-02-21,,a8e53e00-e1a2-b1b1-38e0-5ed68bd50b90,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.60,5,32.00,59621000,Essential hypertension
+1989-12-24,2009-01-01,8990655a-330f-0e61-3229-488f8c38d7c3,medicaid,,312961,Sertraline 50 MG Oral Tablet,11.30,5.45,231,2610.30,370143000,Major depressive disorder
+2001-07-19,,c6e203d7-696f-c4f7-cb7b-ac4ef582ad6b,aetna,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.79,305,2501.00,59621000,Essential hypertension
+2001-07-13,,c6e203d7-696f-c4f7-cb7b-ac4ef582ad6b,aetna,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.71,305,1952.00,59621000,Essential hypertension
+1980-06-22,,c6e203d7-696f-c4f7-cb7b-ac4ef582ad6b,self-pay,,312961,Sertraline 50 MG Oral Tablet,11.30,5.86,561,6339.30,370143000,Major depressive disorder
+2021-04-25,,9542a659-803e-ba00-c9f8-306c72fe6027,medicare,,314076,Lisinopril 10 MG Oral Tablet,8.20,5.71,64,524.80,59621000,Essential hypertension
+2021-02-27,,9542a659-803e-ba00-c9f8-306c72fe6027,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,1.33,66,422.40,59621000,Essential hypertension
+2019-04-11,,532e235d-4eb8-b127-b5f4-ffb9425bf783,bcbs,,197361,Amlodipine 5 MG Oral Tablet,6.40,0.78,89,569.60,59621000,Essential hypertension
+2021-05-22,,532e235d-4eb8-b127-b5f4-ffb9425bf783,aetna,,312961,Sertraline 50 MG Oral Tablet,11.30,7.94,63,711.90,370143000,Major depressive disorder
+2000-01-14,,7f728446-c311-d0ac-8cb4-d97907021419,medicaid,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,5.34,323,11224.25,195967001,Asthma
+2021-06-13,,7f728446-c311-d0ac-8cb4-d97907021419,bcbs,,312961,Sertraline 50 MG Oral Tablet,11.30,3.31,63,711.90,370143000,Major depressive disorder
+1993-11-21,,d91cb3f5-d057-15d1-8d9b-048621097d3b,aetna,,312961,Sertraline 50 MG Oral Tablet,11.30,4.12,398,4497.40,370143000,Major depressive disorder
+2023-01-19,,6a882f3f-8364-6966-71e0-5389a3310591,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,5.44,43,352.60,59621000,Essential hypertension
+2022-11-15,,6a882f3f-8364-6966-71e0-5389a3310591,self-pay,,197361,Amlodipine 5 MG Oral Tablet,6.40,3.47,45,288.00,59621000,Essential hypertension
+1985-06-24,,2de383c3-011d-cccb-bd6a-1c00b9cb1a9e,medicaid,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,9.93,500,17375.00,195967001,Asthma
+2026-07-21,,725b8bc8-4948-e87a-3ae0-6af9d0d1935d,bcbs,,860975,Metformin hydrochloride 500 MG Oral Tablet,9.10,2.06,1,9.10,44054006,Type 2 diabetes mellitus
+2015-11-27,,98174874-26fa-78f5-1a4c-6b297a00b01d,medicaid,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,17.28,130,4517.50,13645005,Chronic obstructive pulmonary disease
+2022-09-15,,736d140d-d0e7-5397-878f-7582c5eb717d,bcbs,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.81,47,385.40,59621000,Essential hypertension
+2022-12-03,,736d140d-d0e7-5397-878f-7582c5eb717d,medicare,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.19,45,288.00,59621000,Essential hypertension
+2000-04-01,,b1d34ddd-d3c7-98a4-b659-54a78743de50,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,3.48,321,2632.20,59621000,Essential hypertension
+1987-12-08,,78846d5d-3879-fb9b-0ce2-b8764bef93a9,unitedhealth,,314076,Lisinopril 10 MG Oral Tablet,8.20,1.97,471,3862.20,59621000,Essential hypertension
+1988-01-05,,78846d5d-3879-fb9b-0ce2-b8764bef93a9,unitedhealth,,197361,Amlodipine 5 MG Oral Tablet,6.40,4.71,470,3008.00,59621000,Essential hypertension
+1983-03-18,,78846d5d-3879-fb9b-0ce2-b8764bef93a9,medicaid,,966221,Levothyroxine sodium 75 MCG Oral Tablet,7.85,0.05,528,4144.80,40930008,Hypothyroidism
+1986-03-22,,78846d5d-3879-fb9b-0ce2-b8764bef93a9,unitedhealth,,197361,Atorvastatin 20 MG Oral Tablet,10.60,3.73,491,5204.60,53741008,Coronary arteriosclerosis
+2001-11-28,,2660dfea-70ea-89de-31ae-47ad8f34fbeb,bcbs,,312961,Sertraline 50 MG Oral Tablet,11.30,1.94,300,3390.00,370143000,Major depressive disorder
+2019-02-24,,ee9ec211-2737-5ab0-ef37-2073e5e4ffed,self-pay,,745679,Albuterol 0.09 MG/ACTUAT Inhaler,34.75,17.97,91,3162.25,195967001,Asthma

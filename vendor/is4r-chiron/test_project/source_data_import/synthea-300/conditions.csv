@@ -1,0 +1,245 @@
+START,STOP,PATIENT,ENCOUNTER,CODE,DESCRIPTION
+2005-12-06,,6513270e-269e-0d37-f2a7-4de452e6b438,,59621000,Essential hypertension
+2017-12-03,,6513270e-269e-0d37-f2a7-4de452e6b438,,44054006,Type 2 diabetes mellitus
+2015-12-04,,6513270e-269e-0d37-f2a7-4de452e6b438,,396275006,Osteoarthritis
+2017-09-04,,718c0cd3-f7c3-0846-dad6-5eeb9fe83d45,,396275006,Osteoarthritis
+2020-09-11,,7376bffb-4b09-fb6c-4a09-bd7523683bcd,,53741008,Coronary arteriosclerosis
+2021-07-20,,986ad87c-82de-23fd-bd55-3ab56e01e0ff,,162864005,Body mass index 30+ - obesity
+2017-10-22,,88426a58-67b3-19c3-6b76-ace1f0f2a696,,59621000,Essential hypertension
+2014-10-23,,88426a58-67b3-19c3-6b76-ace1f0f2a696,,162864005,Body mass index 30+ - obesity
+2023-10-21,,88426a58-67b3-19c3-6b76-ace1f0f2a696,,13645005,Chronic obstructive pulmonary disease
+2017-09-23,,10a95121-1de0-2910-387d-9ce3bcb34de3,,162864005,Body mass index 30+ - obesity
+1992-09-30,,a17b1afa-d5d8-6501-3295-276255d78e7a,,59621000,Essential hypertension
+2024-07-08,,90d5c0c4-8a17-705d-04fd-fc103ef3c852,,396275006,Osteoarthritis
+2000-04-01,,6846028a-8cbd-469b-7672-3b509a2f104c,,59621000,Essential hypertension
+2017-03-21,,465993ec-3058-ca4f-9a5c-40557ee6c508,,370143000,Major depressive disorder
+1985-10-03,,1303afc6-d55b-539a-9fc8-1301a16f4c16,,195967001,Asthma
+2006-09-28,,1303afc6-d55b-539a-9fc8-1301a16f4c16,,162864005,Body mass index 30+ - obesity
+2017-12-23,,75aa5be0-c4b3-3295-b104-4784aedd5b30,,44054006,Type 2 diabetes mellitus
+2020-11-08,,4343fd12-b6c6-0147-532f-94468d98dad5,,162864005,Body mass index 30+ - obesity
+2025-12-31,,5016b395-2d5e-cc69-dc7e-94ca780aa958,,59621000,Essential hypertension
+1991-11-08,,d4d1010c-2450-8610-65c4-77c144addd3b,,44054006,Type 2 diabetes mellitus
+2024-03-30,,d1f07744-9908-c083-1b76-bbb3340ef021,,162864005,Body mass index 30+ - obesity
+2026-06-26,,56ae9d7a-6d35-022c-f338-a3bbca33361a,,44054006,Type 2 diabetes mellitus
+2022-01-06,,fc62247f-6ed8-f81d-d8ab-f5dbf6fa775f,,59621000,Essential hypertension
+1974-08-04,,704b4f6b-e7d9-ef9b-0496-79aa8c773881,,162864005,Body mass index 30+ - obesity
+2010-06-19,,cb598a70-ac93-a4c1-496a-18c30e3b7725,,44054006,Type 2 diabetes mellitus
+1970-06-29,,cb598a70-ac93-a4c1-496a-18c30e3b7725,,370143000,Major depressive disorder
+2013-06-18,,cb598a70-ac93-a4c1-496a-18c30e3b7725,,13645005,Chronic obstructive pulmonary disease
+2014-12-21,,a0d0fb08-159d-f620-27a1-7d3335566526,,44054006,Type 2 diabetes mellitus
+2023-05-09,,5d4e0598-7dce-00e8-f719-71a9d935df53,,59621000,Essential hypertension
+2024-08-17,,b091b84a-b6b5-1047-cb64-d40f75830a72,,59621000,Essential hypertension
+2007-08-22,,b091b84a-b6b5-1047-cb64-d40f75830a72,,162864005,Body mass index 30+ - obesity
+1999-09-19,,1cd1a818-ee72-7602-17c6-9e15d64fd2f1,,44054006,Type 2 diabetes mellitus
+2015-07-30,,9c0af8fb-b409-62ef-9370-e6b7b3b7c663,,195967001,Asthma
+2018-07-29,,9c0af8fb-b409-62ef-9370-e6b7b3b7c663,,162864005,Body mass index 30+ - obesity
+2013-07-30,,9c0af8fb-b409-62ef-9370-e6b7b3b7c663,,370143000,Major depressive disorder
+2001-01-07,,5edf6553-09ba-2668-976d-27400470756c,,370143000,Major depressive disorder
+1998-06-19,,1b3994e1-6e0c-bfef-4546-7f0788ae578b,,162864005,Body mass index 30+ - obesity
+2023-10-15,,8b0123fd-5b9b-9954-b231-b64d4c206fe1,,162864005,Body mass index 30+ - obesity
+2025-12-20,,917329f0-6278-d9ef-ae35-c8c80e7339da,,59621000,Essential hypertension
+2011-07-11,,fde37f2a-97ff-9c7a-cd9f-84f5ed47788e,,40930008,Hypothyroidism
+2022-11-21,,61ba6906-4afc-817d-88bb-4d7b7a1b6413,,59621000,Essential hypertension
+2024-02-08,,4eda9405-85e0-3fc1-0fe2-fbc90ad5918e,,162864005,Body mass index 30+ - obesity
+2011-07-14,,0fd5cffa-2d38-e9b0-9327-8ee57a8727c6,,59621000,Essential hypertension
+2007-07-15,,0fd5cffa-2d38-e9b0-9327-8ee57a8727c6,,370143000,Major depressive disorder
+2014-07-13,,0fd5cffa-2d38-e9b0-9327-8ee57a8727c6,,396275006,Osteoarthritis
+2021-06-21,,a9a34ff3-2af3-afb7-94bc-9c6915f5ce79,,162864005,Body mass index 30+ - obesity
+2026-06-22,,2a9221c1-2d02-427d-550e-46ff8d85a820,,59621000,Essential hypertension
+2010-06-26,,2a9221c1-2d02-427d-550e-46ff8d85a820,,162864005,Body mass index 30+ - obesity
+2021-10-07,,dd2098f7-4df9-68f2-ab3c-04cab637d4f8,,59621000,Essential hypertension
+1982-10-17,,dd2098f7-4df9-68f2-ab3c-04cab637d4f8,,195967001,Asthma
+2002-10-12,,dd2098f7-4df9-68f2-ab3c-04cab637d4f8,,162864005,Body mass index 30+ - obesity
+2025-10-06,,dd2098f7-4df9-68f2-ab3c-04cab637d4f8,,396275006,Osteoarthritis
+2011-08-20,,dc43bae7-c4c8-9af1-4199-3240d7a95497,,59621000,Essential hypertension
+1997-08-23,,dc43bae7-c4c8-9af1-4199-3240d7a95497,,162864005,Body mass index 30+ - obesity
+2007-02-20,,634267a0-dec1-c09c-7400-902c8bb41497,,162864005,Body mass index 30+ - obesity
+2023-10-03,,ea97f5fe-0366-75c3-d1c8-cc678c5bb651,,59621000,Essential hypertension
+2003-10-08,,ea97f5fe-0366-75c3-d1c8-cc678c5bb651,,162864005,Body mass index 30+ - obesity
+2020-11-07,,94bff413-1e29-0390-169e-feefb0a64c7d,,59621000,Essential hypertension
+2024-11-06,,94bff413-1e29-0390-169e-feefb0a64c7d,,44054006,Type 2 diabetes mellitus
+2022-01-27,,937a9111-e052-1723-bd0a-4d69918a3ad6,,396275006,Osteoarthritis
+2016-11-21,,7d6d6fbb-301e-2901-975a-0396a38e5db1,,53741008,Coronary arteriosclerosis
+2020-06-30,,2d4a1a2c-b532-87b3-482e-a1cf10e0e570,,53741008,Coronary arteriosclerosis
+2022-02-25,,3b721696-d190-6367-6faf-29695381c837,,59621000,Essential hypertension
+2011-02-28,,3b721696-d190-6367-6faf-29695381c837,,162864005,Body mass index 30+ - obesity
+1996-09-15,,91b3b164-ac19-b804-7460-b3c955b2e403,,396275006,Osteoarthritis
+2026-04-28,,81f416d3-075b-0b20-1cb4-d1eeaa019031,,370143000,Major depressive disorder
+2026-02-25,,8ac9aa18-48ab-44b5-311c-a0b34bd7646a,,162864005,Body mass index 30+ - obesity
+2026-03-08,,509dba1a-b939-bd8a-b071-f1ba938e25c7,,44054006,Type 2 diabetes mellitus
+2014-10-19,,7f493830-4fca-177e-c3f0-38e31722eba9,,162864005,Body mass index 30+ - obesity
+2024-03-16,,ca191e7f-939d-e785-3e7b-910e3b165741,,59621000,Essential hypertension
+2016-08-08,,f045e983-1af2-e346-c1b5-7d17fc7abd67,,195967001,Asthma
+2021-02-21,,ab11beb9-c077-d03b-d50c-d350bcd07968,,370143000,Major depressive disorder
+2023-08-09,,08b25b59-d5dd-be53-9f61-8290aa4e9870,,370143000,Major depressive disorder
+1983-08-24,,8d1bc7c0-eadd-caee-e971-fa324f5fd60f,,195967001,Asthma
+1990-04-19,,b6c3998b-dfb1-cdb3-6880-3bf49748bdf0,,162864005,Body mass index 30+ - obesity
+2009-04-14,,b6c3998b-dfb1-cdb3-6880-3bf49748bdf0,,370143000,Major depressive disorder
+2000-07-23,,954ccb4d-2fc8-ce28-ddb7-d53a4c20ddf8,,59621000,Essential hypertension
+2026-07-25,,8ead4ee3-f07f-ccd6-99eb-663ad9dbdaab,,396275006,Osteoarthritis
+2016-08-10,,ea65377b-6043-5c9c-403d-2ba3acd0dc8c,,59621000,Essential hypertension
+2019-08-10,,ea65377b-6043-5c9c-403d-2ba3acd0dc8c,,44054006,Type 2 diabetes mellitus
+1996-08-15,,ea65377b-6043-5c9c-403d-2ba3acd0dc8c,,370143000,Major depressive disorder
+2019-02-25,,8ae18932-e2cd-31f3-288d-5df06a64a56b,,162864005,Body mass index 30+ - obesity
+2001-02-19,,8f3f7553-5eab-e691-cef0-ed9cc091a865,,44054006,Type 2 diabetes mellitus
+2013-12-13,,814d3878-11e5-9dfa-e38e-3bcd132b9cd2,,59621000,Essential hypertension
+2019-12-12,,814d3878-11e5-9dfa-e38e-3bcd132b9cd2,,396275006,Osteoarthritis
+2025-12-10,,814d3878-11e5-9dfa-e38e-3bcd132b9cd2,,13645005,Chronic obstructive pulmonary disease
+2025-08-25,,4d85c965-ef86-d9a3-6610-06e3dac21b2e,,53741008,Coronary arteriosclerosis
+2004-06-13,,6aefa208-4c28-7145-bef6-17d6b3c827b4,,195967001,Asthma
+2019-03-19,,f47fa260-cd7b-0a9e-7fc9-374ad78d3caf,,40930008,Hypothyroidism
+2016-03-19,,f47fa260-cd7b-0a9e-7fc9-374ad78d3caf,,396275006,Osteoarthritis
+2021-12-31,,da675d19-52fd-d818-cbb1-f97aa81c7006,,59621000,Essential hypertension
+2024-12-30,,da675d19-52fd-d818-cbb1-f97aa81c7006,,162864005,Body mass index 30+ - obesity
+2025-12-30,,da675d19-52fd-d818-cbb1-f97aa81c7006,,396275006,Osteoarthritis
+2006-12-26,,5fbb1e17-c971-5c46-fd8d-608054b59b2b,,162864005,Body mass index 30+ - obesity
+2010-12-15,,fb401c71-5397-36e8-6306-602824026df3,,59621000,Essential hypertension
+2020-12-12,,fb401c71-5397-36e8-6306-602824026df3,,44054006,Type 2 diabetes mellitus
+2021-09-01,,b987da5d-2d7e-736f-fa85-1137b076c169,,59621000,Essential hypertension
+2023-09-01,,b987da5d-2d7e-736f-fa85-1137b076c169,,40930008,Hypothyroidism
+2026-03-07,,c274204e-3697-2628-e8a2-7a55cbb5bc33,,162864005,Body mass index 30+ - obesity
+2003-03-13,,c274204e-3697-2628-e8a2-7a55cbb5bc33,,370143000,Major depressive disorder
+2000-08-07,,8d5e2040-9c9a-418d-2366-e8424c3c08e1,,370143000,Major depressive disorder
+1954-04-22,1995-12-27,08a28627-c0a7-43e2-df20-60a4aead5abc,,195967001,Asthma
+2009-04-08,,08a28627-c0a7-43e2-df20-60a4aead5abc,,53741008,Coronary arteriosclerosis
+2021-01-02,,09192111-30b0-f27d-e041-fa354aef1f5e,,396275006,Osteoarthritis
+2019-02-07,,3083b8e4-b00e-1085-49fd-e8928b61f034,,162864005,Body mass index 30+ - obesity
+1990-10-18,,11c73a31-da86-a2c0-11a0-d71d770e55d7,,370143000,Major depressive disorder
+2010-09-19,,b2bb70b3-8f9e-713a-a6f0-22cc2048befa,,59621000,Essential hypertension
+1991-09-24,,b2bb70b3-8f9e-713a-a6f0-22cc2048befa,,162864005,Body mass index 30+ - obesity
+2023-09-16,,b2bb70b3-8f9e-713a-a6f0-22cc2048befa,,13645005,Chronic obstructive pulmonary disease
+2009-04-15,,7b4b2c13-67b1-4c22-e716-ca28c966f0d7,,59621000,Essential hypertension
+2024-04-11,,7b4b2c13-67b1-4c22-e716-ca28c966f0d7,,53741008,Coronary arteriosclerosis
+2021-12-08,,8f700060-3a19-62e2-e29d-60973d0ba214,,40930008,Hypothyroidism
+2005-10-07,,fc41a47c-ab22-7d03-49b8-c8d71245fe0a,,44054006,Type 2 diabetes mellitus
+2021-01-09,,9f50dce1-4acc-40f4-d35d-fcb1cf894b52,,162864005,Body mass index 30+ - obesity
+2015-01-11,,9f50dce1-4acc-40f4-d35d-fcb1cf894b52,,370143000,Major depressive disorder
+2022-05-23,,694cd6ea-ee58-33a5-4e33-df893b185653,,59621000,Essential hypertension
+2005-05-27,,694cd6ea-ee58-33a5-4e33-df893b185653,,162864005,Body mass index 30+ - obesity
+1986-06-01,,694cd6ea-ee58-33a5-4e33-df893b185653,,370143000,Major depressive disorder
+2026-01-13,,ee674451-a186-8607-d16b-6b1965abdad6,,44054006,Type 2 diabetes mellitus
+2016-01-16,,ee674451-a186-8607-d16b-6b1965abdad6,,162864005,Body mass index 30+ - obesity
+2018-05-07,,3bbf0985-8a65-efa1-c14a-b1bf2136e6df,,162864005,Body mass index 30+ - obesity
+2022-08-05,,55d5cfd0-0933-ca5e-9f62-a45ad5776544,,396275006,Osteoarthritis
+2026-07-22,,91a442fa-cc75-f3ab-5ada-cadffe8e7d82,,59621000,Essential hypertension
+2012-08-26,,eecb6276-e21d-b33b-79b9-f1f0164fa648,,162864005,Body mass index 30+ - obesity
+2017-11-29,,807fcf25-5b66-fdb8-01c7-1bf5166c4a9c,,162864005,Body mass index 30+ - obesity
+1986-10-17,,a152bb5e-c121-e3ef-06d5-77fbd01089e3,,59621000,Essential hypertension
+2001-10-13,,a152bb5e-c121-e3ef-06d5-77fbd01089e3,,370143000,Major depressive disorder
+2025-11-20,,0aea62e8-05a8-d59a-d9fe-9fdafa16f7c7,,195967001,Asthma
+2009-10-01,,cd90f9cf-a37a-b971-1a10-bb0ae64f7fdd,,59621000,Essential hypertension
+1992-04-15,,b10ab4b6-ee50-39e9-e4cd-7197c3a5c1cc,,40930008,Hypothyroidism
+2022-09-08,,146f69d9-4c39-4061-9793-ce33b0db076d,,162864005,Body mass index 30+ - obesity
+2025-09-07,,146f69d9-4c39-4061-9793-ce33b0db076d,,40930008,Hypothyroidism
+2022-09-21,,94e1b1e8-833c-d984-66be-7422ac9e5114,,162864005,Body mass index 30+ - obesity
+2024-09-20,,94e1b1e8-833c-d984-66be-7422ac9e5114,,370143000,Major depressive disorder
+2012-09-20,,1bffcc8e-3c7b-5df3-f554-8a2fb63461b2,,44054006,Type 2 diabetes mellitus
+2010-12-11,,633ec1d9-02dd-4e57-1a80-14df259eca18,,162864005,Body mass index 30+ - obesity
+2009-12-11,,633ec1d9-02dd-4e57-1a80-14df259eca18,,370143000,Major depressive disorder
+2020-08-02,,233f04a9-9fa7-fb22-8352-705dc81ec9a5,,370143000,Major depressive disorder
+2015-03-29,,de1be9de-c8a8-c161-1e84-0638ed303573,,162864005,Body mass index 30+ - obesity
+2009-04-30,,a18e5224-9a73-016c-6d61-f4c0b13cbbd3,,59621000,Essential hypertension
+1992-05-04,,a18e5224-9a73-016c-6d61-f4c0b13cbbd3,,162864005,Body mass index 30+ - obesity
+2007-04-10,,84ffa7a4-1ad2-6727-543f-c46048641781,,396275006,Osteoarthritis
+2026-08-16,,0e6370d5-3703-afcb-c2d9-fb16d1ba7d60,,162864005,Body mass index 30+ - obesity
+2023-06-10,,8b605378-90cd-c7a8-9ff4-a85437c24488,,59621000,Essential hypertension
+2026-06-09,,8b605378-90cd-c7a8-9ff4-a85437c24488,,44054006,Type 2 diabetes mellitus
+2006-06-29,,42704e12-9512-9119-dcda-3d30e3236c43,,59621000,Essential hypertension
+2004-06-29,,42704e12-9512-9119-dcda-3d30e3236c43,,44054006,Type 2 diabetes mellitus
+2023-11-03,,da4f3983-e266-f761-08e0-01fe193a6933,,162864005,Body mass index 30+ - obesity
+2023-11-12,,efeb12c4-6ad8-9ae0-d8e7-990337244ba4,,162864005,Body mass index 30+ - obesity
+2025-01-11,,ce35492d-07e5-6951-cd5d-bbe5a792434b,,370143000,Major depressive disorder
+2018-12-21,,ffc10672-8bce-1227-ab90-8fef7f842397,,59621000,Essential hypertension
+2012-05-08,,757c0752-8cc0-7169-fe3a-dd5ddd364208,,370143000,Major depressive disorder
+2025-08-24,,6f2fe22c-4bbf-7891-be6d-477ea3b0a915,,162864005,Body mass index 30+ - obesity
+2021-03-31,,b0ade156-3c1e-db7f-9b20-e13ea8d26153,,59621000,Essential hypertension
+2025-03-01,,a13b2b45-65cd-4e07-952e-f871cd3e2760,,59621000,Essential hypertension
+2020-03-02,,a13b2b45-65cd-4e07-952e-f871cd3e2760,,44054006,Type 2 diabetes mellitus
+2001-03-07,,a13b2b45-65cd-4e07-952e-f871cd3e2760,,162864005,Body mass index 30+ - obesity
+2019-03-03,,a13b2b45-65cd-4e07-952e-f871cd3e2760,,370143000,Major depressive disorder
+2010-10-18,,435de0cd-cb62-00e6-a66d-0c1a9a27cee8,,162864005,Body mass index 30+ - obesity
+2019-11-27,,3de4dd3e-e22e-76dd-512c-3a44c583253e,,162864005,Body mass index 30+ - obesity
+1980-03-03,,598a9ce0-0ae1-cf8d-589e-3a549df31590,,195967001,Asthma
+1994-02-28,,598a9ce0-0ae1-cf8d-589e-3a549df31590,,162864005,Body mass index 30+ - obesity
+2022-11-25,,fdb22640-e270-7c44-2850-c68b9dfa48c4,,162864005,Body mass index 30+ - obesity
+2018-01-11,,01ad5505-c8c3-a94d-3fd9-fdc7dc13fbf9,,44054006,Type 2 diabetes mellitus
+1974-05-22,2021-03-06,ed57dc50-3986-1de0-ffd1-432c687af586,,195967001,Asthma
+2000-02-28,,ae36b55e-961d-c9cd-6862-99c1204f81a4,,59621000,Essential hypertension
+1998-07-07,,1f84ea32-15a6-7866-1134-a9d73d5ebc36,,195967001,Asthma
+2022-07-01,,1f84ea32-15a6-7866-1134-a9d73d5ebc36,,162864005,Body mass index 30+ - obesity
+2016-07-02,,1f84ea32-15a6-7866-1134-a9d73d5ebc36,,370143000,Major depressive disorder
+2023-12-14,,4f69d728-89b6-7d82-999c-2743a8d18f91,,59621000,Essential hypertension
+2021-02-07,,7ec96b90-016b-9bcc-f071-31542417f9b9,,162864005,Body mass index 30+ - obesity
+2018-08-17,,6a54bfae-561c-71a3-d1fd-ad7e571f2ddf,,370143000,Major depressive disorder
+2015-03-31,,6be4ddde-c5f3-3e94-37e0-51091eab0033,,59621000,Essential hypertension
+2024-03-28,,6be4ddde-c5f3-3e94-37e0-51091eab0033,,162864005,Body mass index 30+ - obesity
+2013-03-31,,6be4ddde-c5f3-3e94-37e0-51091eab0033,,370143000,Major depressive disorder
+2001-03-22,,e21c81cb-eec5-e0ff-f8bd-1dab19b300a4,,195967001,Asthma
+2019-06-02,,1d431b08-f184-24eb-0c08-6ebdf9a30f34,,59621000,Essential hypertension
+2022-06-01,,1d431b08-f184-24eb-0c08-6ebdf9a30f34,,396275006,Osteoarthritis
+2015-06-15,,be9199b0-baf4-ebeb-1a53-16fff12fe311,,59621000,Essential hypertension
+2026-07-23,,faac85f3-2b08-d165-ea16-dd1d1376adfa,,162864005,Body mass index 30+ - obesity
+2017-12-19,,1623e9ed-0bcb-4cf0-b354-c1e117e2e821,,195967001,Asthma
+1996-05-19,,0eebe42c-a6f4-8136-9eeb-9f08e2a86d07,,59621000,Essential hypertension
+1997-05-19,,0eebe42c-a6f4-8136-9eeb-9f08e2a86d07,,162864005,Body mass index 30+ - obesity
+2022-05-13,,0eebe42c-a6f4-8136-9eeb-9f08e2a86d07,,396275006,Osteoarthritis
+2026-06-15,,d8562422-9d66-b346-57da-4ff742cf920a,,44054006,Type 2 diabetes mellitus
+2013-08-21,,8c749431-dc1f-7253-f0f0-90e931fd4725,,59621000,Essential hypertension
+1985-08-28,,8c749431-dc1f-7253-f0f0-90e931fd4725,,195967001,Asthma
+2013-08-21,,8c749431-dc1f-7253-f0f0-90e931fd4725,,162864005,Body mass index 30+ - obesity
+1990-10-03,,da0f3a4c-bb2c-ff4f-e914-d7a1e3037519,,195967001,Asthma
+1990-11-12,,413d2a06-2c16-40ce-49dd-ce712a973779,,195967001,Asthma
+2025-11-03,,413d2a06-2c16-40ce-49dd-ce712a973779,,40930008,Hypothyroidism
+2011-05-17,,5e18d50b-727a-7094-f600-e52853c8c41c,,162864005,Body mass index 30+ - obesity
+2022-11-09,,bddf350c-94c5-a142-69b9-483793f01a99,,53741008,Coronary arteriosclerosis
+2025-12-30,,1acb1fb6-ee15-6f3f-2e57-e47226c5d46d,,370143000,Major depressive disorder
+1987-03-31,,85e7e1ea-ac39-304e-48d8-2488c029a395,,195967001,Asthma
+2025-01-29,,09d5f9c5-1148-9c3d-4539-beba166a60ce,,59621000,Essential hypertension
+2011-06-13,,aa098385-00b7-f606-444b-31b57f90d8d7,,59621000,Essential hypertension
+2016-07-10,,f03b41f2-c645-4a7d-ef45-caf7144f1acc,,44054006,Type 2 diabetes mellitus
+2014-07-11,,f03b41f2-c645-4a7d-ef45-caf7144f1acc,,370143000,Major depressive disorder
+2026-07-08,,f03b41f2-c645-4a7d-ef45-caf7144f1acc,,396275006,Osteoarthritis
+2001-05-23,,14d39578-5416-e865-bc13-6beb14f3f7a0,,59621000,Essential hypertension
+2014-12-14,,23cad0de-0e57-c236-a7b1-49e65e5be3aa,,44054006,Type 2 diabetes mellitus
+2024-12-11,,23cad0de-0e57-c236-a7b1-49e65e5be3aa,,162864005,Body mass index 30+ - obesity
+2010-11-26,,325bd277-be31-0e7e-70f6-e88d69257294,,59621000,Essential hypertension
+1994-11-30,,325bd277-be31-0e7e-70f6-e88d69257294,,370143000,Major depressive disorder
+2021-11-23,,325bd277-be31-0e7e-70f6-e88d69257294,,396275006,Osteoarthritis
+2021-11-23,,325bd277-be31-0e7e-70f6-e88d69257294,,13645005,Chronic obstructive pulmonary disease
+2026-01-03,,a8e53e00-e1a2-b1b1-38e0-5ed68bd50b90,,59621000,Essential hypertension
+1989-05-08,,8990655a-330f-0e61-3229-488f8c38d7c3,,370143000,Major depressive disorder
+1994-01-27,,a9ef98a7-85a5-13c2-2934-f760fe1f685d,,162864005,Body mass index 30+ - obesity
+2008-01-24,,a9ef98a7-85a5-13c2-2934-f760fe1f685d,,40930008,Hypothyroidism
+2001-01-29,,c6e203d7-696f-c4f7-cb7b-ac4ef582ad6b,,59621000,Essential hypertension
+1980-02-04,,c6e203d7-696f-c4f7-cb7b-ac4ef582ad6b,,370143000,Major depressive disorder
+2021-02-03,,9542a659-803e-ba00-c9f8-306c72fe6027,,59621000,Essential hypertension
+2022-02-03,,9542a659-803e-ba00-c9f8-306c72fe6027,,44054006,Type 2 diabetes mellitus
+2026-08-02,,55582bc9-df54-694f-a00e-0bedf570c4a0,,59621000,Essential hypertension
+2019-01-13,,532e235d-4eb8-b127-b5f4-ffb9425bf783,,59621000,Essential hypertension
+2021-01-12,,532e235d-4eb8-b127-b5f4-ffb9425bf783,,370143000,Major depressive disorder
+2025-01-11,,532e235d-4eb8-b127-b5f4-ffb9425bf783,,396275006,Osteoarthritis
+1999-11-03,,7f728446-c311-d0ac-8cb4-d97907021419,,195967001,Asthma
+2005-11-01,,7f728446-c311-d0ac-8cb4-d97907021419,,162864005,Body mass index 30+ - obesity
+2020-10-28,,7f728446-c311-d0ac-8cb4-d97907021419,,370143000,Major depressive disorder
+1993-04-21,,d91cb3f5-d057-15d1-8d9b-048621097d3b,,370143000,Major depressive disorder
+2022-09-06,,6a882f3f-8364-6966-71e0-5389a3310591,,59621000,Essential hypertension
+2005-09-10,,6a882f3f-8364-6966-71e0-5389a3310591,,162864005,Body mass index 30+ - obesity
+1985-05-19,,2de383c3-011d-cccb-bd6a-1c00b9cb1a9e,,195967001,Asthma
+2012-05-12,,2de383c3-011d-cccb-bd6a-1c00b9cb1a9e,,162864005,Body mass index 30+ - obesity
+2019-07-29,,1d95383a-135c-a78d-579b-8ff801074365,,59621000,Essential hypertension
+2025-11-30,,725b8bc8-4948-e87a-3ae0-6af9d0d1935d,,44054006,Type 2 diabetes mellitus
+2015-05-17,,98174874-26fa-78f5-1a4c-6b297a00b01d,,13645005,Chronic obstructive pulmonary disease
+2022-06-24,,736d140d-d0e7-5397-878f-7582c5eb717d,,59621000,Essential hypertension
+2016-06-25,,736d140d-d0e7-5397-878f-7582c5eb717d,,162864005,Body mass index 30+ - obesity
+1999-12-23,,b1d34ddd-d3c7-98a4-b659-54a78743de50,,59621000,Essential hypertension
+1999-12-23,,b1d34ddd-d3c7-98a4-b659-54a78743de50,,162864005,Body mass index 30+ - obesity
+2017-12-18,,b1d34ddd-d3c7-98a4-b659-54a78743de50,,53741008,Coronary arteriosclerosis
+2001-04-01,,967017bf-be9b-3054-414d-72a553d38eb1,,370143000,Major depressive disorder
+1987-11-28,,78846d5d-3879-fb9b-0ce2-b8764bef93a9,,59621000,Essential hypertension
+1982-11-29,,78846d5d-3879-fb9b-0ce2-b8764bef93a9,,40930008,Hypothyroidism
+1985-11-28,,78846d5d-3879-fb9b-0ce2-b8764bef93a9,,53741008,Coronary arteriosclerosis
+1989-05-28,,2660dfea-70ea-89de-31ae-47ad8f34fbeb,,162864005,Body mass index 30+ - obesity
+2001-05-25,,2660dfea-70ea-89de-31ae-47ad8f34fbeb,,370143000,Major depressive disorder
+2022-05-20,,2660dfea-70ea-89de-31ae-47ad8f34fbeb,,396275006,Osteoarthritis
+2018-09-11,,ee9ec211-2737-5ab0-ef37-2073e5e4ffed,,195967001,Asthma
+2025-07-20,,3b73689a-b901-da0b-ccb0-c5e20cd5145a,,162864005,Body mass index 30+ - obesity
