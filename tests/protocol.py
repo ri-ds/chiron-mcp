@@ -14,7 +14,9 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-VENV_PY = os.path.join(".venv", "bin", "python")
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Launch the way an MCP client does: the console script, which needs no cwd.
+CONSOLE = os.path.join(HERE, ".venv", "bin", "chiron-mcp")
 
 
 async def main() -> int:
@@ -23,8 +25,8 @@ async def main() -> int:
         return 1
 
     params = StdioServerParameters(
-        command=VENV_PY if os.path.exists(VENV_PY) else sys.executable,
-        args=["-m", "chiron_mcp.server"],
+        command=CONSOLE if os.path.exists(CONSOLE) else sys.executable,
+        args=[] if os.path.exists(CONSOLE) else ["-m", "chiron_mcp.server"],
         env=dict(os.environ),
     )
     async with stdio_client(params) as (read, write):
