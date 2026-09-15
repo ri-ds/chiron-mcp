@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: chiron-mcp
+Version: 0.1.0
+Summary: MCP server exposing Chiron (is4r-chiron) cohort discovery to an LLM client
+Requires-Python: >=3.12
+License-File: LICENSE
+Requires-Dist: mcp>=2.0.0
+Dynamic: license-file

@@ -158,11 +158,8 @@ absolute paths. On macOS that file is
 {
   "mcpServers": {
     "chiron": {
-      "command": "/abs/path/to/chiron-mcp/.venv/bin/python",
-      "args": ["-m", "chiron_mcp.server"],
-      "cwd": "/abs/path/to/chiron-mcp",
+      "command": "/abs/path/to/chiron-mcp/.venv/bin/chiron-mcp",
       "env": {
-        "CHIRON_MCP_CHIRON_SRC": "/abs/path/to/is4r-chiron",
         "CHIRON_MCP_METADATA_DB": "/abs/path/to/chiron_metadata.sqlite3",
         "CHIRON_MCP_WAREHOUSE_URL": "postgresql://user:pass@localhost:5432/chiron",
         "CHIRON_MCP_USERNAME": "your-service-user",
@@ -345,6 +342,7 @@ and confirm the row-level tools are refused.
 | `is a superuser. Refusing to start` | Working as designed | Use a dedicated service account |
 | `cannot see subject-level data` | The account is `agg` | Correct behaviour. Use `chiron_crosstab` or `chiron_concept_values` |
 | Tools missing after restart | Config not loaded | Check the JSON parses, paths are absolute, and you edited the right file |
+| `Server disconnected` in the client | The client did not honour `cwd`, so `-m chiron_mcp.server` could not import | Set `command` to `.venv/bin/chiron-mcp` and drop `args` and `cwd` entirely |
 | Server starts but datasets look empty | Pointing at the wrong metadata database | Set `CHIRON_MCP_METADATA_DB` explicitly |
 | `ModuleNotFoundError: mcp.server.fastmcp` | `mcp` 1.x code against 2.x | This project targets `mcp>=2.0.0`, which renamed `FastMCP` to `MCPServer` |
 | `pip install chiron` seemed to work but nothing imports | **Wrong package.** `chiron` on PyPI is an unrelated nanopore DNA basecaller | Chiron is not on PyPI. Install from the `is4r-chiron` source checkout, or set `CHIRON_MCP_CHIRON_SRC` |
@@ -544,6 +542,7 @@ CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusal
 | `cannot see subject-level data` | The identity is `agg`. Use `chiron_crosstab` or `chiron_concept_values` |
 | `Please select at least one value` | Wrong field name; call `chiron_describe_concept` and use its `filter_input` |
 | Tools missing in the client | Restart it; check the paths in the config are absolute |
+| `Server disconnected` / `No module named 'chiron_mcp'` | The client ignored `cwd`. Use the `.venv/bin/chiron-mcp` console script as `command`, with no `args` and no `cwd` |
 
 ## Project layout
 

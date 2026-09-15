@@ -142,9 +142,7 @@ Add this to your Claude config, then restart the client:
 {{
   "mcpServers": {{
     "chiron": {{
-      "command": "{HERE}/.venv/bin/python",
-      "args": ["-m", "chiron_mcp.server"],
-      "cwd": "{HERE}",
+      "command": "{HERE}/.venv/bin/chiron-mcp",
       "env": {{
         "CHIRON_MCP_METADATA_DB": "{DEMO_DB}",
         "CHIRON_MCP_WAREHOUSE_URL": "{DEMO_WAREHOUSE}",

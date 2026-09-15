@@ -1,0 +1,2 @@
+[console_scripts]
+chiron-mcp = chiron_mcp.server:main

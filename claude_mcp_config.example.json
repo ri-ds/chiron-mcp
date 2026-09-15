@@ -1,14 +1,8 @@
 {
   "mcpServers": {
     "chiron": {
-      "command": "/ABSOLUTE/PATH/TO/chiron-mcp/.venv/bin/python",
-      "args": [
-        "-m",
-        "chiron_mcp.server"
-      ],
-      "cwd": "/ABSOLUTE/PATH/TO/chiron-mcp",
+      "command": "/ABSOLUTE/PATH/TO/chiron-mcp/.venv/bin/chiron-mcp",
       "env": {
-        "CHIRON_MCP_CHIRON_SRC": "/ABSOLUTE/PATH/TO/is4r-chiron",
         "CHIRON_MCP_METADATA_DB": "/ABSOLUTE/PATH/TO/chiron_metadata.sqlite3",
         "CHIRON_MCP_WAREHOUSE_URL": "postgresql://user:pass@localhost:5432/chiron",
         "CHIRON_MCP_USERNAME": "CHANGE_ME",
