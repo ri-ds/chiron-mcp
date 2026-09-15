@@ -170,6 +170,10 @@ order. Every step has a check. Do not skip a check, and do not continue past a f
 
 ### Before you start, establish these four facts
 
+> **Do not `pip install chiron`.** The `chiron` package on PyPI is an unrelated DNA
+> basecaller. CCHMC's Chiron is not published to PyPI and must come from a source
+> checkout of `is4r-chiron`, which is a private repository behind organisation SSO.
+
 This server runs inside Chiron's own Python, so it is not self-contained. Confirm each of these
 before running anything, asking the user where you cannot determine it yourself:
 
@@ -316,6 +320,7 @@ and confirm the row-level tools are refused.
 | Tools missing after restart | Config not loaded | Check the JSON parses, paths are absolute, and you edited the right file |
 | Server starts but datasets look empty | Pointing at the wrong metadata database | Set `CHIRON_MCP_METADATA_DB` explicitly |
 | `ModuleNotFoundError: mcp.server.fastmcp` | `mcp` 1.x code against 2.x | This project targets `mcp>=2.0.0`, which renamed `FastMCP` to `MCPServer` |
+| `pip install chiron` seemed to work but nothing imports | **Wrong package.** `chiron` on PyPI is an unrelated nanopore DNA basecaller | Chiron is not on PyPI. Install from the `is4r-chiron` source checkout, or set `CHIRON_MCP_CHIRON_SRC` |
 
 ### What to tell the user when you are done
 
