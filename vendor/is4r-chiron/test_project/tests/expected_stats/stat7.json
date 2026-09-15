@@ -1,0 +1,27 @@
+{
+    "count_subjects_with_missing_values": 1,
+    "count_missing_values": 1,
+    "stats": {
+        "count_non_null": 5,
+        "max": 935630.3,
+        "min": 271227.08,
+        "avg": 634736,
+        "unique_patients": 5
+    },
+    "histogram_data": [
+        [
+            "[271k - 493k)",
+            1
+        ],
+        [
+            "[493k - 714k)",
+            2
+        ],
+        [
+            "[714k - 936k]",
+            2
+        ]
+    ],
+    "is_callback": true,
+    "permanent_id": "healthcare_expenses_2"
+}

@@ -1,0 +1,70 @@
+
+
+<style>
+    .chiron-concept-badge {
+        background-color: #e6e6e6;
+        padding: 5px 10px;
+        margin: 0 3px 0 0;
+        display: inline-block;
+    }
+
+    .chiron-concept-badge-container {
+        border:1px #8e8c84 solid;
+        min-height:37px;
+        margin-bottom: 10px;
+        padding: 3px;
+    }
+</style>
+
+<div style="text-align:right;">
+    <div class="btn-group" role="group" aria-label="Basic example">
+        <a href="#" title="swap rows and columns" id="chiron-analysis-swap-rows-and-cols"
+            class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-random"></i> Swap rows and columns
+        </a>
+        <a href="#" title="clear all settings" class="btn btn-sm btn-outline-primary chiron-clear-all-ad-fields">
+            <i class="fas fa-eraser"></i> Clear all
+        </a>
+        <a id="export-analysis-def-csv-link" class="btn btn-sm btn-outline-primary"
+                href="{% url 'chiron:api:analysis_tools-list'  %}export_csv">
+            <i class="fas fa-download"></i> Export As CSV
+        </a>
+    </div>
+</div>
+
+<strong class="text-primary">ROWS</strong>
+<div class="chiron-concept-badge-container ui-sortable" id="chiron-analysis-rows" data-role="rows">
+    {% for entry in extended_analysis_def.rows %}<!--
+        --><span class="chiron-concept-badge ui-sortable-item" data-entry-id="{{ entry.entry_id }}">
+            {{ entry.label }}
+            <a href="#" class="chiron-delete-analysis-entry text-danger no-underline"
+                    data-entry-id="{{ entry.entry_id }}">
+                <i class="fas fa-times"></i>
+            </a>
+        </span><!--
+    -->{% endfor %}
+</div>
+
+<strong class="text-primary">COLUMNS</strong>
+<div class="chiron-concept-badge-container ui-sortable" id="chiron-analysis-cols" data-role="cols">
+    {% for entry in extended_analysis_def.cols %}<!--
+        --><span class="chiron-concept-badge ui-sortable-item" data-entry-id="{{ entry.entry_id }}">
+            {{ entry.label }}
+            <a href="#" class="chiron-delete-analysis-entry text-danger no-underline"
+                    data-entry-id="{{ entry.entry_id }}">
+                <i class="fas fa-times"></i>
+            </a>
+        </span><!--
+    -->{% endfor %}
+</div>
+
+
+
+
+<hr>
+
+<div id="chiron-analysis-loading-screen">
+    <em><i class="fa fa-spinner fa-pulse fa-lgx fa-fw"></i> loading data</em>
+</div>
+
+<div id="chiron-analysis-output"></div>

@@ -1,0 +1,62 @@
+{% load humanize %}
+
+<div>
+
+	<div class="row">
+		<div class="col-sm-6">
+			{% include 'chiron/processors/cohort_def_forms/snippets/null_and_missing_control_for_categories.html' %}
+		</div>
+
+		{% if not form_options.is_boolean_concept %}
+			<div class="col-md-6" style="text-align:right;">
+				{% include 'chiron/processors/cohort_def_forms/snippets/exclude_selected_control.html' %}
+			</div>
+		{% endif %}
+	</div>
+
+
+
+	<hr>
+
+	<div id="chiron-data-still-streaming">
+		<i class="fa fa-spinner fa-pulse fa-lg fa-fw"></i>
+		Loading
+	</div>
+
+	<div id="category-list">
+		{% for value in form_options.all_values %}
+
+			<div class="category-value-option-div" style="border:1px solid black;position:relative;"
+				data-value="{{value|default:''}}" data-count="0">
+
+				<div class="float-right mt-2 mx-2 text-info category-value-count-description" style="display:none;">
+					{% if oConcept.root.is_project_root %}
+						<span class="category-value-subject-count">0</span> subjects
+					{% else %}
+						<span class="category-value-entry-count">0</span> entries
+						for <span class="category-value-subject-count">0</span> subjects
+					{% endif %}
+				</div>
+
+				<div style="height:35px;background-color:#e6e6e6;width:0;" class="category-value-bar">
+					&nbsp;
+				</div>
+
+				<div style="position:absolute;top:5px;left:10px;">
+					<div class="form-check">
+				  		<input class="form-check-input" type="checkbox"
+				  				value="{{value|default:''}}" id="cat-form-option-{{ forloop.counter }}" name="selected_categories[]"
+				  				{% if value in form_options.selected_values %}checked="checked"{% endif %}
+				  			>
+				  		<label class="form-check-label" for="cat-form-option-{{ forloop.counter }}" >
+				    		{{ value|default:'[Not specified]' }}
+				  		</label>
+					</div>
+				</div>
+			</div>
+		{% endfor %}
+	</div>
+
+
+</div>
+<br><br>

@@ -1,0 +1,138 @@
+{% load humanize %}
+
+
+<style>
+	.col-danger {
+		background-color: #f4cfce;
+	}
+	.col-info {
+		background-color: #c3e7f6;
+	}
+	.col-secondary {
+		background-color: #dfdfdd;
+	}
+</style>
+
+
+
+	<div class="row mt-2">
+		<div class="col-xl-4">
+			<h4>{{ record_count|intcomma }} records for {{ subject_count|intcomma }} subjects</h4>
+		</div>
+		<div class="col-xl-8" style="text-align:right;">
+			<div class="btn-group" role="group" aria-label="Basic example">
+				<div class="btn-group" role="group" aria-label="Basic example">
+					<a href="{% url 'chiron:api:report_tools-detail' report_id %}export_csv" class="btn btn-outline-primary">
+	  					<i class="fas fa-download"></i> Export as CSV
+	  				</a>
+	  				<button class="btn btn-outline-primary open-form-modal"
+	  						data-url="{% url 'chiron:api:reports-detail' report_id %}share_form/">
+	  					<i class="fas fa-users"></i> Share
+	  				</button>
+	  				{% if request.chironuser.can_view_workspace %}
+	  					<button class="btn btn-outline-primary chiron-load-report-as-active"
+		  						data-url="{% url 'chiron:api:report_tools-detail' report_id %}load_as_active/">
+		  					<i class="fas fa-edit"></i> Load into Workspace for Editing
+		  				</button>
+			  		{% endif %}
+				</div>
+  				
+			</div>
+		</div>
+	</div>
+	<hr>
+	{% include 'chiron/reports/report_pagination.html' %}
+	
+	{% for warning in warnings %}
+		<div class="alert alert-warning">{{ warning }}</div>
+	{% endfor %}
+	{% for error in errors %}
+		<div class="alert alert-danger">{{ error }}</div>
+	{% endfor %}
+	
+
+	<table class="table table-bordered table-striped">
+		<colgroup>
+	        {% for entry in extended_table_def.fields %}
+	        	{% if entry.has_errors %}
+	        		<col class="col-danger">
+	        	{% else %}
+	        		<col>
+	        	{% endif %}
+	        {% endfor %}
+	    </colgroup>
+		<thead>
+			<tr id="chiron-data-preview-header-row">
+				{% for entry in extended_table_def.fields %}
+					<th class="p-1 chiron-td-entry" id="chiron-td-entry-{{entry.entry_id}}" style="position: relative;min-width:150px;">
+						<div style="padding-right:30px;">
+							{% if entry.has_errors %}
+								<span class="text-danger">{{ entry.alias|default:entry.label }}</span>
+							{% else %}
+								<div>
+									<small class="text-muted">
+										{% for category in entry.categories %}
+											{{ category }} <i class="fas fa-chevron-right"></i>
+										{% endfor %}
+									</small>
+								</div>
+								{% if not entry.aggregate %}
+									<span class="text-warning" title="stacked (multiple values will generate additional rows)">
+										<i class="fa fa-bars fa-lg" aria-hidden="true"></i>
+									</span>
+								{% endif %}
+								{% if extended_table_def.sort.0.entry_id == entry.entry_id %}
+									{% if extended_table_def.sort.0.direction == 1 %}
+										<a href="{% url 'chiron:report' report_id %}?sort_field={{entry.entry_id}}&sort_direction=-1" 
+												style="text-decoration:none;font-size:1.1em;">
+											{{ entry.alias|default:entry.label }}
+											<i class="fas fa-sort-down text-primary"></i>
+										</a>
+									{% else %}
+										<a href="{% url 'chiron:report' report_id %}?sort_field={{entry.entry_id}}&sort_direction=1" 
+												style="text-decoration:none;font-size:1.1em;">
+											{{ entry.alias|default:entry.label }}
+											<i class="fas fa-sort-up text-primary"></i>
+										</a>
+									{% endif %}
+								{% else %}	
+									<a href="{% url 'chiron:report' report_id %}?sort_field={{entry.entry_id}}&sort_direction=1" 
+											style="text-decoration:none;font-size:1.1em;">
+										{{ entry.alias|default:entry.label }}
+										<i class="fas fa-sort"></i>
+									</a>
+								{% endif %}
+							{% endif %}
+						</div>
+
+					</th>
+				{% endfor %}
+			</tr>
+		</thead>
+		<tbody>
+			{% for row in data %}
+				<tr>
+					{% for value in row %}
+						<td>
+							{% if value.link %}
+								<a href="../{{ value.link }}">
+									{{ value.value }}
+								</a>
+							{% else %}
+								{{ value }}
+							{% endif %}
+						</td>
+					{% endfor %}
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+	
+	{% if has_errors %}
+		<em class="text-danger">Can't show results preview until errors are resolved.</em>
+	{% endif %}
+
+	{% include 'chiron/reports/report_pagination.html' %}
+
+
+

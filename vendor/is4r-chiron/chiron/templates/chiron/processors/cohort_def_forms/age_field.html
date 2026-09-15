@@ -1,0 +1,58 @@
+{% for form_error in form_options.form_errors %}
+	<div class="alert alert-danger">{{ form_error }}</div>
+{% endfor %}
+
+<div class="row">
+	<div class="col-md-8">
+		{% include 'chiron/processors/cohort_def_forms/snippets/null_and_missing_control.html' %}
+	</div>
+
+	<div class="col-md-4" style="text-align:right;">
+		{% include 'chiron/processors/cohort_def_forms/snippets/exclude_selected_control.html' %}
+	</div>
+</div>
+
+<hr>
+
+<div>
+	<div id="chiron-data-still-streaming">
+		<i class="fa fa-spinner fa-pulse fa-lg fa-fw"></i>
+		Loading
+	</div>
+	<div class="my-4 mx-4" style="font-size:1.2em;" id="chiron-concept-stats-div"></div>
+	<div id="chiron-histogram-div" style="height:300px;"></div>
+
+	<div class="row">
+		<div class="col-sm-3">
+			<div class="form-group">
+			  <label class="control-label">Min Years</label>
+			  <input class="form-control" placeholder="{{ stats.min_year|floatformat }}" type="text" name="cd_age_min_year"
+			  	value="{{form_options.existing_min_year|default_if_none:''}}">
+			</div>
+		</div>
+        <div class="col-sm-3">
+			<div class="form-group">
+			  <label class="control-label">Min Days</label>
+			  <input class="form-control" placeholder="{{ stats.min_day|floatformat }}" type="text" name="cd_age_min_day"
+			  	value="{{form_options.existing_min_day|default_if_none:''}}">
+			</div>
+		</div>
+		<div class="col-sm-3">
+			<div class="form-group">
+			  <label class="control-label">Max Years</label>
+			  <input class="form-control" placeholder="{{ stats.max_year|floatformat }}" type="text" name="cd_age_max_year"
+				value="{{form_options.existing_max_year|default_if_none:''}}">
+			</div>
+		</div>
+        <div class="col-sm-3">
+			<div class="form-group">
+			  <label class="control-label">Max Days</label>
+			  <input class="form-control" placeholder="test{{ stats.max_day|floatformat }}" type="text" name="cd_age_max_day"
+				value="{{form_options.existing_max_day|default_if_none:''}}">
+			</div>
+		</div>
+	</div>
+
+
+
+</div>

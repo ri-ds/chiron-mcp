@@ -1,0 +1,225 @@
+{% extends 'chiron/core/base.html' %}
+{% load chiron_tags %}
+
+
+{% block content %}
+
+<h1 class="pt-2">
+    Query Troubleshooting
+</h1>
+
+<ul class="nav nav-tabs pt-3">
+    <li class="nav-item">
+        <a class="nav-link {% if query_type == '' %}active{% endif %}" href="{% url 'chiron:query_troubleshooting' %}">
+            Overview
+        </a>
+    </li>
+    {%  comment %}
+    <li class="nav-item">
+        <a class="nav-link {% if query_type == 'cohort count' %}active{% endif %}" href="{% url 'chiron:query_troubleshooting_cohort_count' %}">
+            Cohort Count
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if query_type == 'results table' %}active{% endif %}" href="{% url 'chiron:query_troubleshooting_results_table' %}">
+            Results Table
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if query_type == 'analysis output' %}active{% endif %}" href="{% url 'chiron:query_troubleshooting_analysis_output' %}">
+            Analysis Output
+        </a>
+    </li>
+    {% endcomment %}
+</ul>
+
+
+
+<hr>
+
+
+{% if query_type %}
+
+    <div class="row">
+        <div class="col-sm-3">
+            <h4>Data Structures</h4>
+            <ul class="nav nav-tabs flex-column mb-2" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active" id="home-tab" data-toggle="tab" href="#cohort-def" role="tab" aria-controls="home" aria-selected="true">
+                        Cohort Def
+                    </a>
+                </li>
+                {% if analysis_def %}
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="profile-tab" data-toggle="tab" href="#analysis-def" role="tab" aria-controls="profile" aria-selected="false">
+                            Analysis Def
+                        </a>
+                    </li>
+                {% endif %}
+                {% if table_def %}
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="profile-tab" data-toggle="tab" href="#table-def" role="tab" aria-controls="profile" aria-selected="false">
+                            Table Def
+                        </a>
+                    </li>
+                {% endif %}
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="profile-tab" data-toggle="tab" href="#relative-date-rules" role="tab" aria-controls="profile" aria-selected="false">
+                        Workflow Relative Date Rules
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="profile-tab" data-toggle="tab" href="#join-steps" role="tab" aria-controls="profile" aria-selected="false">
+                        Workflow Subcollection Join Steps
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="profile-tab" data-toggle="tab" href="#concept-rules" role="tab" aria-controls="profile" aria-selected="false">
+                        Workflow Concept Rules
+                    </a>
+                </li>
+                <li class="mt-3"><h4>Query Pipeline</h4></li>
+                {% for function_name in data_analysis.keys %}
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="contact-tab" data-toggle="tab" href="#{{function_name}}" role="tab" aria-controls="contact" aria-selected="false">
+                            {{ function_name }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-sm-9" style="overflow: scroll;margin-bottom: 100px;">
+            <div class="tab-content" id="myTabContent">
+                <div class="tab-pane fade show active" id="cohort-def" role="tabpanel" aria-labelledby="home-tab">
+                    <h3>Cohort Def</h3>
+                    {% if comments.cohort_def %}
+                        <div class="alert alert-info">
+                            {{ comments.cohort_def }}
+                        </div>
+                    {% endif %}
+                    <pre>{{ cohort_def }}</pre>
+                </div>
+                {% if analysis_def %}
+                    <div class="tab-pane fade" id="analysis-def" role="tabpanel" aria-labelledby="profile-tab">
+                        <h3>Analysis Def</h3>
+                        {% if comments.analysis_def %}
+                            <div class="alert alert-info">
+                                {{ comments.analysis_def }}
+                            </div>
+                        {% endif %}
+                        <pre>{{ analysis_def }}</pre>
+                    </div>
+                {% endif %}
+                {% if table_def %}
+                    <div class="tab-pane fade" id="table-def" role="tabpanel" aria-labelledby="profile-tab">
+                        <h3>Table Def</h3>
+                        {% if comments.table_def %}
+                            <div class="alert alert-info">
+                                {{ comments.table_def }}
+                            </div>
+                        {% endif %}
+                        <pre>{{ table_def }}</pre>
+                    </div>
+                {% endif %}
+                <div class="tab-pane fade" id="relative-date-rules" role="tabpanel" aria-labelledby="profile-tab">
+                    <h3>Workflow Relative Date Rules</h3>
+                    {% if comments.workflow_relative_date_rules %}
+                        <div class="alert alert-info">
+                            {{ comments.workflow_relative_date_rules }}
+                        </div>
+                    {% endif %}
+                    <pre>{{ relative_date_rules }}</pre>
+                </div>
+                <div class="tab-pane fade" id="join-steps" role="tabpanel" aria-labelledby="profile-tab">
+                    <h3>Subcollection Join Steps</h3>
+                    {% if comments.workflow_subcollection_join_steps %}
+                        <div class="alert alert-info">
+                            {{ comments.workflow_subcollection_join_steps }}
+                        </div>
+                    {% endif %}
+                    <pre>{{ subcollection_join_steps }}</pre>
+                </div>
+                <div class="tab-pane fade" id="concept-rules" role="tabpanel" aria-labelledby="profile-tab">
+                    <h3>Workflow Concept Rules</h3>
+                    {% if comments.workflow_concept_rules %}
+                        <div class="alert alert-info">
+                            {{ comments.workflow_concept_rules }}
+                        </div>
+                    {% endif %}
+                    <h4>Stacked data</h4>
+                    <pre>{{ concept_rules_stacked }}</pre>
+                    <h4>Aggregated data</h4>
+                    <pre>{{ concept_rules_aggregated }}</pre>
+                </div>
+                {% for function_name, output in data_analysis.items %}
+                    <div class="tab-pane fade" id="{{function_name}}" role="tabpanel" aria-labelledby="contact-tab">
+                        <h3>{{ function_name }}</h3>
+                        <div class="alert alert-info">
+                            {{ comments|keyvalue:function_name|default:"" }}
+                        </div>
+                        <pre>{{ output }}</pre>
+                        {% if output|length >= 100000 %}
+                            <div class="alert alert-warning">
+                                Dataset too long to show all
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+{% else %}
+    <div class="row">
+         <div class="col-sm-4" style="font-size:1.2em;border-right:1px solid black;">
+             <h2>About This Tool</h2>
+             <hr>
+            <p>Use this tool to view all the relevant data stuctures for a query and the data
+                processing pipeline.
+            </p>
+             <p>It runs on your active query definitions, so first setup your cohort, results table,
+                 etc. in the UI and then come here to view how it is run.
+            </p>
+            <ul>
+                <li>
+                    <strong>COHORT COUNT</strong><br>The query that counts the number of subjects
+                    in your cohort based on the active cohort_def.
+                </li>
+                <li>
+                    <strong>RESULTS TABLE</strong><br>The query that creates the results table based on
+                    the active cohort_def and active table_def.
+                </li>
+                <li>
+                    <strong>ANALYSIS OUTPUT</strong><br>The query that creates the analysis output based on
+                    the active cohort_def and active analysis_def. This is only relevant on sites where
+                    <code>chiron_settings.CHIRON_SHOW_ANALYSIS_VIEW=True</code>
+                </li>
+            </ul>
+        </div>
+        <div class="col-sm-8">
+            <h2>Current Active Query Definitions</h2>
+            <hr>
+            {% for key, value in cd_validated.items %}
+                <h3>{{ key }}:</h3>
+                <pre>{{ value.0 }}</pre>
+            {% endfor %}
+            <hr>
+            {% for key, value in td_validated.items %}
+                <h3>{{ key }}:</h3>
+                <pre>{{ value.0 }}</pre>
+            {% endfor %}
+            <hr>
+            {% for key, value in ad_validated.items %}
+                <h3>{{ key }}:</h3>
+                <pre>{{ value.0 }}</pre>
+            {% endfor %}
+        </div>
+    </div>
+
+
+{% endif %}
+
+<br><br><br><br><br>
+
+{% endblock %}

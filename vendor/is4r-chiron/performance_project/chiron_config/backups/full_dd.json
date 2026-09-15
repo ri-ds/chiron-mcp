@@ -1,0 +1,2131 @@
+[
+{
+    "model": "chiron.dataset",
+    "pk": 1,
+    "fields": {
+        "unique_id": "performance_tests",
+        "display_name": "Chiron performance tests",
+        "database_name": "performance_tests",
+        "description": "",
+        "root_collection": 1,
+        "subject_id_fields_to_index": "id",
+        "autocreate_chiron_user": false,
+        "auto_access_level": "deid",
+        "auto_can_view_workspace": true,
+        "auto_can_view_subject_details": true,
+        "list_visible": true,
+        "contact_email": "",
+        "override_site_title": null,
+        "override_footer_template": "",
+        "override_data_summary_function_path": "",
+        "override_infobar": "",
+        "override_infobar_type": null,
+        "logo_url": null,
+        "extra_header_links": null
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 1,
+    "fields": {
+        "name": "SourceCsv",
+        "required_args": "(oSource, filepath, collection_id_field=None, subject_matching=None, subject_matching_source_id_field=None, subject_matching_source_id_delimiter=None, subject_matching_destination_id_field='id', subject_matching_if_no_match='create', add_subject_ids=None, delimiter=',', encoding='utf-8')",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron.processors.source.csv.SourceCsv",
+        "description": "\n    Source for CSV. The CSV file needs a header row. The records returned will\n    be Python dicts.\n\n    :param filepath: (required) the file location\n    :type filepath: str\n    :param collection_id_field: the header value for the collection ID, or None to use a random\n      string\n    :param subject_matching: string for a JSON object that defines the subject matching rule;\n      definable properties are source_id_field, source_id_delimiter, destination_id_field,\n      if_no_match\n    :type subject_matching: json str\n    :param subject_matching_source_id_field: (required if subject_matching not defined) The header\n      value for the subject ID\n    :type subject_matching_source_id_field: str\n    :param subject_matching_source_id_delimiter: If a single CSV entry can list multiple values,\n      the character(s) used to separate values\n    :type subject_matching_source_id_delimiter: str\n    :param subject_matching_destination_id_field: The name of the Chiron subject ID to match. Set\n      to None to use default (\"id\")\n    :type subject_matching_destination_id_field: str\n    :param subject_matching_if_no_match: \"create\" (default) or \"skip\". If the subject ID doesn't\n      match any existing Chiron subjects, do you want to create a new subject or skip this record?\n    :type subject_matching_if_no_match: str\n    :type collection_id_field: str\n    :param add_subject_ids: Any additional subject ID values to pull from the record and store\n      with this subject for matching in later sources. Provide a list of JSON objects defining\n      \"source_id_field\" and \"destionation_id_field\".\n    :type add_subject_ids: JSON str\n    "
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 2,
+    "fields": {
+        "name": "SourceSelf",
+        "required_args": "(oSource)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron.processors.source.self.SourceSelf",
+        "description": "\n    Pulls all records from the Chiron research database itself.\n    Useful for generating calculated fields on existing records.\n    Needs to be run later in execution order, when all the input fields\n    it depends on have already been loaded.\n    "
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 3,
+    "fields": {
+        "name": "SourceSelfSubdoc",
+        "required_args": "(oSource, include_related_subdocs=False)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron.processors.source.self_subdoc.SourceSelfSubdoc",
+        "description": "\n    SourceSelfSubdoc for systems using RDBMS instead of Mongodb\n    "
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 4,
+    "fields": {
+        "name": "SourceDjangoModel",
+        "required_args": "(oSource, app, model, collection_id_field='pk', subject_matching=None, subject_matching_source_id_field=None, subject_matching_destination_id_field='id', subject_matching_if_no_match='create', add_subject_ids=None, max_batch_size=10000, select_related='', prefetch_related='', filter_rules='{}')",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron.processors.source.django.SourceDjangoModel",
+        "description": "\n    A source processor that reads from a Django model.\n\n    :param app: the Django app name where the model is located\n    :type app: str\n    :param model: the Django model name\n    :type model: str\n    :param collection_id_field: The name of the field where the collection_id is located. If not\n      defined, the primary key of the Django model object will be used. If None, a random string\n      will be generated.\n    :type collection_id_field: str\n    :param subject_matching: string for a JSON object that defines the subject matching rule;\n      definable properties are source_id_field, source_id_delimiter, destination_id_field,\n      if_no_match\n    :type subject_matching: json str\n    :param subject_matching_source_id_field: (required if subject_matching not defined) The header\n      value for the subject ID\n    :type subject_matching_source_id_field: str\n    :param subject_matching_source_id_delimiter: If a single CSV entry can list multiple values,\n      the character(s) used to separate values\n    :type subject_matching_source_id_delimiter: str\n    :param subject_matching_destination_id_field: The name of the Chiron subject ID to match. Set\n      to None to use default (\"id\")\n    :type subject_matching_destination_id_field: str\n    :param subject_matching_if_no_match: \"create\" (default) or \"skip\". If the subject ID doesn't\n      match any existing Chiron subjects, do you want to create a new subject or skip this record?\n    :type subject_matching_if_no_match: str\n    :param add_subject_ids: Any additional subject ID values to pull from the record and store\n      with this subject for matching in later sources. Provide a list of JSON objects defining\n      \"source_id_field\" and \"destionation_id_field\".\n    :type add_subject_ids: JSON str\n    :param max_batch_size: The maximum number of model records that will be loaded at once\n    :type max_batch_size: int, optional (default=10,000)\n    :param select_related: A comma separated list of models to pre-select\n    :type select_related: str, optional\n    :param prefetch_related: A comma separated list of models to pre-fetch\n    :type prefetch_related: str, optional\n    :param filter_rules: A JSON string of Django filter rules to limit model records returned\n    :type filter_rules: JSON str, optional (default is all records are returned)\n    "
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 5,
+    "fields": {
+        "name": "SourcePatient",
+        "required_args": "(oSource)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron_config.processors.source_patient.SourcePatient",
+        "description": null
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 6,
+    "fields": {
+        "name": "SourceMedication",
+        "required_args": "(oSource)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron_config.processors.source_medication.SourceMedication",
+        "description": null
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 7,
+    "fields": {
+        "name": "SourceEncounter",
+        "required_args": "(oSource)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron_config.processors.source_encounter.SourceEncounter",
+        "description": null
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 8,
+    "fields": {
+        "name": "SourceDiagnosis",
+        "required_args": "(oSource)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron_config.processors.source_diagnosis.SourceDiagnosis",
+        "description": null
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 9,
+    "fields": {
+        "name": "SourceProcedure",
+        "required_args": "(oSource)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron_config.processors.source_procedure.SourceProcedure",
+        "description": null
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 10,
+    "fields": {
+        "name": "SourceBiospecimen",
+        "required_args": "(oSource)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron_config.processors.source_biospecimen.SourceBiospecimen",
+        "description": null
+    }
+},
+{
+    "model": "chiron.processor",
+    "pk": 11,
+    "fields": {
+        "name": "SourceAdmission",
+        "required_args": "(oSource)",
+        "optional_args": null,
+        "is_source_processor": true,
+        "is_etl_processor": false,
+        "is_cohort_def_processor": false,
+        "is_display_processor": false,
+        "is_permission_processor": false,
+        "python_path": "chiron_config.processors.source_admission.SourceAdmission",
+        "description": null
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 19,
+    "fields": {
+        "name": "IntegerHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.IntegerHandler",
+        "description": "\n    Import and use an integer value.\n\n    - Works with any source that returns an array of dicts.\n    - If the input is not an integer, attempts to cast/round it to an integer\n    - Any value that can't be cast/round to an integer will be stored as null.\n\n    :param field_name: the key name of the integer field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the input field can be a string with multiple values,\n      what character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 20,
+    "fields": {
+        "name": "FloatHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.FloatHandler",
+        "description": "\n    Import and use a float value.\n\n    - Works with any source that returns an array of dicts.\n    - If the input is not a float, attempts to cast it to an float\n    - Any value that can't be cast to a float will be stored as null.\n\n    :param field_name: the key name of the float field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the input field can be a string with multiple values,\n      what character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 21,
+    "fields": {
+        "name": "IntegerWithCategoriesHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.IntegerWithCategoriesHandler",
+        "description": "\n    Import and use an integer value that can also have text categories instead of integers.\n\n    - Works with any source that returns an array of dicts.\n    - If the input is not an integer, attempts to cast/round it to an integer.\n    - Any non-empty string value that can't be cast/round to an integer will be treated as a\n      category.\n    - integers are stored internally as {\"num\": val, \"val\": val} and categories are stored\n      as {\"txt\": val, \"val\": val}\n\n    :param field_name: the key name of the integer field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the input field can be a string with multiple values,\n      what character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 22,
+    "fields": {
+        "name": "FloatWithCategoriesHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.FloatWithCategoriesHandler",
+        "description": "\n    Import and use a float value that can also have text categories instead of floats.\n\n    - Works with any source that returns an array of dicts.\n    - If the input is not a float, attempts to cast it to a float.\n    - Any non-empty string value that can't be cast to a float will be treated as a\n      category.\n    - floats are stored internally as {\"num\": val, \"val\": val} and categories are stored\n      as {\"txt\": val, \"val\": val}\n\n    :param field_name: the key name of the float field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the float field can be a string with multiple values,\n      what character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 23,
+    "fields": {
+        "name": "CategoryHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.CategoryHandler",
+        "description": "\n    Import and use a category value.\n\n    - Works with any source that returns an array of dicts.\n    - Categories are strings with a limited number of options. For fields that could have\n      many different values (ex. ID or free text fields) use TextHandler instead.\n    - Non-string values will be cast to a string.\n\n    :param field_name: the key name of the float field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the input field can be a string with multiple values,\n      what character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 24,
+    "fields": {
+        "name": "TextHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.TextHandler",
+        "description": "\n    Import and use a text value.\n\n    - Works with any source that returns an array of dicts.\n    - For text fields that are repetitive (ex. gender), consider using CategoryHandler\n      instead.\n    - Non-string values will be cast to a string.\n\n    :param field_name: the key name of the float field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the input field can be a string with multiple values,\n      what character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 25,
+    "fields": {
+        "name": "BooleanHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.BooleanHandler",
+        "description": "\n    Import and use a nullable boolean (true/false/null) value.\n\n    - Works with any source that returns an array of dicts.\n    - can handle a wide variety of string values (case insensitive)\n        - converts to True: \"true\", \"t\", \"yes\", \"y\", \"1\"\n        - converts to False: \"false\", \"f\", \"no\", \"n\", \"0\"\n        - converts to None: \"none\", \"null\", \"n/a\", \"unknown\", \"\"\n    - in any other situation, will use python casting to decide if value is truthy or falsy\n\n    :param field_name: the key name of the float field in the input dict\n    :type field_name: str\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 26,
+    "fields": {
+        "name": "DateHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.DateHandler",
+        "description": "\n    Import and use a date value.\n\n    - Works with any source that returns an array of dicts.\n    - If the input is a string, attempts to use `dateutil` library to parse to date.\n    - Any value that can't be parsed to a date will be stored as null.\n    - If the concept is flagged as PHI, users without PHI access will always see the year only.\n\n    :param field_name: the key name of the date field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the input field can be a string with multiple values, what\n      character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 27,
+    "fields": {
+        "name": "SubjectHyperlinkHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.SubjectHyperlinkHandler",
+        "description": "\n    Import an ID that uniquely identifies a subject. In some contexts, this ID can be used\n    as a hyperlink to go to subject details view.\n\n    - Works with any source that returns an array of dicts.\n    - Non-string values will be cast to a string.\n    - Behavior is similar to TextHandler.\n\n    :param field_name: the key name of the float field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the input field can be a string with multiple values,\n      what character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 36,
+    "fields": {
+        "name": "DetailedAgeHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.DetailedAgeHandler",
+        "description": "\n    Use to load age detailed age fields from a list of dicts.\n\n    - Age should either be year float (where decimal portion is a fraction of the year) or age in\n      days.\n    - If you only have the year, you should load it as a regular integer instead.\n\n    :field_name: (str) The field name for the date of birth\n    :source_format: \"age in days\" (default) or \"year float\"\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 37,
+    "fields": {
+        "name": "CurrentAgeHandler",
+        "python_path": "chiron.processors.concept_handlers.standard_concept_handlers.CurrentAgeHandler",
+        "description": "\n    Import an integer or float to get a deidentified current age.\n\n    - Will convert to an age integer if stored as float or string\n    - Any ages over 89 will be converted to a category \"90 and above\"\n    - integers are stored internally as {\"num\": val, \"val\": val} and categories are stored\n      as {\"txt\": val, \"val\": val}\n\n    :param field_name: the key name of the integer field in the input dict\n    :type field_name: str\n    :param string_val_separator: if the input field can be a string with multiple values,\n      what character(s) should the string be parsed on?\n    :type string_val_separator: str, optional\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 38,
+    "fields": {
+        "name": "AutoSubjectIdHandler",
+        "python_path": "chiron.processors.concept_handlers.special_concept_handlers.AutoSubjectIdHandler",
+        "description": "\n    Generates a deidentified subject ID using other attributes as input.\n\n    - The value won't change even on rerun of the ETL (as long as the underlying inputs don't\n      change).\n    - Uses asymmetric encryption. Uses the SECRET_KEY in Django settings as a salt value to prevent\n      brute force attempts to re-identify.\n\n    Create a deidentified ID from an identified ID such as MRN or SSN:\n\n    - Use the identified ID as input.\n\n    Create a doubly deidentified ID (twice removed from identifying information):\n\n    - Use an already deidentified ID (such as a study ID) as input.\n\n    Create a deidentified ID when no usable ID is available:\n\n    - Use any combination of fields that you're confident will uniquely identify a patient.\n    - For example, last name and DOB would probably be sufficient on a small group of patients.\n    - Use fields with stable values. If the input values change, this ID will also change.\n\n    :input_fields: (str) A comma separated list of field name(s) to use as input\n    :length: (int, default=10) How many values in your output string (must be an even number).\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 39,
+    "fields": {
+        "name": "AutoSubcollectionIdHandler",
+        "python_path": "chiron.processors.concept_handlers.special_concept_handlers.AutoSubcollectionIdHandler",
+        "description": "\n    Generates a deidentified subcollection ID using other attributes as input.\n\n    - The value won't change even on rerun of the ETL (as long as the underlying inputs don't\n      change).\n    - Uses asymmetric encryption. Uses the SECRET_KEY in Django settings as a salt value to prevent\n      brute force attempts to re-identify.\n\n    Create a deidentified ID from an identified ID such as Epic Encounter CSN:\n\n    - Use the identified ID as input.\n\n    Create a deidentified ID when no usable ID is available:\n\n    - Use any combination of fields that you're confident will uniquely identify a record.\n    - For example, could use procedure_name and visit_date for a procedure record assuming that\n      nobody can have 2 of the same procedure on the same date.\n    - Use fields with stable values. If the input values change, this ID will also change.\n\n    :subcol_fields: (str) A comma sep list of field name(s) in this collection to use as input\n    :subject_fields: (str) A comma sep list of field name(s) in the subject collection to use\n      as input\n    :length: (int, default=10) How many values in your output string (must be an even number).\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 40,
+    "fields": {
+        "name": "DetailedAgeFromDatesHandler",
+        "python_path": "chiron.processors.concept_handlers.special_concept_handlers.DetailedAgeFromDatesHandler",
+        "description": "\n    Use with the SourceSelfSubdoc processor to generate a detailed age at event from two dates\n    (DOB and event date).\n\n    - the source for this concept must be run after the referenced concepts have been loaded\n    - the DOB must be in the subject collection and the event date must be in the subcollection\n\n    :dob_concept_id: (str) The concept permanent ID for the date of birth\n    :event_date_concept_id: (str) The concept permanent ID for the event\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 41,
+    "fields": {
+        "name": "CurrentAgeFromDobHandler",
+        "python_path": "chiron.processors.concept_handlers.special_concept_handlers.CurrentAgeFromDobHandler",
+        "description": "\n    Uses a DOB (and optional) DOD to create a deidentified age field.\n\n    - ages will be at the year level\n    - patients over 89 will show as \"90 and above\".\n\n    :field_name: (str) The field name for the date of birth\n    :death_date_field_name: (str, optional) The field name for the date of death\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 42,
+    "fields": {
+        "name": "SubjectMatchingToTextHandler",
+        "python_path": "chiron.processors.concept_handlers.special_concept_handlers.SubjectMatchingToTextHandler",
+        "description": "\n    Copies a chiron subject ID field used for matching (stored in `_ids`) into a concept.\n    Typically these fields are only used internally, so this is a way to make them available to\n    users.\n\n    - Must be used with source processor SourceSelf, and this source must be run after any sources\n      that populate the subject ID field.\n    - The value will be converted to a string.\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 43,
+    "fields": {
+        "name": "SubjectMatchingToSubjectHyperlinkHandler",
+        "python_path": "chiron.processors.concept_handlers.special_concept_handlers.SubjectMatchingToSubjectHyperlinkHandler",
+        "description": "\n    Copies a chiron subject ID field used for matching (stored in `_ids`) into a concept.\n    Typically these fields are only used internally, so this is a way to make them available to\n    users. In some contexts, this ID can be used as a hyperlink to go to subject details view.\n\n    - Must be used with source processor SourceSelf, and this source must be run after any sources\n      that populate the subject ID field.\n    - The value will be converted to a string.\n    "
+    }
+},
+{
+    "model": "chiron.concepthandler",
+    "pk": 44,
+    "fields": {
+        "name": "OntologyHandler",
+        "python_path": "chiron.processors.concept_handlers.special_concept_handlers.OntologyHandler",
+        "description": "\n        Use with an ontology code field as the source. And you will need to provide the ontology\n        ID. This integrates with the ontology Django app, which must be installed in your Django\n        project and must have the corresponding ontologies loaded.\n        "
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 1,
+    "fields": {
+        "dataset": 1,
+        "permanent_id": "subject",
+        "name": "subject",
+        "name_plural": null,
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": 3,
+        "event_name_field": null,
+        "event_date_field": null,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 2,
+    "fields": {
+        "dataset": 1,
+        "permanent_id": "medication",
+        "name": "medication",
+        "name_plural": null,
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": 2,
+        "event_name_field": 12,
+        "event_date_field": 13,
+        "event_end_date_field": 14
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 3,
+    "fields": {
+        "dataset": 1,
+        "permanent_id": "encounter",
+        "name": "encounter",
+        "name_plural": null,
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": 19,
+        "event_name_field": null,
+        "event_date_field": 21,
+        "event_end_date_field": 20
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 4,
+    "fields": {
+        "dataset": 1,
+        "permanent_id": "diagnosis",
+        "name": "diagnosis",
+        "name_plural": "diagnoses",
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": 22,
+        "event_name_field": 25,
+        "event_date_field": 23,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 5,
+    "fields": {
+        "dataset": 1,
+        "permanent_id": "biospecimen",
+        "name": "biospecimen",
+        "name_plural": null,
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": 33,
+        "event_name_field": 35,
+        "event_date_field": 34,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 6,
+    "fields": {
+        "dataset": 1,
+        "permanent_id": "procedure",
+        "name": "procedure",
+        "name_plural": null,
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": 27,
+        "event_name_field": 29,
+        "event_date_field": 28,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collection",
+    "pk": 7,
+    "fields": {
+        "dataset": 1,
+        "permanent_id": "admission",
+        "name": "admission",
+        "name_plural": null,
+        "many_to_many_with_subject": false,
+        "collection_id_is_integer": false,
+        "event_id_field": 38,
+        "event_name_field": 40,
+        "event_date_field": 39,
+        "event_end_date_field": null
+    }
+},
+{
+    "model": "chiron.collectionrelationship",
+    "pk": 1,
+    "fields": {
+        "pk_concept": 19,
+        "fk_concept": 30
+    }
+},
+{
+    "model": "chiron.collectionrelationship",
+    "pk": 2,
+    "fields": {
+        "pk_concept": 19,
+        "fk_concept": 26
+    }
+},
+{
+    "model": "chiron.collectionrelationship",
+    "pk": 3,
+    "fields": {
+        "pk_concept": 19,
+        "fk_concept": 32
+    }
+},
+{
+    "model": "chiron.collectionrelationship",
+    "pk": 4,
+    "fields": {
+        "pk_concept": 19,
+        "fk_concept": 37
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 1,
+    "fields": {
+        "name": "faker_patients",
+        "collection": 1,
+        "processor": 5,
+        "execution_order": 1,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 2,
+    "fields": {
+        "name": "faker_meds",
+        "collection": 2,
+        "processor": 6,
+        "execution_order": 2,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 3,
+    "fields": {
+        "name": "faker_encounters",
+        "collection": 3,
+        "processor": 7,
+        "execution_order": 3,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 4,
+    "fields": {
+        "name": "faker_diagnosis",
+        "collection": 4,
+        "processor": 8,
+        "execution_order": 4,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 5,
+    "fields": {
+        "name": "faker_procedures",
+        "collection": 6,
+        "processor": 9,
+        "execution_order": 5,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 6,
+    "fields": {
+        "name": "faker_biospecimen",
+        "collection": 5,
+        "processor": 10,
+        "execution_order": 6,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.source",
+    "pk": 7,
+    "fields": {
+        "name": "faker_admissions",
+        "collection": 7,
+        "processor": 11,
+        "execution_order": 7,
+        "exclude_from_etl": false
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 1,
+    "fields": {
+        "dataset": 1,
+        "parent": null,
+        "unique_id": "demographics",
+        "name": "demographics",
+        "order": 1.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 2,
+    "fields": {
+        "dataset": 1,
+        "parent": null,
+        "unique_id": "medications",
+        "name": "medications",
+        "order": 2.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 3,
+    "fields": {
+        "dataset": 1,
+        "parent": null,
+        "unique_id": "encounters",
+        "name": "encounters",
+        "order": 3.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 4,
+    "fields": {
+        "dataset": 1,
+        "parent": null,
+        "unique_id": "diagnoses",
+        "name": "diagnoses",
+        "order": 4.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 5,
+    "fields": {
+        "dataset": 1,
+        "parent": null,
+        "unique_id": "procedures",
+        "name": "procedures",
+        "order": 5.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 6,
+    "fields": {
+        "dataset": 1,
+        "parent": null,
+        "unique_id": "biospecimen",
+        "name": "biospecimen",
+        "order": 6.0
+    }
+},
+{
+    "model": "chiron.category",
+    "pk": 7,
+    "fields": {
+        "dataset": 1,
+        "parent": null,
+        "unique_id": "admissions",
+        "name": "admissions",
+        "order": 7.0
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 1,
+    "fields": {
+        "permanent_id": "first_name",
+        "name": "first name",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 24,
+        "collection": 1,
+        "category": 1,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 2,
+    "fields": {
+        "permanent_id": "med_order_id",
+        "name": "medication order ID",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 24,
+        "collection": 2,
+        "category": 2,
+        "order": 1.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 3,
+    "fields": {
+        "permanent_id": "patient_id",
+        "name": "patient ID",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 24,
+        "collection": 1,
+        "category": null,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 4,
+    "fields": {
+        "permanent_id": "last_name",
+        "name": "last name",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 24,
+        "collection": 1,
+        "category": 1,
+        "order": 2.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 5,
+    "fields": {
+        "permanent_id": "gender",
+        "name": "gender",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 23,
+        "collection": 1,
+        "category": 1,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 6,
+    "fields": {
+        "permanent_id": "marital_status",
+        "name": "marital status",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 25,
+        "collection": 1,
+        "category": 1,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 7,
+    "fields": {
+        "permanent_id": "birthdate",
+        "name": "birthdate",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 26,
+        "collection": 1,
+        "category": 1,
+        "order": 5.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 8,
+    "fields": {
+        "permanent_id": "deathdate",
+        "name": "death date",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 26,
+        "collection": 1,
+        "category": 1,
+        "order": 6.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 9,
+    "fields": {
+        "permanent_id": "healthcare_coverage",
+        "name": "healthcare coverage",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 19,
+        "collection": 1,
+        "category": 1,
+        "order": 8.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 10,
+    "fields": {
+        "permanent_id": "healthcare_expenses",
+        "name": "healthcare expenses",
+        "name_plural": null,
+        "description": "",
+        "source": 1,
+        "concept_handler": 20,
+        "collection": 1,
+        "category": 1,
+        "order": 9.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 11,
+    "fields": {
+        "permanent_id": "med_id",
+        "name": "medication ID",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 24,
+        "collection": 2,
+        "category": 2,
+        "order": 2.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 12,
+    "fields": {
+        "permanent_id": "med_name",
+        "name": "medication name",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 24,
+        "collection": 2,
+        "category": 2,
+        "order": 3.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 13,
+    "fields": {
+        "permanent_id": "med_start",
+        "name": "medication start",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 26,
+        "collection": 2,
+        "category": 2,
+        "order": 4.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 14,
+    "fields": {
+        "permanent_id": "med_end",
+        "name": "medication end",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 26,
+        "collection": 2,
+        "category": 2,
+        "order": 5.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 15,
+    "fields": {
+        "permanent_id": "currently_taking",
+        "name": "currently taking",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 25,
+        "collection": 2,
+        "category": 2,
+        "order": 6.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 16,
+    "fields": {
+        "permanent_id": "med_dose",
+        "name": "dose",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 22,
+        "collection": 2,
+        "category": 2,
+        "order": 7.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 17,
+    "fields": {
+        "permanent_id": "med_units",
+        "name": "units",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 23,
+        "collection": 2,
+        "category": 2,
+        "order": 8.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 18,
+    "fields": {
+        "permanent_id": "med_comment",
+        "name": "medication comment",
+        "name_plural": null,
+        "description": "",
+        "source": 2,
+        "concept_handler": 24,
+        "collection": 2,
+        "category": 2,
+        "order": 9.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 19,
+    "fields": {
+        "permanent_id": "encounter_id",
+        "name": "encounter ID",
+        "name_plural": null,
+        "description": "",
+        "source": 3,
+        "concept_handler": 24,
+        "collection": 3,
+        "category": 3,
+        "order": 1.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 20,
+    "fields": {
+        "permanent_id": "enc_end",
+        "name": "encounter end date",
+        "name_plural": null,
+        "description": "",
+        "source": 3,
+        "concept_handler": 26,
+        "collection": 3,
+        "category": 3,
+        "order": 3.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 21,
+    "fields": {
+        "permanent_id": "enc_start",
+        "name": "encounter start date",
+        "name_plural": null,
+        "description": "",
+        "source": 3,
+        "concept_handler": 26,
+        "collection": 3,
+        "category": 3,
+        "order": 2.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 22,
+    "fields": {
+        "permanent_id": "dx_id",
+        "name": "diagnosis ID",
+        "name_plural": null,
+        "description": "",
+        "source": 4,
+        "concept_handler": 24,
+        "collection": 4,
+        "category": 4,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 23,
+    "fields": {
+        "permanent_id": "dx_date",
+        "name": "diagnosis date",
+        "name_plural": null,
+        "description": "",
+        "source": 4,
+        "concept_handler": 26,
+        "collection": 4,
+        "category": 4,
+        "order": 2.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 24,
+    "fields": {
+        "permanent_id": "dx_code",
+        "name": "diagnosis code",
+        "name_plural": null,
+        "description": "",
+        "source": 4,
+        "concept_handler": 24,
+        "collection": 4,
+        "category": 4,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 25,
+    "fields": {
+        "permanent_id": "dx_name",
+        "name": "diagnosis name",
+        "name_plural": null,
+        "description": "",
+        "source": 4,
+        "concept_handler": 24,
+        "collection": 4,
+        "category": 4,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 26,
+    "fields": {
+        "permanent_id": "proc_encounter_id",
+        "name": "encounter ID",
+        "name_plural": null,
+        "description": "",
+        "source": 5,
+        "concept_handler": 24,
+        "collection": 6,
+        "category": 5,
+        "order": 0.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 27,
+    "fields": {
+        "permanent_id": "proc_id",
+        "name": "procedure ID",
+        "name_plural": null,
+        "description": "",
+        "source": 5,
+        "concept_handler": 24,
+        "collection": 6,
+        "category": 5,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 28,
+    "fields": {
+        "permanent_id": "proc_date",
+        "name": "procedure date",
+        "name_plural": null,
+        "description": "",
+        "source": 5,
+        "concept_handler": 26,
+        "collection": 6,
+        "category": 5,
+        "order": 2.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 29,
+    "fields": {
+        "permanent_id": "proc_name",
+        "name": "procedure name",
+        "name_plural": null,
+        "description": "",
+        "source": 5,
+        "concept_handler": 24,
+        "collection": 6,
+        "category": 5,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 30,
+    "fields": {
+        "permanent_id": "dx_encounter_id",
+        "name": "encounter  ID",
+        "name_plural": null,
+        "description": "",
+        "source": 4,
+        "concept_handler": 24,
+        "collection": 4,
+        "category": 4,
+        "order": 0.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 31,
+    "fields": {
+        "permanent_id": "proc_code",
+        "name": "procedure code",
+        "name_plural": null,
+        "description": "",
+        "source": 5,
+        "concept_handler": 24,
+        "collection": 6,
+        "category": 5,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 32,
+    "fields": {
+        "permanent_id": "biospecimen_encounter_id",
+        "name": "encounter ID",
+        "name_plural": null,
+        "description": "",
+        "source": 6,
+        "concept_handler": 24,
+        "collection": 5,
+        "category": 6,
+        "order": 0.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 33,
+    "fields": {
+        "permanent_id": "biospecimen_id",
+        "name": "biospecimen ID",
+        "name_plural": null,
+        "description": "",
+        "source": 6,
+        "concept_handler": 24,
+        "collection": 5,
+        "category": 6,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 34,
+    "fields": {
+        "permanent_id": "biospecimen_date",
+        "name": "biospecimen collection date",
+        "name_plural": null,
+        "description": "",
+        "source": 6,
+        "concept_handler": 26,
+        "collection": 5,
+        "category": 6,
+        "order": 2.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 35,
+    "fields": {
+        "permanent_id": "biospecimen_type",
+        "name": "biospecimen type",
+        "name_plural": null,
+        "description": "",
+        "source": 6,
+        "concept_handler": 23,
+        "collection": 5,
+        "category": 6,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 36,
+    "fields": {
+        "permanent_id": "biospecimen_pos",
+        "name": "biospecimen freezer position",
+        "name_plural": null,
+        "description": "",
+        "source": 6,
+        "concept_handler": 21,
+        "collection": 5,
+        "category": 6,
+        "order": 4.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 37,
+    "fields": {
+        "permanent_id": "admission_encounter_id",
+        "name": "encounter ID",
+        "name_plural": null,
+        "description": "",
+        "source": 7,
+        "concept_handler": 24,
+        "collection": 7,
+        "category": 7,
+        "order": 0.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 38,
+    "fields": {
+        "permanent_id": "admission_id",
+        "name": "admission ID",
+        "name_plural": null,
+        "description": "",
+        "source": 7,
+        "concept_handler": 24,
+        "collection": 7,
+        "category": 7,
+        "order": 1.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 39,
+    "fields": {
+        "permanent_id": "admission_date",
+        "name": "admission date",
+        "name_plural": null,
+        "description": "",
+        "source": 7,
+        "concept_handler": 26,
+        "collection": 7,
+        "category": 7,
+        "order": 2.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 40,
+    "fields": {
+        "permanent_id": "admission_facility",
+        "name": "facility",
+        "name_plural": null,
+        "description": "",
+        "source": 7,
+        "concept_handler": 23,
+        "collection": 7,
+        "category": 7,
+        "order": 3.0,
+        "multivalue": true,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 41,
+    "fields": {
+        "permanent_id": "proc_phecode",
+        "name": "procedure phecode",
+        "name_plural": null,
+        "description": "using ontology_id phecodex",
+        "source": 5,
+        "concept_handler": 44,
+        "collection": 6,
+        "category": 5,
+        "order": 20.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concept",
+    "pk": 43,
+    "fields": {
+        "permanent_id": "proc_rxnorm",
+        "name": "procedure rxnorm",
+        "name_plural": null,
+        "description": "using ontology_id rxnorm",
+        "source": 5,
+        "concept_handler": 44,
+        "collection": 6,
+        "category": 5,
+        "order": 22.0,
+        "multivalue": false,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "exclude_from_aggregated": false,
+        "concept_for_prefilter": null,
+        "prefilter_mode": "required"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 1,
+    "fields": {
+        "concept": 1,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "patient_firstname"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 2,
+    "fields": {
+        "concept": 2,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "order_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 3,
+    "fields": {
+        "concept": 3,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "patient_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 4,
+    "fields": {
+        "concept": 4,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "patient_lastname"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 5,
+    "fields": {
+        "concept": 5,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "gender"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 6,
+    "fields": {
+        "concept": 6,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "marital_status"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 7,
+    "fields": {
+        "concept": 7,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "patient_birthdate"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 8,
+    "fields": {
+        "concept": 8,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "patient_deathdate"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 9,
+    "fields": {
+        "concept": 9,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "healthcare_coverage"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 10,
+    "fields": {
+        "concept": 10,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "healthcare_expenses"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 11,
+    "fields": {
+        "concept": 11,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "med_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 12,
+    "fields": {
+        "concept": 12,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "med_name"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 13,
+    "fields": {
+        "concept": 13,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "med_start"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 14,
+    "fields": {
+        "concept": 14,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "med_end"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 15,
+    "fields": {
+        "concept": 15,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "currently_taking"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 16,
+    "fields": {
+        "concept": 16,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "med_dose"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 17,
+    "fields": {
+        "concept": 17,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "med_units"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 18,
+    "fields": {
+        "concept": 18,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "med_comment"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 19,
+    "fields": {
+        "concept": 19,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "encounter_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 20,
+    "fields": {
+        "concept": 20,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "encounter_end"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 21,
+    "fields": {
+        "concept": 21,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "encounter_start"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 22,
+    "fields": {
+        "concept": 22,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "dx_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 23,
+    "fields": {
+        "concept": 23,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "dx_date"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 24,
+    "fields": {
+        "concept": 24,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "dx_code"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 25,
+    "fields": {
+        "concept": 25,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "dx_name"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 26,
+    "fields": {
+        "concept": 26,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "encounter_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 27,
+    "fields": {
+        "concept": 27,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "proc_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 28,
+    "fields": {
+        "concept": 28,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "proc_date"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 29,
+    "fields": {
+        "concept": 29,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "proc_name"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 30,
+    "fields": {
+        "concept": 30,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "encounter_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 31,
+    "fields": {
+        "concept": 31,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "proc_code"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 32,
+    "fields": {
+        "concept": 32,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "encounter_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 33,
+    "fields": {
+        "concept": 33,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "biospecimen_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 34,
+    "fields": {
+        "concept": 34,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "biospecimen_collection_date"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 35,
+    "fields": {
+        "concept": 35,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "biospecimen_type"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 36,
+    "fields": {
+        "concept": 36,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "freezer_position"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 37,
+    "fields": {
+        "concept": 37,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "encounter_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 38,
+    "fields": {
+        "concept": 38,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "admission_id"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 39,
+    "fields": {
+        "concept": 39,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "admission_date"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 40,
+    "fields": {
+        "concept": 40,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "facility"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 41,
+    "fields": {
+        "concept": 41,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "proc_phecode"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 42,
+    "fields": {
+        "concept": 41,
+        "name": "ontology_id",
+        "data_type": "string",
+        "value": "phecodex"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 43,
+    "fields": {
+        "concept": 41,
+        "name": "include_counts",
+        "data_type": "boolean",
+        "value": "False"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 47,
+    "fields": {
+        "concept": 43,
+        "name": "field_name",
+        "data_type": "string",
+        "value": "proc_rxnorm"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 48,
+    "fields": {
+        "concept": 43,
+        "name": "ontology_id",
+        "data_type": "string",
+        "value": "rxnorm"
+    }
+},
+{
+    "model": "chiron.concepthandlerarg",
+    "pk": 49,
+    "fields": {
+        "concept": 43,
+        "name": "include_counts",
+        "data_type": "boolean",
+        "value": "False"
+    }
+}
+]

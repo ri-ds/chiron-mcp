@@ -1,0 +1,37 @@
+{% extends 'chiron/core/base.html' %}
+{% load chiron_tags %}
+
+
+{% block content %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="py-3">
+	<h1 class="text-dark">
+		Subject Details
+	</h1>
+</div>
+<hr>
+
+{% if document_id %}
+	<div class="text-danger">
+		Couldn't find a subject with ID "{{ document_id }}".
+	</div>
+{% else %}
+	<div class="text-info">
+		No subject matched the query criteria.
+	</div>
+{% endif %}
+
+{% endblock %}

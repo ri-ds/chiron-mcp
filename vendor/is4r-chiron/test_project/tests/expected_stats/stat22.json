@@ -1,0 +1,48 @@
+{
+    "count": 13,
+    "paginated_results": [
+        {
+            "unique_values": "162.5"
+        },
+        {
+            "unique_values": "165"
+        },
+        {
+            "unique_values": "165.5"
+        },
+        {
+            "unique_values": "165.7"
+        },
+        {
+            "unique_values": "169.6"
+        },
+        {
+            "unique_values": "175.2"
+        },
+        {
+            "unique_values": "175.6"
+        },
+        {
+            "unique_values": "178.3"
+        },
+        {
+            "unique_values": "179.8"
+        },
+        {
+            "unique_values": "180.6"
+        }
+    ],
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "paginator": {
+        "first_index": 1,
+        "last_index": 10,
+        "current_page": 1,
+        "previous_page": null,
+        "next_page": 2,
+        "last_page": 2,
+        "total_records": 13
+    },
+    "is_callback": true,
+    "permanent_id": "lab_value_string"
+}

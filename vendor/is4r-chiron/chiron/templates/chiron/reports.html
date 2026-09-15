@@ -1,0 +1,122 @@
+{% extends 'chiron/core/base.html' %}
+
+
+{% block content %}
+
+<script>
+
+var reports = {};
+
+
+
+reports.attachEvents = function() {
+	$('.chiron-table-row-link').unbind().click(function() {
+		window.location = $(this).data("href");
+	});
+
+	$('.chiron-report-flag').unbind().click(function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		var url = $(this).attr('data-url');
+		var data = {
+			flag_type: 'star',
+			add_or_remove: $(this).attr('data-add-or-remove')
+		}
+		$.ajax({
+			type: "POST",
+			url: url,
+			data: data
+		})
+		.done(function( json ) {
+			reports.refresh();
+		});
+	});
+
+	genericModal.setOpenFormModalFunctionality();
+}
+
+reports.refresh = function() {
+	var data = {};
+	if (typeof reports.listState !== "undefined") {
+		data.state = reports.listState;
+	}
+	if (typeof reports.projectId !== "undefined") {
+		data.project_id = reports.projectId;
+	}
+	$.ajax({
+		type: "GET",
+		url: "{% url 'chiron:api:reports-list' %}",
+		data: data,
+		headers: {
+			Accept: "text/plain; charset=utf-8"
+		}
+	})
+	.done(function( response ) {
+		json = JSON.parse(response);
+		$('#chiron-report-list').html(json.html);
+		reports.attachEvents();
+	});
+};
+
+$(document).ready(function() {
+	$('.chiron-report-selection').unbind().click(function(e) {
+		e.preventDefault();
+		reports.listState = $(this).attr('data-state');
+		reports.projectId = $(this).attr('data-project-id');
+		reports.refresh();
+		$('.chiron-report-selection').removeClass('active');
+		$(this).addClass('active');
+	});
+
+	// set active report list settings
+	reports.listState = $('.chiron-report-selection.active').attr('data-state');
+	reports.projectId = $('.chiron-report-selection.active').attr('data-project-id');
+	reports.refresh();
+});
+
+
+</script>
+
+<style>
+
+.chiron-table-row-link {
+	cursor: pointer;
+}
+
+.nav-pills .nav-link.active {
+	background-color: #73c8ea;
+	color: white;
+}
+
+</style>
+
+<div class="pb-5 mb-5">
+	<h1 class="pt-3">Reports</h1>
+	<hr>
+
+	<ul class="nav nav-pills">
+		{% for cat in custom_report_categories %}
+			<li class="nav-item">
+				<a class="nav-link {% if forloop.first %}active{% endif %} chiron-report-selection" href="#" {% if cat.state %}data-state="{{cat.state}}"{% endif %}>
+					{{ cat.label }} [{{ cat.count }}]
+				</a>
+			</li>
+		{% endfor %}
+		{% for oProject in qProject %}
+			{% if oProject.report_count != 0 %}
+				<li class="nav-item">
+					<a class="nav-link chiron-report-selection" href="#" data-project-id="{{oProject.id}}">
+						{{ oProject.name }} [{{ oProject.report_count }}]
+					</a>
+				</li>
+			{% endif %}
+		{% endfor %}
+	</ul>
+	<hr>
+
+	<div id="chiron-report-list"></div>
+
+</div>
+		
+
+{% endblock %}

@@ -1,0 +1,15 @@
+{% if messages %}
+	{% for message in messages %}
+		{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}
+			<div class="alert alert-dismissible alert-danger" style=" z-index: 1000;">
+						<button type="button" class="close" data-dismiss="alert">&times;</button>
+						{{message}}
+			</div>
+		{% else %}
+			<div class="alert alert-dismissible alert-success" style=" z-index: 1000;">
+						<button type="button" class="close" data-dismiss="alert">&times;</button>
+						{{message}}
+			</div>
+		{% endif %}
+	{% endfor %}
+{% endif %}

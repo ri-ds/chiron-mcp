@@ -1,0 +1,35 @@
+
+
+
+
+<!-- Tabs -->
+<ul class="nav nav-pills mb-4">
+	{% for option in criteria_set_event_options.event_options %}
+		<li class="nav-item">
+		  	<a class="nav-link {% if criteria_set_event_options.selected_event_option == option.option_id %}active{% endif %}" data-toggle="pill"
+		  			href="#chiron-event-form-{{option.option_id}}">
+		  		{{ option.label|title }}
+		  	</a>
+		</li>
+	{% endfor %}
+</ul>
+
+
+<!-- Tab panes -->
+<div class="tab-content" style="margin: 50px 0;">
+	{% for option in criteria_set_event_options.event_options %}
+		<div class="tab-pane container {% if criteria_set_event_options.selected_event_option == option.option_id %}active{% else %}fade{% endif %}" id="chiron-event-form-{{option.option_id}}">
+
+			<div id="chiron-event-form-errors-{{option.option_id}}"></div>
+
+			{% if option.allowed %}
+				{{ option.form_html }}
+			{% else %}
+				<div class="text-danger">{{ option.disallowed_reason }}</div>
+			{% endif %}
+		</div>
+	{% endfor %}
+</div>
+
+
+

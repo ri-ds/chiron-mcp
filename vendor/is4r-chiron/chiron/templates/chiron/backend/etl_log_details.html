@@ -1,0 +1,98 @@
+{% extends 'chiron/core/base.html' %}
+{% load humanize %}
+
+{% block content %}
+
+<nav aria-label="breadcrumb" class="pt-4">
+  	<ol class="breadcrumb">
+    	<li class="breadcrumb-item"><a href="{% url 'chiron:etl_logs' %}">ETL Logs</a></li>
+    	<li class="breadcrumb-item active" aria-current="page">Log ID {{ oLog.id }}</li>
+  	</ol>
+</nav>
+
+<h1>ETL Log Details for Log ID {{ oLog.id }}</h1>
+
+<hr>
+
+<table class="table">
+	<thead>
+		<tr>
+            <th>Dataset Unique ID</th>
+			<th>Start</th>
+			<th>End</th>
+			<th>Duration</th>
+			<th>Status</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+            <td>{{ oLog.dataset }}</td>
+			<td>
+				{{ oLog.start_date }}
+			</td>
+			<td>{{ oLog.end_date }}</td>
+			<td>{{ oLog.get_duration }}</td>
+			<td>{{ oLog.status }}</td>
+		</tr>
+	</tbody>
+</table>
+
+<h3>Sources Loaded</h3>
+<table class="table">
+	<thead>
+		<tr>
+			<th>Order #</th>
+			<th>Source</th>
+			<th>Destination Collection</th>
+			<th>Duration</th>
+			<th>Data last updated</th>
+			<th>Source records read</th>
+			<th>Subject Docs Change</th>
+			<th>Collection Docs Change</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for oSourceLog in oLog.sourceetllog_set.all %}
+			<tr>
+				<td>{{ forloop.counter }}</td>
+				<td>
+                    <a href="{% url 'chiron:source_data_issues' oSourceLog.id  %}">
+                        {{ oSourceLog.source }}
+                    </a>
+                </td>
+				<td>{{ oSourceLog.destination_collection }}</td>
+				<td>{{ oSourceLog.get_duration }}</td>
+				<td>{{ oSourceLog.data_last_updated_date }}</td>
+				<td>{{ oSourceLog.count_source_records_read|default:''|intcomma }}</td>
+				<td>
+					{% if oSourceLog.count_subject_docs_start or oSourceLog.count_subject_docs_end %}
+						{{ oSourceLog.count_subject_docs_start|default_if_none:'?'|intcomma }} <i class="fa fa-arrow-right" aria-hidden="true"></i>
+						{{ oSourceLog.count_subject_docs_end|default_if_none:'?'|intcomma }}
+						{% if oSourceLog.get_subject_docs_change > 0 %}
+							<strong class="text-success">(+ {{ oSourceLog.get_subject_docs_change|intcomma }})</strong>
+						{% endif %}
+					{% endif %}
+				</td>
+				<td>
+					{% if oSourceLog.count_collection_docs_start or oSourceLog.count_collection_docs_end %}
+						{{ oSourceLog.count_collection_docs_start|default_if_none:'?'|intcomma }} <i class="fa fa-arrow-right" aria-hidden="true"></i>
+						{{ oSourceLog.count_collection_docs_end|default_if_none:'?'|intcomma }}
+						{% if oSourceLog.get_collection_docs_change > 0 %}
+							<strong class="text-success">(+ {{ oSourceLog.get_collection_docs_change|intcomma }})</strong>
+						{% endif %}
+					{% endif %}
+				</td>
+			</tr>
+		{% endfor %}
+	</tbody>
+</table>
+
+<h3>Comments</h3>
+<pre>{{ oLog.comment }}</pre>
+
+<br><br><br><br><br>
+
+
+
+
+{% endblock %}

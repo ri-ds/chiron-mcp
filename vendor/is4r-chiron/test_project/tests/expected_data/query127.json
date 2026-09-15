@@ -1,0 +1,38 @@
+[
+        [
+            "1",
+            "alt1",
+            [
+                "1",
+                "2",
+                "6"
+            ],
+            "alt1",
+            [
+                "record 1 on subject 1",
+                "record 2 on subject 1",
+                "record 3 on subject 1"
+            ]
+        ],
+        [
+            "2",
+            "alt2",
+            "3",
+            "alt2",
+            "record 1 on subject 2"
+        ],
+        [
+            "3",
+            "alt3",
+            null,
+            null,
+            null
+        ],
+        [
+            "4",
+            null,
+            null,
+            null,
+            null
+        ]
+    ]

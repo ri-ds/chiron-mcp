@@ -1,0 +1,23 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "stats": {
+        "count_non_null": 4,
+        "max": 8.8,
+        "min": 5.5,
+        "avg": 7.15,
+        "unique_patients": 2
+    },
+    "histogram_data": [
+        [
+            "[5.5 - 7.16)",
+            2
+        ],
+        [
+            "[7.16 - 8.81]",
+            2
+        ]
+    ],
+    "is_callback": true,
+    "permanent_id": "float_field_qynvuungnp"
+}

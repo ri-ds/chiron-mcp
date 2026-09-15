@@ -1,0 +1,66 @@
+[
+        [
+            [
+                "1",
+                "2",
+                "3",
+                "4"
+            ],
+            5,
+            5,
+            [
+                "scA s1,2,3",
+                "scB s2",
+                "scC s2",
+                "scD s2,3",
+                "scE s2"
+            ],
+            [
+                "scA s1,2,3",
+                "scB s2",
+                "scC s2",
+                "scD s2,3",
+                "scE s2"
+            ],
+            [
+                "scA s1,2,3",
+                "scC s2",
+                "scB s2"
+            ],
+            2,
+            5,
+            2,
+            [
+                "group1",
+                "group2"
+            ],
+            [
+                "group1",
+                "group1",
+                "group1",
+                "group2",
+                "group2"
+            ],
+            [
+                "group1",
+                "group2",
+                "group1"
+            ],
+            [
+                "val1",
+                "val2"
+            ],
+            [
+                "val1",
+                "val2",
+                null,
+                null,
+                null
+            ],
+            [
+                "val1",
+                "val2",
+                null
+            ]
+        ]
+    ]

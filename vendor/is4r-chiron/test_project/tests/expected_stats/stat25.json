@@ -1,0 +1,19 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "values": [
+        {
+            "count": 468,
+            "category": "True",
+            "uniquePatientCount": 5
+        },
+        {
+            "count": 28,
+            "category": "False",
+            "uniquePatientCount": 5
+        }
+    ],
+    "max_count": 468,
+    "is_callback": true,
+    "permanent_id": "lab_value_is_numeric"
+}

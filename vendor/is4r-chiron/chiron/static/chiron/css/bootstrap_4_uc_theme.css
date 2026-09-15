@@ -1,0 +1,120 @@
+
+
+/*
+
+Open Sans Light
+Open Sans Regular  
+Open Sans Bold  
+Open Sans Extra Bold 
+
+Gentium Book Regular  
+Gentium Book Italic
+Gentium Book Bold  
+Gentium Book Bold Italic 
+
+
+RED: #E00122
+BLACK: #000
+
+*/
+
+
+
+
+body {
+    font-family: 'Open Sans', sans-serif;
+}
+
+.navbar-brand img {
+	margin-right: 5px;
+	margin-left: 4px;
+	padding: 0;
+	height:49px;
+	
+}
+
+.navbar {
+	padding: 5px 1rem 5px 10px;
+}
+
+
+.navbar-dark {
+ 
+    background: rgb(0,0,0);
+
+}
+
+
+
+.navbar .navbar-brand {
+	
+	font-size: 1.5em;
+	padding:0;
+	margin-right: 0;
+}
+
+.sandstone, .navbar .nav-link, .btn, .nav-tabs .nav-link, .nav-pills .nav-link, .breadcrumb, .pagination, .dropdown-menu .dropdown-item, .tooltip {
+
+    font-size: 13px;
+    line-height: 22px;
+    font-weight: 500;
+    text-transform: uppercase;
+
+}
+
+.navbar-nav > .nav-item > .nav-link {
+   	font-size: 14px;
+   	color: #b3b3b3;
+}
+
+.navbar-dark .navbar-nav .nav-item {
+	border-left: 1px solid black;
+	border-right: 1px solid black;
+}
+
+
+
+.navbar-dark .navbar-nav .active {
+	border-left: 1px solid white;
+	border-right: 1px solid white;
+}
+
+h1, .h1 {
+	color: gray;
+}
+
+.well {
+	background-color: #f8f5f0;
+	padding: 10px;
+	border: solid 1px #dfd7ca;
+}
+
+
+a {
+    color: #29abe0;
+	text-decoration: underline;
+}
+
+a:hover {
+    color: #16769c;
+}
+
+nav a {
+	text-decoration: none;
+}
+
+a.nav-link, a.btn, a.no-underline, a.underline-hover {
+	text-decoration: none;
+}
+
+a.underline-hover:hover {
+	text-decoration: underline;
+}
+
+
+
+
+
+
+
+

@@ -1,0 +1,48 @@
+{% extends 'chiron/core/base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+
+
+
+
+<div class="row">
+	<div class="col-sm-4 p-5">
+	  	<h2>Login</h2>
+	  	
+	  	<form method="post">
+	  		{% csrf_token %}
+	  		<input type="hidden" name="username" value="admin" />
+	  		<input type="hidden" name="password" value="demo1234" />
+			<button class="btn btn-primary">
+				Login as Administrator with full access
+			</button>
+		</form>
+		<br><br>
+		<form method="post">
+	  		{% csrf_token %}
+	  		<input type="hidden" name="username" value="demouser" />
+	  		<input type="hidden" name="password" value="demo1234" />
+			<button class="btn btn-primary">
+				Login as standard user with deidentified data access
+			</button>
+		</form>
+		<br><br>
+		<form method="post">
+	  		{% csrf_token %}
+	  		<input type="hidden" name="username" value="agguser" />
+	  		<input type="hidden" name="password" value="demo1234" />
+			<button class="btn btn-primary">
+				Login as standard user with aggregated data access
+			</button>
+		</form>
+
+	  	
+	  	
+
+</div>
+  	
+{% endblock %}

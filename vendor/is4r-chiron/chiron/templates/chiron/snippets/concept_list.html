@@ -1,0 +1,34 @@
+
+{% load chiron_tags %}
+
+<div id="chiron-concept-container-{{category_id|default:'top'}}">
+
+	<div class="chiron-concepts-list">
+		{% for concept in concepts %}
+			<a href="#" class="chiron-concept-option
+					{% if not concept.include_in_cohort_def %}hide-in-query-view{% endif %}
+					{% if not concept.include_in_table_def %}hide-in-results-view{% endif %}
+					{% if not concept.include_in_analysis_def %}hide-in-analysis-view{% endif %}"
+					data-concept-id="{{concept.permanent_id}}">
+				{% if concept.has_phi and request.chironuser.access_level == request.chironuser.AccessLevel.PHI %}
+					<i class="fas fa-unlock-alt"></i>
+				{% endif %}
+				{{ concept.name|title2 }}
+			</a>
+		{% endfor %}
+	</div>
+
+	{% for category in categories %}
+		<a href="#" class="chiron-category-option chiron-category-option-level-{{category.get_level}}"
+				id="chiron-category-option-{{category.id}}"
+				data-category-id="{{category.id}}" data-loaded="no">
+			<div style="float:right" id="chiron-category-display-indicator-{{category.id}}">
+				<i class="fas fa-angle-down"></i>
+			</div>
+			{% for item in category.get_level|times %}<i class="fas fa-chevron-right"></i>{% endfor %}
+			{{ category.name|title2 }}
+		</a>
+	{% endfor %}
+
+
+</div>

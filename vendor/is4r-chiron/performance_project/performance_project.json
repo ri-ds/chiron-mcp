@@ -1,0 +1,418 @@
+[
+{
+    "model": "auth.user",
+    "pk": 1,
+    "fields": {
+        "password": "pbkdf2_sha256$600000$TfTqDo8zERI9JZ8jg5QcGV$O71c/wuTnwISL5+LQcoE+8T/pVvqwwLoqTEYDOSSjEE=",
+        "last_login": "2025-02-20T12:07:24.889",
+        "is_superuser": true,
+        "username": "admin",
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "is_staff": true,
+        "is_active": true,
+        "date_joined": "2022-10-07T16:07:21.622",
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "chiron.chironuser",
+    "pk": 1,
+    "fields": {
+        "dataset": 1,
+        "user": 1,
+        "access_level": "phi",
+        "can_view_workspace": true,
+        "can_view_subject_details": true,
+        "permission_groups": []
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 1,
+    "fields": {
+        "created": "2022-10-09T15:30:53.907",
+        "modified": "2022-10-10T14:31:48.898",
+        "dataset": 1,
+        "name": "many aggregated large subcollection fields",
+        "project": 1,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"tsREAGAHevfT\", \"concept_id\": \"med_order_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"AbS2qxRNogXM\", \"concept_id\": \"med_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"s5qLVbeqRkbv\", \"concept_id\": \"med_name\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"fYyZXW4rNT5I\", \"concept_id\": \"med_start\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"iG0LtAZTQDf0\", \"concept_id\": \"med_end\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"JtCaplX5kmvX\", \"concept_id\": \"currently_taking\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"26IGifJdZSZI\", \"concept_id\": \"med_dose\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"Vhr5aIKswMub\", \"concept_id\": \"med_units\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"EvFVDAgKhCo5\", \"concept_id\": \"med_comment\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 3,
+    "fields": {
+        "created": "2022-10-10T14:11:04.054",
+        "modified": "2022-10-10T14:31:56.563",
+        "dataset": 1,
+        "name": "single aggregated large subcollection field",
+        "project": 1,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"tsREAGAHevfT\", \"concept_id\": \"med_order_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 4,
+    "fields": {
+        "created": "2022-10-10T14:14:18.874",
+        "modified": "2022-10-10T14:32:03.643",
+        "dataset": 1,
+        "name": "single stacked large subcollection fields",
+        "project": 1,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"ePi3Hp0iAEB7\", \"concept_id\": \"med_order_id\", \"aggregate\": false, \"aggregation_method\": null}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 5,
+    "fields": {
+        "created": "2022-10-10T14:15:22.259",
+        "modified": "2022-10-10T14:32:10.445",
+        "dataset": 1,
+        "name": "many stacked large subcollection fields",
+        "project": 1,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"WebIZBpzQbsF\", \"concept_id\": \"med_order_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"S0IBbb30oyq0\", \"concept_id\": \"med_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"GK0v9S9WkFyg\", \"concept_id\": \"med_name\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"zIlYSA6qOKrH\", \"concept_id\": \"med_start\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"HLK4y2kJN0Gk\", \"concept_id\": \"med_end\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"nfWz00HM5fkT\", \"concept_id\": \"currently_taking\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"ZDqBVrVZTCtg\", \"concept_id\": \"med_dose\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"aa9AvKmJgwzX\", \"concept_id\": \"med_units\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"QDpcRxincOpl\", \"concept_id\": \"med_comment\", \"aggregate\": false, \"aggregation_method\": null}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 6,
+    "fields": {
+        "created": "2022-10-10T14:20:48.965",
+        "modified": "2022-10-10T14:32:18.892",
+        "dataset": 1,
+        "name": "many, many aggregated large subcollection fields",
+        "project": 1,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"tsREAGAHevfT\", \"concept_id\": \"med_order_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"7DKWr0q7SkYr\", \"concept_id\": \"med_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"0XMEDrkHpsiA\", \"concept_id\": \"med_name\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"YwwHRLCKkmPL\", \"concept_id\": \"med_name\", \"aggregate\": true, \"aggregation_method\": \"count_distinct\"}, {\"entry_id\": \"ZI2ZuLXFw12D\", \"concept_id\": \"med_name\", \"aggregate\": true, \"aggregation_method\": \"most_frequent\", \"aggregation_settings\": {\"most_frequent_ordinal_position\": 1, \"most_frequent_return_value\": \"value_and_count\"}}, {\"entry_id\": \"GfINWtTMg0IK\", \"concept_id\": \"med_name\", \"aggregate\": true, \"aggregation_method\": \"has_value_text\", \"aggregation_settings\": {\"values_text\": [\"Congress hot pattern western\", \"I home actually professional\"], \"return_value_text\": \"boolean\"}}, {\"entry_id\": \"7MmIGVv2FANe\", \"concept_id\": \"med_start\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"tTs64VKTI18c\", \"concept_id\": \"med_start\", \"aggregate\": true, \"aggregation_method\": \"min_date\", \"aggregation_settings\": {\"min_date_ordinal_position\": 1}}, {\"entry_id\": \"zxzjBHAo5m6I\", \"concept_id\": \"med_start\", \"aggregate\": true, \"aggregation_method\": \"min_date\", \"aggregation_settings\": {\"min_date_ordinal_position\": 2}}, {\"entry_id\": \"HpgN3wmBlD5W\", \"concept_id\": \"med_start\", \"aggregate\": true, \"aggregation_method\": \"min_date\", \"aggregation_settings\": {\"min_date_ordinal_position\": 3}}, {\"entry_id\": \"uCbBaaJORGT7\", \"concept_id\": \"med_start\", \"aggregate\": true, \"aggregation_method\": \"min_date\", \"aggregation_settings\": {\"min_date_ordinal_position\": 4}}, {\"entry_id\": \"3Ft0jIVmGWQM\", \"concept_id\": \"med_start\", \"aggregate\": true, \"aggregation_method\": \"min_date\", \"aggregation_settings\": {\"min_date_ordinal_position\": 5}}, {\"entry_id\": \"AKhBWzPIr1NL\", \"concept_id\": \"med_start\", \"aggregate\": true, \"aggregation_method\": \"min_date\", \"aggregation_settings\": {\"min_date_ordinal_position\": 6}}, {\"entry_id\": \"Qgk6zJ9kNhbD\", \"concept_id\": \"med_end\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"mZJsIPLA7xBi\", \"concept_id\": \"med_end\", \"aggregate\": true, \"aggregation_method\": \"max_date\", \"aggregation_settings\": {\"max_date_ordinal_position\": 1}}, {\"entry_id\": \"Qlg5UWTRk4dx\", \"concept_id\": \"med_end\", \"aggregate\": true, \"aggregation_method\": \"max_date\", \"aggregation_settings\": {\"max_date_ordinal_position\": 2}}, {\"entry_id\": \"ziRiZHq54ljN\", \"concept_id\": \"med_end\", \"aggregate\": true, \"aggregation_method\": \"max_date\", \"aggregation_settings\": {\"max_date_ordinal_position\": 3}}, {\"entry_id\": \"2bQq9jCTJNkY\", \"concept_id\": \"med_end\", \"aggregate\": true, \"aggregation_method\": \"max_date\", \"aggregation_settings\": {\"max_date_ordinal_position\": 4}}, {\"entry_id\": \"PfpmzbcV5Rb0\", \"concept_id\": \"currently_taking\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"Y0ViO4PiOWs8\", \"concept_id\": \"med_dose\", \"aggregate\": true, \"aggregation_method\": \"average\"}, {\"entry_id\": \"mg9NsHIxELJl\", \"concept_id\": \"med_dose\", \"aggregate\": true, \"aggregation_method\": \"median\"}, {\"entry_id\": \"WlEe6S3LGnO7\", \"concept_id\": \"med_dose\", \"aggregate\": true, \"aggregation_method\": \"min\", \"aggregation_settings\": {\"min_ordinal_position\": 1, \"min_return_value\": \"value\"}}, {\"entry_id\": \"4oc7Cwqu274E\", \"concept_id\": \"med_dose\", \"aggregate\": true, \"aggregation_method\": \"max\", \"aggregation_settings\": {\"max_ordinal_position\": 1, \"max_return_value\": \"value\"}}, {\"entry_id\": \"7cwe2xwh2IJQ\", \"concept_id\": \"med_dose\", \"aggregate\": true, \"aggregation_method\": \"std_dev\"}, {\"entry_id\": \"gyTlw0lyFfpq\", \"concept_id\": \"med_dose\", \"aggregate\": true, \"aggregation_method\": \"min\", \"aggregation_settings\": {\"min_ordinal_position\": 1, \"min_return_value\": \"all_dates\"}}, {\"entry_id\": \"ae9G650aoOH2\", \"concept_id\": \"med_dose\", \"aggregate\": true, \"aggregation_method\": \"max\", \"aggregation_settings\": {\"max_ordinal_position\": 1, \"max_return_value\": \"all_dates\"}}, {\"entry_id\": \"d70RupIkN0pq\", \"concept_id\": \"med_units\", \"aggregate\": true, \"aggregation_method\": \"count_all\"}, {\"entry_id\": \"Qhu6v3mbo4Tt\", \"concept_id\": \"med_units\", \"aggregate\": true, \"aggregation_method\": \"most_frequent\", \"aggregation_settings\": {\"most_frequent_ordinal_position\": 1, \"most_frequent_return_value\": \"value\"}}, {\"entry_id\": \"0G1VNH6LVDMj\", \"concept_id\": \"med_units\", \"aggregate\": true, \"aggregation_method\": \"has_value\", \"aggregation_settings\": {\"values\": [\"g\"], \"return_value\": \"boolean\"}}, {\"entry_id\": \"zUKDjPMRYctH\", \"concept_id\": \"med_units\", \"aggregate\": true, \"aggregation_method\": \"has_value\", \"aggregation_settings\": {\"values\": [\"g\"], \"return_value\": \"all_dates\"}}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 7,
+    "fields": {
+        "created": "2022-10-10T14:26:04.029",
+        "modified": "2022-10-10T14:26:04.029",
+        "dataset": 1,
+        "name": "single aggregated subcollection field, filtered subject",
+        "project": 1,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"OPkwui9MBJ7Y\", \"collection_id\": \"subject\", \"list\": [{\"terms\": [\"Aaron\"], \"entry_id\": \"Iy6EK3ggCmUR\", \"concept_id\": \"first_name\", \"exclude_selected\": false, \"include_null_and_missing\": false}]}], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"tsREAGAHevfT\", \"concept_id\": \"med_order_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 8,
+    "fields": {
+        "created": "2022-10-10T14:26:39.419",
+        "modified": "2022-10-10T14:26:39.419",
+        "dataset": 1,
+        "name": "single aggregated subcollection field, filtered subcollection",
+        "project": 1,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"h23ATyYKTH3B\", \"collection_id\": \"medication\", \"list\": [{\"terms\": [\"American table couple light\"], \"entry_id\": \"dvfujDnWlqpD\", \"concept_id\": \"med_name\", \"exclude_selected\": false, \"include_null_and_missing\": false}]}], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"tsREAGAHevfT\", \"concept_id\": \"med_order_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 9,
+    "fields": {
+        "created": "2022-10-10T14:27:09.318",
+        "modified": "2022-10-10T14:27:09.318",
+        "dataset": 1,
+        "name": "single aggregated subcollection field, filtered subject and subcollection",
+        "project": 1,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"qopoktIfMIgQ\", \"collection_id\": \"subject\", \"list\": [{\"terms\": [\"Alice\"], \"entry_id\": \"ho5Bhzk8Y1Qh\", \"concept_id\": \"first_name\", \"exclude_selected\": false, \"include_null_and_missing\": false}]}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"h23ATyYKTH3B\", \"collection_id\": \"medication\", \"list\": [{\"terms\": [\"American table couple light\"], \"entry_id\": \"dvfujDnWlqpD\", \"concept_id\": \"med_name\", \"exclude_selected\": false, \"include_null_and_missing\": false}]}], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"tsREAGAHevfT\", \"concept_id\": \"med_order_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 10,
+    "fields": {
+        "created": "2022-10-10T14:31:31.080",
+        "modified": "2022-10-10T14:31:31.080",
+        "dataset": 1,
+        "name": "single aggregated subcollection field",
+        "project": 2,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"kraEjVUAndUc\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 11,
+    "fields": {
+        "created": "2022-10-10T14:33:28.965",
+        "modified": "2022-10-10T14:34:57.199",
+        "dataset": 1,
+        "name": "aggregated fields from 4 unrelated subcollections",
+        "project": 2,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"kraEjVUAndUc\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"M3Myn72gzdCv\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"dKZbCgHwTI8X\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ufsxxEPz93UG\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 12,
+    "fields": {
+        "created": "2022-10-10T14:34:48.105",
+        "modified": "2022-10-10T14:34:48.105",
+        "dataset": 1,
+        "name": "many aggregated fields from 4 unrelated subcollections",
+        "project": 2,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"kraEjVUAndUc\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"M3Myn72gzdCv\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"dKZbCgHwTI8X\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ufsxxEPz93UG\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"A2PIM38AgYom\", \"concept_id\": \"dx_date\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"HjGxkuHkPOhT\", \"concept_id\": \"dx_code\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"FAhLrrmvxQAC\", \"concept_id\": \"dx_name\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ONATYxos9agh\", \"concept_id\": \"proc_date\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ElGeD7RyzlCY\", \"concept_id\": \"proc_code\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"87Y035LRZULi\", \"concept_id\": \"proc_name\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"wePNS85QOQhh\", \"concept_id\": \"biospecimen_date\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"w8JhHQgOf6FI\", \"concept_id\": \"biospecimen_type\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"lsmhnDcLXb4I\", \"concept_id\": \"biospecimen_pos\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"l20Hod9DRoki\", \"concept_id\": \"admission_date\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"0CPORa7bQHAb\", \"concept_id\": \"admission_facility\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 13,
+    "fields": {
+        "created": "2022-10-10T14:36:24.645",
+        "modified": "2022-10-10T14:44:50.320",
+        "dataset": 1,
+        "name": "aggregated fields from 5 unrelated subcollections",
+        "project": 2,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"2XYySD13bkZr\", \"collection_id\": \"medication\", \"list\": [{\"entry_id\": \"X5egOXYSSlqh\", \"concept_id\": \"med_units\", \"categories\": [\"mg/dl\"], \"exclude_selected\": false}]}], \"table_def\": {\"fields\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"kraEjVUAndUc\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"M3Myn72gzdCv\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"dKZbCgHwTI8X\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ufsxxEPz93UG\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"e2tLOoJRoc2t\", \"concept_id\": \"med_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"ZOt1E7umFCLW\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 14,
+    "fields": {
+        "created": "2022-10-10T14:53:01.700",
+        "modified": "2022-10-11T17:41:55.414",
+        "dataset": 1,
+        "name": "2 related subcollections, one stacked",
+        "project": 3,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"DqHaRYcgAMMJ\", \"concept_id\": \"encounter_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"XXzfJIm7QnsQ\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 15,
+    "fields": {
+        "created": "2022-10-10T14:56:31.329",
+        "modified": "2022-10-11T17:42:04.795",
+        "dataset": 1,
+        "name": "5 related subcollections, one stacked",
+        "project": 3,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"tdaPbFzh5p7N\", \"concept_id\": \"encounter_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"XXzfJIm7QnsQ\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"JvbkW7b3Dus1\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"i74X9MhHBAoM\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ohzllljAiFj1\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 16,
+    "fields": {
+        "created": "2022-10-10T14:59:14.170",
+        "modified": "2022-10-11T17:42:40.889",
+        "dataset": 1,
+        "name": "5 related subcollections (one stacked) plus 1 unrelated subcollection",
+        "project": 3,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"TlUZmFpqipMq\", \"collection_id\": \"medication\", \"list\": [{\"entry_id\": \"7mWWADcx604Z\", \"concept_id\": \"med_units\", \"categories\": [\"mg/dl\"], \"exclude_selected\": false}]}], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"VfZ15zZZkOgO\", \"concept_id\": \"encounter_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"XXzfJIm7QnsQ\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"JvbkW7b3Dus1\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"i74X9MhHBAoM\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ohzllljAiFj1\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"zqlMN9OJGzFY\", \"concept_id\": \"med_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 17,
+    "fields": {
+        "created": "2022-10-10T15:01:56.633",
+        "modified": "2022-10-10T15:01:56.633",
+        "dataset": 1,
+        "name": "2 subcollections related by event query",
+        "project": 4,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"8Q3B8Ytxpde6\", \"collection_id\": \"encounter\", \"list\": [], \"event_rule\": {\"type\": \"no_restriction\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"5YqknssjvQtd\", \"collection_id\": \"diagnosis\", \"list\": [], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": 0, \"range_start_target\": \"start\", \"range_end_days_from_target\": 0, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"DqHaRYcgAMMJ\", \"concept_id\": \"encounter_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"XXzfJIm7QnsQ\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 18,
+    "fields": {
+        "created": "2022-10-10T15:03:09.434",
+        "modified": "2022-10-10T15:03:09.434",
+        "dataset": 1,
+        "name": "4 subcollections related by event query",
+        "project": 4,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"8Q3B8Ytxpde6\", \"collection_id\": \"encounter\", \"list\": [], \"event_rule\": {\"type\": \"no_restriction\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"5YqknssjvQtd\", \"collection_id\": \"diagnosis\", \"list\": [], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": 0, \"range_start_target\": \"start\", \"range_end_days_from_target\": 0, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"Myhl1jf7alIt\", \"collection_id\": \"procedure\", \"list\": [], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": 0, \"range_start_target\": \"start\", \"range_end_days_from_target\": 0, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"xWwHUeWwgZA3\", \"collection_id\": \"biospecimen\", \"list\": [], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": 0, \"range_start_target\": \"start\", \"range_end_days_from_target\": 0, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"DqHaRYcgAMMJ\", \"concept_id\": \"encounter_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"XXzfJIm7QnsQ\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"9FgJwozk2yEj\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"gne0bOG5zYP3\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 19,
+    "fields": {
+        "created": "2022-10-10T15:05:10.027",
+        "modified": "2022-10-10T15:05:10.027",
+        "dataset": 1,
+        "name": "6 subcollections related by event query",
+        "project": 4,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"8Q3B8Ytxpde6\", \"collection_id\": \"encounter\", \"list\": [], \"event_rule\": {\"type\": \"no_restriction\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"5YqknssjvQtd\", \"collection_id\": \"diagnosis\", \"list\": [], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": 0, \"range_start_target\": \"start\", \"range_end_days_from_target\": 0, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"Myhl1jf7alIt\", \"collection_id\": \"procedure\", \"list\": [], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": 0, \"range_start_target\": \"start\", \"range_end_days_from_target\": 0, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"xWwHUeWwgZA3\", \"collection_id\": \"biospecimen\", \"list\": [], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": 0, \"range_start_target\": \"start\", \"range_end_days_from_target\": 0, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"WrXpHUpABamb\", \"collection_id\": \"admission\", \"list\": [], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": 0, \"range_start_target\": \"start\", \"range_end_days_from_target\": 0, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}, {\"entry_type\": \"criteria_set\", \"entry_id\": \"saXqO8pOQQUc\", \"collection_id\": \"medication\", \"list\": [{\"entry_id\": \"S6dwXZOJz4x5\", \"concept_id\": \"med_units\", \"categories\": [\"mg/dl\"], \"exclude_selected\": false}], \"event_rule\": {\"type\": \"relative_to_other_event\", \"reference_date\": \"start\", \"range_start_days_from_target\": -730, \"range_start_target\": \"start\", \"range_end_days_from_target\": 730, \"range_end_target\": \"end\", \"target_entry_id\": \"8Q3B8Ytxpde6\"}}], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"DqHaRYcgAMMJ\", \"concept_id\": \"encounter_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"XXzfJIm7QnsQ\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"9FgJwozk2yEj\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"gne0bOG5zYP3\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"w1LTdjTn3j5w\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"F7uUbgu6jAk9\", \"concept_id\": \"med_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 20,
+    "fields": {
+        "created": "2022-10-10T17:02:10.359",
+        "modified": "2022-10-10T17:02:10.359",
+        "dataset": 1,
+        "name": "multiple related subcollections are slow",
+        "project": 5,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"g9olQsV2HWYF\", \"collection_id\": \"subject\", \"list\": [{\"terms\": [\"Dillon\"], \"entry_id\": \"GJvN26tRuU5f\", \"concept_id\": \"first_name\", \"exclude_selected\": false, \"include_null_and_missing\": false}]}], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"LxAjOuwDtbSb\", \"concept_id\": \"encounter_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"n4STiJ51roe5\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"count_all\"}, {\"entry_id\": \"8MNI8RxgF13K\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ZTdsVZZJbsyQ\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"PvfCO6JHOqyx\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"n4STiJ51roe5\", \"direction\": -1}, {\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 21,
+    "fields": {
+        "created": "2022-10-11T17:39:54.328",
+        "modified": "2022-10-11T17:39:54.328",
+        "dataset": 1,
+        "name": "5 related subcollections, all aggregated",
+        "project": 3,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"58zl6RhMqQOO\", \"concept_id\": \"encounter_id\", \"aggregate\": true, \"aggregation_method\": \"count_distinct\"}, {\"entry_id\": \"XXzfJIm7QnsQ\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"JvbkW7b3Dus1\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"i74X9MhHBAoM\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ohzllljAiFj1\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.usercreatedcontent",
+    "pk": 22,
+    "fields": {
+        "created": "2022-10-11T17:40:28.859",
+        "modified": "2022-10-11T17:40:28.859",
+        "dataset": 1,
+        "name": "5 related subcollections plus 1 unrelated subcollection, all aggregated",
+        "project": 3,
+        "description": "",
+        "creator": 1,
+        "type": "table",
+        "definition": "{\"cohort_def\": [{\"entry_type\": \"criteria_set\", \"entry_id\": \"TlUZmFpqipMq\", \"collection_id\": \"medication\", \"list\": [{\"entry_id\": \"7mWWADcx604Z\", \"concept_id\": \"med_units\", \"categories\": [\"mg/dl\"], \"exclude_selected\": false}]}], \"table_def\": {\"fields\": [{\"entry_id\": \"QKDphstPeQUf\", \"concept_id\": \"patient_id\", \"aggregate\": false, \"aggregation_method\": null}, {\"entry_id\": \"kPFMdrYcEzth\", \"concept_id\": \"encounter_id\", \"aggregate\": true, \"aggregation_method\": \"count_distinct\"}, {\"entry_id\": \"XXzfJIm7QnsQ\", \"concept_id\": \"dx_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"JvbkW7b3Dus1\", \"concept_id\": \"proc_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"i74X9MhHBAoM\", \"concept_id\": \"biospecimen_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"ohzllljAiFj1\", \"concept_id\": \"admission_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}, {\"entry_id\": \"zqlMN9OJGzFY\", \"concept_id\": \"med_id\", \"aggregate\": true, \"aggregation_method\": \"list_distinct\"}], \"sort\": [{\"entry_id\": \"QKDphstPeQUf\", \"direction\": 1}]}}",
+        "public": true
+    }
+},
+{
+    "model": "chiron.project",
+    "pk": 1,
+    "fields": {
+        "created": "2022-10-10T14:09:45.765",
+        "modified": "2022-10-10T14:11:59.522",
+        "dataset": 1,
+        "name": "Group A - single subcollection with many records"
+    }
+},
+{
+    "model": "chiron.project",
+    "pk": 2,
+    "fields": {
+        "created": "2022-10-10T14:31:31.048",
+        "modified": "2022-10-10T14:31:31.048",
+        "dataset": 1,
+        "name": "Group B - multiple unrelated subcollections"
+    }
+},
+{
+    "model": "chiron.project",
+    "pk": 3,
+    "fields": {
+        "created": "2022-10-10T14:53:01.640",
+        "modified": "2022-10-10T14:53:01.640",
+        "dataset": 1,
+        "name": "Group C - multiple related subcollections"
+    }
+},
+{
+    "model": "chiron.project",
+    "pk": 4,
+    "fields": {
+        "created": "2022-10-10T15:01:56.545",
+        "modified": "2022-10-10T15:01:56.545",
+        "dataset": 1,
+        "name": "Group D - multiple subcollections related by event query"
+    }
+},
+{
+    "model": "chiron.project",
+    "pk": 5,
+    "fields": {
+        "created": "2022-10-10T17:02:10.240",
+        "modified": "2022-10-10T17:02:10.240",
+        "dataset": 1,
+        "name": "troubleshooting"
+    }
+}
+]

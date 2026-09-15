@@ -1,0 +1,34 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "stats": {
+        "count_non_null": 23,
+        "max": 2020,
+        "min": 2001,
+        "unique_patients": 2
+    },
+    "histogram_data": [
+        [
+            "2001 - 2004",
+            1
+        ],
+        [
+            "2005 - 2008",
+            0
+        ],
+        [
+            "2009 - 2012",
+            8
+        ],
+        [
+            "2013 - 2016",
+            7
+        ],
+        [
+            "2017 - 2021",
+            7
+        ]
+    ],
+    "is_callback": true,
+    "permanent_id": "subcol_phi_date"
+}

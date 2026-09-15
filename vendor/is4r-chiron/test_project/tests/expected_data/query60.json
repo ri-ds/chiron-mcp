@@ -1,0 +1,30 @@
+[
+        [
+            "034e9e3b-2def-4559-bb2a-7850888ae060",
+            "Encounter for check up (procedure)"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Encounter for check up (procedure)"
+        ],
+        [
+            "034e9e3b-2def-4559-bb2a-7850888ae060",
+            "Encounter for symptom"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Encounter for symptom"
+        ],
+        [
+            "034e9e3b-2def-4559-bb2a-7850888ae060",
+            "General examination of patient (procedure)"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "General examination of patient (procedure)"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Well child visit (procedure)"
+        ]
+    ]

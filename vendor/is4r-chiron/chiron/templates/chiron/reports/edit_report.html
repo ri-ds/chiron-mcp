@@ -1,0 +1,10 @@
+{% load crispy_forms_tags %}
+
+<form method="post" class="ajax-form" data-url="{% url 'chiron:api:reports-detail' oReport.id %}edit_form/">
+	{% csrf_token %}
+    <input type="hidden" name="overwrite_query_def_with_active" value="{{overwrite_query_def_with_active|yesno:"yes,no"}}" />
+    {{ fForm|crispy }}
+    <button type="submit" class="btn btn-primary ajax-form-button">
+    	<i class="fas fa-edit"></i> Edit Report
+    </button>
+</form>

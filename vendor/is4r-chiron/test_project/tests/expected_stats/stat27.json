@@ -1,0 +1,51 @@
+{
+    "count_subjects_with_missing_values": 1,
+    "count_missing_values": 2,
+    "stats": {
+        "count_non_null": 43,
+        "max": 40.0,
+        "min": 13.0,
+        "avg": 25.5,
+        "unique_patients": 5
+    },
+    "histogram_data": [
+        [
+            "[13 - 16.9)",
+            4
+        ],
+        [
+            "[16.9 - 20.7)",
+            9
+        ],
+        [
+            "[20.7 - 24.6)",
+            7
+        ],
+        [
+            "[24.6 - 28.4)",
+            9
+        ],
+        [
+            "[28.4 - 32.3)",
+            6
+        ],
+        [
+            "[32.3 - 36.1)",
+            4
+        ],
+        [
+            "[36.1 - 40]",
+            4
+        ]
+    ],
+    "values": [
+        {
+            "count": 5,
+            "category": "<0.1",
+            "uniquePatientCount": 2
+        }
+    ],
+    "max_count": 5,
+    "is_callback": true,
+    "permanent_id": "lab_value_num_cat"
+}

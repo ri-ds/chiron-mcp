@@ -1,0 +1,13 @@
+{% if entry.label|length > 150 %}
+	<div class="modal" id="chiron-entry-details-modal-{{entry.entry_id}}">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+		      	<!-- Modal body -->
+		      	<div class="modal-body" id="chiron-entry-details-modal-body">
+		      		<button type="button" class="close" data-dismiss="modal">&times;</button>
+		      		{{ entry.label|safe }}
+		        </div>
+		    </div>
+		</div>
+	</div>
+{% endif %}

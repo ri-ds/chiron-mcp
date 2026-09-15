@@ -1,0 +1,116 @@
+{% load chiron_tags %}
+
+<form class="chiron-table-def-entry-form">
+
+	<input type="hidden" name="entry_id" value="{{ entry_id }}" />
+	<input type="hidden" name="concept_id" value="{{ concept_id }}" />
+	
+	<h3 style="border-bottom:1px black solid;">Stack</h3>
+	<div class="px-4 py-2">
+		<div class="form-check">
+		  	<input class="form-check-input" type="radio" id="chiron-aggregation-method-stack"
+		  		name="aggregation_method" id="chiron-aggregation-method-list-distinct" value="stack" 
+		  			{% if not option_selected %}checked{% endif %}>
+		  	<label class="form-check-label" for="chiron-aggregation-method-stack">
+		    	stack (creates a new row for each distinct value)
+		  	</label>
+		</div>	
+	</div>
+	
+	<h3 style="border-bottom:1px black solid;">Flatten</h3>
+
+
+	{% for group_name, group_options in option_groups.items %}
+		<h4 class="px-4">{{ group_name|title2 }}</h4>
+
+		<div class="px-4 pb-2">
+			{% for option in group_options %}
+				<div class="form-check">
+					<input class="form-check-input" type="radio"
+						name="aggregation_method" id="chiron-aggregation-method-{{option.id}}" value="{{option.id}}"
+							{% if option.selected %}checked{% endif %}>
+					<label class="form-check-label" for="chiron-aggregation-method-{{option.id}}">
+						{{ option.label }}
+					</label>
+				</div>
+				{% if option.inputs %}
+					<div class="well chiron-aggregation-additional-inputs" id="chiron-aggregation-additional-inputs-{{option.id}}"
+						 {% if not option.selected %}style="display:none;"{% endif %}>
+						{% for input in option.inputs %}
+							<div style="padding:10px 0;">
+								{{ input.label }}
+								{% if input.type == "select" %}
+									<select name="{{input.id}}">
+										{% for option in input.options %}
+											<option value="{{option.0}}" {% if option.0 == input.selected %}selected{% endif %}>
+												{{ option.1 }}
+											</option>
+										{% endfor %}
+									</select>
+								{% endif %}
+								{% if input.type == "multiselect" %}
+									<select name="{{input.id}}[]" multiple="multiple">
+										{% for option in input.options %}
+											<option value="{{option.0}}" {% if option.0 in input.selected %}selected{% endif %}>
+												{{ option.1 }}
+											</option>
+										{% endfor %}
+									</select>
+								{% endif %}
+								{% if input.type == "ajax_multiselect" %}
+									<select name="{{input.id}}[]" class="chiron-select-example" data-concept-id="{{ concept_id }}"
+                                            data-callback-url="{{input.options_callback}}" style="width:100%;" multiple="multiple">
+										{% for preselected_val in input.selected %}
+										<option value="{{preselected_val}}" selected="selected">{{preselected_val}}</option>
+										{% endfor %}
+									</select>
+								{% endif %}
+							</div>
+						{% endfor %}
+					</div>
+			    {% endif %}
+			{% endfor %}
+		</div>
+	{% endfor %}
+
+	{% if show_criteria_set_options %}
+		<hr>
+		<h4>Data to Include in Aggregation</h4>
+		<p>In your cohort definition, you have multiple criteria sets defined for {{ collection_name }}.
+		By default, aggregation is done on {{ collection_name_plural }} that match any of these criteria sets.
+		Or select a specific criteria set here.</p>
+
+		{% if selected_aggregation_criteria_set and not selected_aggregation_criteria_set in criteria_set_options %}
+			<div class="alert alert-danger">
+				The previously selected criteria set option no longer exists. If you still wish
+				to only use data from a specific criteria set for this value, please make a
+				new selection.
+			</div>
+		{% endif %}
+		<select name="aggregation_criteria_set">
+			<option value="">All {{ collection_name }} criteria sets</option>
+			{% for option_id, option_label in criteria_set_options.items %}
+				<option value="{{ option_id }}" {% if selected_aggregation_criteria_set == option_id %}selected{% endif %}>
+					CRITERIA SET: {{ option_label }}
+				</option>
+			{% endfor %}
+		</select>
+
+	{% endif %}
+
+	<hr>
+	<div class="input-group mb-3">
+  		<div class="input-group-prepend">
+    		<span class="input-group-text" id="basic-addon1">alias</span>
+  		</div>
+  		<input type="text" name="entry_alias" class="form-control" placeholder="[use default value]" value="{{entry_alias|default:''}}"
+			   aria-label="alias" aria-describedby="basic-addon1">
+	</div>
+	
+	<hr>
+	<button type="submit" class="btn btn-sm btn-block btn-info">
+		<i class="fas fa-edit fa-lg" aria-hidden="true"></i>&nbsp;&nbsp;
+		Save changes
+	</button>
+	
+</form>

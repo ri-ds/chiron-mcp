@@ -1,0 +1,20 @@
+
+# you can import the default setting and just override anything that you want to change
+from project.settings import *
+
+# save this file as performance_project/project/custom_settings.py and use it to override
+# any settings you need for your local environment.
+
+# for localhost with no authentication
+# CHIRON_MONGO_CONNECTION_SETTINGS = {"host": "localhost"}
+
+# for remote host
+# CHIRON_MONGO_CONNECTION_SETTINGS = {
+#     'host' : 'yourhost',
+#     'username' : 'yourmongouser',
+#     'password' : 'yourpassword',
+#     'authSource' : 'yourauthsource',
+# }
+
+# the default mongo DB name is performance_tests, use this setting to override
+# CHIRON_MONGO_DATABASE_NAME_OVERRIDE = {'performance_tests': 'yourdbname'}

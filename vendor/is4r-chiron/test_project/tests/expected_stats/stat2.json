@@ -1,0 +1,24 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "values": [
+        {
+            "count": 12,
+            "category": "outpatient",
+            "uniquePatientCount": 2
+        },
+        {
+            "count": 7,
+            "category": "ambulatory",
+            "uniquePatientCount": 2
+        },
+        {
+            "count": 7,
+            "category": "wellness",
+            "uniquePatientCount": 2
+        }
+    ],
+    "max_count": 12,
+    "is_callback": true,
+    "permanent_id": "test_permission_subcol"
+}

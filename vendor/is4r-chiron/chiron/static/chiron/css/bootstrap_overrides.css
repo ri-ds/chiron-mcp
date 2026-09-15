@@ -1,0 +1,51 @@
+
+
+
+
+
+form {
+	display: inline;
+}
+
+
+
+
+
+
+
+
+   
+   
+dt {
+    margin-bottom: .5rem;
+}
+
+
+ul {
+	list-style-type: none;
+	margin-left: 0;
+	padding-left: 20px;
+}
+
+.text-pause {
+	color: #ccb100;
+}
+
+
+.badge-pause {
+    color: #fff;
+    background-color: #e6c700;
+}
+
+.badge-danger-muted {
+	color: #fff;
+	background-color: #b6b4af;
+}
+   
+.badge-info-muted {
+	color: #fff;
+	background-color: #b6b4af;
+}
+   
+   
+   

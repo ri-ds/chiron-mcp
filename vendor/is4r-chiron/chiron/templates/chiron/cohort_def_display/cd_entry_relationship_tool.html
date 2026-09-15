@@ -1,0 +1,31 @@
+{% if relationship_type == 'and' %}
+
+{% else %}
+    <div class="chiron-cd-entry-relationship-display">
+        <div class="badge badge-dark">
+            OR
+        </div>
+    </div>
+{% endif %}
+<div class="chiron-cd-entry-relationship-tool">
+	{% if relationship_type == 'and' %}
+        <div class="badge badge-secondary badge-join-right">
+            AND
+        </div><!-- 
+	    --><a href="#" class="chiron-change-to-boolean-or" data-entry-id="{{entry.entry_id}}"><!-- 
+	         --><div class="badge badge-dark  badge-join-left">
+	            Change to "OR"
+	        </div>
+	    </a>
+	{% else %}
+		<div class="badge badge-dark  badge-join-right">
+            OR
+        </div><!--
+		--><a href="#" class="chiron-change-to-boolean-and" data-entry-id="{{entry.entry_id}}"><!--
+	        --><div class="badge badge-secondary badge-join-left">
+	            Change to "AND"
+	        </div>
+	    </a>
+        
+	{% endif %}
+</div>

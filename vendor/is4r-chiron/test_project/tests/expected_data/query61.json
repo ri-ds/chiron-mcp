@@ -1,0 +1,62 @@
+[
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "General examination of patient (procedure)",
+            "2010-06-02",
+            "2010-07-27"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Well child visit (procedure)",
+            "2010-10-19",
+            "2010-11-20"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Well child visit (procedure)",
+            "2011-10-19",
+            "2011-11-26"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Encounter for symptom",
+            "2011-10-19",
+            "2011-11-30"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Well child visit (procedure)",
+            "2012-10-19",
+            "2012-12-01"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Well child visit (procedure)",
+            "2013-10-19",
+            "2013-12-07"
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "General examination of patient (procedure)",
+            "2014-10-19",
+            "2014-12-13"
+        ],
+        [
+            "034e9e3b-2def-4559-bb2a-7850888ae060",
+            "Encounter for symptom",
+            "2016-11-14",
+            "2016-12-29"
+        ],
+        [
+            "034e9e3b-2def-4559-bb2a-7850888ae060",
+            "Encounter for check up (procedure)",
+            "2016-11-14",
+            "2017-01-09"
+        ],
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "General examination of patient (procedure)",
+            "2018-05-28",
+            "2018-06-03"
+        ]
+    ]

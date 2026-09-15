@@ -1,0 +1,47 @@
+{
+    "count_subjects_with_missing_values": 1,
+    "count_missing_values": 3,
+    "stats": {
+        "count_non_null": 51,
+        "max": 9973.85,
+        "min": 0.0,
+        "avg": 4281,
+        "unique_patients": 5
+    },
+    "histogram_data": [
+        [
+            "[0 - 1,250)",
+            11
+        ],
+        [
+            "[1,250 - 2,500)",
+            6
+        ],
+        [
+            "[2,500 - 3,740)",
+            7
+        ],
+        [
+            "[3,740 - 4,990)",
+            5
+        ],
+        [
+            "[4,990 - 6,240)",
+            6
+        ],
+        [
+            "[6,240 - 7,480)",
+            6
+        ],
+        [
+            "[7,480 - 8,730)",
+            6
+        ],
+        [
+            "[8,730 - 9,980]",
+            4
+        ]
+    ],
+    "is_callback": true,
+    "permanent_id": "subcol_simple_claim_cost"
+}

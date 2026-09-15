@@ -1,0 +1,95 @@
+<div class="row">
+	<div class="col-md-8">
+		{% include 'chiron/processors/cohort_def_forms/snippets/null_and_missing_control.html' %}
+	</div>
+
+	<div class="col-md-4" style="text-align:right;">
+		{% include 'chiron/processors/cohort_def_forms/snippets/exclude_selected_control.html' %}
+	</div>
+</div>
+
+<hr>
+
+
+<div>
+	<div id="chiron-data-still-streaming">
+		<i class="fa fa-spinner fa-pulse fa-lg fa-fw"></i>
+		Loading
+	</div>
+	<div class="my-4 mx-4" style="font-size:1.2em;" id="chiron-concept-stats-div"></div>
+	<div id="chiron-histogram-div" style="height:300px;"></div>
+
+	{% for form_error in form_options.form_errors %}
+		<div class="alert alert-danger">{{ form_error }}</div>
+	{% endfor %}
+
+	<ul class="nav nav-pills mb-3">
+		<li class="nav-item">
+		  	<a class="nav-link chiron-date-form-tab {% if form_options.query_type == 'date_range' %}active{% endif %}"
+		  			href="#chiron-tab-date-range" data-toggle="pill" data-query-type="date_range">
+		  		Filter by date range
+		  	</a>
+		</li>
+		<li class="nav-item">
+		  	<a class="nav-link chiron-date-form-tab {% if form_options.query_type == 'relative_to_today' %}active{% endif %}"
+		  			href="#chiron-tab-relative-to-today" data-toggle="pill" data-query-type="relative_to_today">
+		  		Filter relative to today
+		  	</a>
+		</li>
+
+	</ul>
+
+	<input type="hidden" name="query_type" id="chiron-date-form-query-type" value="{{ form_options.query_type }}" />
+
+	<div class="tab-content">
+		<div class="tab-pane container-fluid {% if form_options.query_type == 'date_range' %}active{% else %}fade{% endif %}" id="chiron-tab-date-range">
+			<div class="row">
+				<div class="col-sm-4">
+					<div class="form-group">
+					  <label class="control-label">Min (inclusive)</label>
+					  <input class="form-control datepicker" placeholder="{{ stats.min|date:'SHORT_DATE_FORMAT' }}" type="text" name="cd_numeric_min"
+					  	value="{{ form_options.existing_min|default_if_none:'' }}">
+					</div>
+				</div>
+				<div class="col-sm-4">
+					<div class="form-group">
+					  <label class="control-label">Max (inclusive)</label>
+					  <input class="form-control datepicker" placeholder="{{ stats.max|date:'SHORT_DATE_FORMAT' }}" type="text" name="cd_numeric_max"
+					  	value="{{ form_options.existing_max|default_if_none:'' }}">
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="tab-pane container-fluid {% if form_options.query_type == 'relative_to_today' %}active{% else %}fade{% endif %}" id="chiron-tab-relative-to-today">
+			<div class="row">
+				<div class="col-sm-4">
+					<div class="form-group">
+					  <label class="control-label">Any time in the last</label>
+					  <select class="form-control" name="days_ago">
+					  		<option {% if form_options.days_ago == 1 %}selected{% endif %} value="1">1 day (today)</option>
+					  		<option {% if form_options.days_ago == 2 %}selected{% endif %} value="2">2 days</option>
+					  		<option {% if form_options.days_ago == 3 %}selected{% endif %} value="3">3 days</option>
+					  		<option {% if form_options.days_ago == 4 %}selected{% endif %} value="4">4 days</option>
+					  		<option {% if form_options.days_ago == 5 %}selected{% endif %} value="5">5 days</option>
+					  		<option {% if form_options.days_ago == 6 %}selected{% endif %} value="6">6 days</option>
+					  		<option {% if form_options.days_ago == 7 %}selected{% endif %} value="7">7 days</option>
+					  		<option {% if form_options.days_ago == 10 %}selected{% endif %} value="10">10 days</option>
+					  		<option {% if form_options.days_ago == 14 %}selected{% endif %} value="14">14 days</option>
+					  		<option {% if form_options.days_ago == 30 %}selected{% endif %} value="30">30 days</option>
+					  		<option {% if form_options.days_ago == 60 %}selected{% endif %} value="60">60 days</option>
+					  		<option {% if form_options.days_ago == 180 %}selected{% endif %} value="180">180 days</option>
+					  		<option {% if form_options.days_ago == 365 %}selected{% endif %} value="365">1 year</option>
+					  		<option {% if form_options.days_ago == 730 %}selected{% endif %} value="730">2 years</option>
+					  		<option {% if form_options.days_ago == 1095 %}selected{% endif %} value="1095">3 years</option>
+					  </select>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+
+
+</div>

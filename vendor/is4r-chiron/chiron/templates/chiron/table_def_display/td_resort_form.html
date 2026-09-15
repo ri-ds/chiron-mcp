@@ -1,0 +1,21 @@
+
+
+<div class="ui-sortable" id="chiron-resort-modal-list">
+	{% for entry in extended_table_def.fields %}
+		<div class="well" data-entry-id="{{ entry.entry_id }}">
+			<div class="float-left pr-4">
+				<i class="fas fa-arrows-alt fa-2x text-muted" aria-hidden="true"></i>
+			</div>
+			{% if entry.categories %}
+				<small class="text-muted">
+					{% for category in entry.categories %}
+						{{ category }} <i class="fas fa-chevron-right"></i>
+					{% endfor %}
+				</small>
+				<br>
+			{% endif %}
+			
+			{{ entry.label }}
+		</div>
+	{% endfor %}
+</div>

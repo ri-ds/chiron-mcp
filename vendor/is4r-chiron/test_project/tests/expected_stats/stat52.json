@@ -1,0 +1,36 @@
+{
+    "count_subjects_with_missing_values": 1,
+    "count_missing_values": 1,
+    "stats": {
+        "count_non_null": 2,
+        "max": 13.188,
+        "min": 7.77,
+        "avg": 10.5,
+        "unique_patients": 1
+    },
+    "histogram_data": [
+        [
+            "[7.77 - 10.5)",
+            1
+        ],
+        [
+            "[10.5 - 13.2]",
+            1
+        ]
+    ],
+    "values": [
+        {
+            "count": 1,
+            "category": "fcat1",
+            "uniquePatientCount": 2
+        },
+        {
+            "count": 1,
+            "category": "fcat2",
+            "uniquePatientCount": 3
+        }
+    ],
+    "max_count": 1,
+    "is_callback": true,
+    "permanent_id": "m2m_float_category_field_phmznkycwl"
+}

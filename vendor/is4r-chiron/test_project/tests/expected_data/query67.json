@@ -1,0 +1,92 @@
+[
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "186",
+            "2011-08-02",
+            "Body Height"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "196",
+            "2011-08-16",
+            "Body Height"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "197",
+            "2011-08-16",
+            "Pain severity - 0-10 verbal numeric rating [Score] - Reported"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "198",
+            "2011-08-16",
+            "Body Weight"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "199",
+            "2011-08-16",
+            "Body Mass Index"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "200",
+            "2011-08-16",
+            "Body mass index (BMI) [Percentile] Per age and gender"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "201",
+            "2011-08-16",
+            "Diastolic Blood Pressure"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "202",
+            "2011-08-16",
+            "Systolic Blood Pressure"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "203",
+            "2011-08-16",
+            "Heart rate"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "204",
+            "2011-08-16",
+            "Respiratory rate"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "205",
+            "2011-08-16",
+            "Tobacco smoking status NHIS"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "235",
+            "2019-05-07",
+            "Body Height"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "253",
+            "2019-06-02",
+            "QALY"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "263",
+            "2019-06-02",
+            "DALY"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "273",
+            "2019-06-02",
+            "QOLS"
+        ]
+    ]

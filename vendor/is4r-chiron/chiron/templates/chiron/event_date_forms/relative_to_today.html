@@ -1,0 +1,30 @@
+<form class="chiron-event-date-form">
+
+	{% include 'chiron/event_date_forms/_event_form_errors.html' %}
+	{% csrf_token %}
+	<input type="hidden" name="option_type" value="relative_to_today" />
+	<input type="hidden" name="entry_id" value="{{ criteria_set_entry_id }}" />
+	
+	
+	<div class="row">	
+		<div class="col-sm-4">	
+			<div class="form-group">
+			  <label class="control-label">Any time in the last</label>
+			  <select class="form-control" name="days_ago">
+			      {% for option in days_ago_options %}
+			  		<option value="{{ option.0 }}" 
+			  			{% if days_ago == option.0 %}selected{% endif %}>
+			  			{{ option.1 }}
+			  		</option>
+			  	  {% endfor %}	
+			  </select>
+			</div>
+		</div>
+		<div class="col-sm-4" style="padding-top:30px;">	
+			<button class="btn btn-sm btn-block btn-info">
+				<i class="fas fa-calendar-plus fa-lg"></i>&nbsp;&nbsp;
+				Add to cohort definition
+			</button>
+		</div>
+	</div>
+</form>

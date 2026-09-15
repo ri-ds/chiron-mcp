@@ -1,0 +1,91 @@
+<div class="row">
+	<div class="col-md-8">
+		{% include 'chiron/processors/cohort_def_forms/snippets/null_and_missing_control.html' %}
+	</div>
+
+	<div class="col-md-4" style="text-align:right;">
+		{% include 'chiron/processors/cohort_def_forms/snippets/exclude_selected_control.html' %}
+	</div>
+</div>
+
+<hr>
+
+<div>
+	<div class="alert alert-info" style="overflow: hidden;font-size:1.1em;">
+		<div class="float-left pr-3">
+			<i class="fas fa-user-lock fa-2x"></i>
+		</div>
+		All dates for this field have been rounded to year. If you need access to PHI including full dates, contact the site administrator.
+	</div>
+	<div id="chiron-data-still-streaming">
+		<i class="fa fa-spinner fa-pulse fa-lg fa-fw"></i>
+		Loading
+	</div>
+	<div class="my-4 mx-4" style="font-size:1.2em;" id="chiron-concept-stats-div"></div>
+	<div id="chiron-histogram-div" style="height:300px;"></div>
+
+	{% for form_error in form_options.form_errors %}
+		<div class="alert alert-danger">{{ form_error }}</div>
+	{% endfor %}
+
+	<ul class="nav nav-pills mb-3">
+		<li class="nav-item">
+		  	<a class="nav-link chiron-date-form-tab {% if form_options.query_type == 'date_range' %}active{% endif %}"
+		  			href="#chiron-tab-date-range" data-toggle="pill" data-query-type="date_range">
+		  		Filter by date range
+		  	</a>
+		</li>
+		<li class="nav-item">
+		  	<a class="nav-link chiron-date-form-tab {% if form_options.query_type == 'relative_to_today' %}active{% endif %}"
+		  			href="#chiron-tab-relative-to-today" data-toggle="pill" data-query-type="relative_to_today">
+		  		Filter relative to today
+		  	</a>
+		</li>
+
+	</ul>
+
+	<input type="hidden" name="query_type" id="chiron-date-form-query-type" value="{{ form_options.query_type }}" />
+
+	<div class="tab-content">
+		<div class="tab-pane container-fluid {% if form_options.query_type == 'date_range' %}active{% else %}fade{% endif %}" id="chiron-tab-date-range">
+			<div class="row">
+				<div class="col-sm-4">
+					<div class="form-group">
+					  <label class="control-label">Min Year (inclusive)</label>
+					  <input class="form-control" placeholder="{{ stats.min }}" type="text" name="cd_numeric_min"
+					  	value="{{ form_options.existing_min|slice:"-4:"|default_if_none:'' }}">
+					</div>
+				</div>
+				<div class="col-sm-4">
+					<div class="form-group">
+					  <label class="control-label">Max Year (inclusive)</label>
+					  <input class="form-control" placeholder="{{ stats.max }}" type="text" name="cd_numeric_max"
+					  	value="{{ form_options.existing_max|slice:"-4:"|default_if_none:'' }}">
+					</div>
+				</div>
+			</div>
+		</div>
+
+
+		<div class="tab-pane container-fluid {% if form_options.query_type == 'relative_to_today' %}active{% else %}fade{% endif %}" id="chiron-tab-relative-to-today">
+			<div class="row">
+				<div class="col-sm-4">
+					<div class="form-group">
+					  <label class="control-label">Any time in the last</label>
+					  <select class="form-control" name="days_ago">
+					  		<option {% if form_options.days_ago == 365 %}selected{% endif %} value="365">1 year</option>
+					  		<option {% if form_options.days_ago == 730 %}selected{% endif %} value="730">2 years</option>
+					  		<option {% if form_options.days_ago == 1095 %}selected{% endif %} value="1095">3 years</option>
+					  		<option {% if form_options.days_ago == 1460 %}selected{% endif %} value="365">4 years</option>
+					  		<option {% if form_options.days_ago == 1825 %}selected{% endif %} value="730">5 years</option>
+					  </select>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+
+
+</div>

@@ -1,0 +1,16 @@
+{% load crispy_forms_tags %}
+
+<p style="font-size:1.3em;">Are you sure you want to permanently delete the report "{{ oReport }}"?
+This action can't be undone.
+
+</p>
+
+
+<hr>
+
+<form method="post" class="ajax-form" 
+		data-url="{% url 'chiron:api:reports-detail' oReport.id %}delete_form/">
+	{% csrf_token %}
+    <button type="submit" class="btn btn-danger ajax-form-button"><i class="fa fa-trash" aria-hidden="true"></i>
+    Yes, Delete Report</button>
+</form>

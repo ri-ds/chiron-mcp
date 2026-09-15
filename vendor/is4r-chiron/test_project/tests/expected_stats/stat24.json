@@ -1,0 +1,14 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "values": [
+        {
+            "count": 24,
+            "category": "cm",
+            "uniquePatientCount": 5
+        }
+    ],
+    "max_count": 24,
+    "is_callback": true,
+    "permanent_id": "lab_units"
+}

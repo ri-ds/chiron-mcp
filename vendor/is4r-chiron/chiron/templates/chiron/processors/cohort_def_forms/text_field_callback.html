@@ -1,0 +1,40 @@
+{% load humanize %}
+
+
+<div>
+	<div class="float-right text-primary">
+    		<span class="fa-lg">{{ paginator.first_index|intcomma }}</span> 
+    		- 
+    		<span class="fa-lg">{{ paginator.last_index|intcomma }}</span>
+    		of 
+    		<span class="fa-lg">{{ paginator.total_records|intcomma }}</span>
+	</div>
+	<div class="btn-group" role="group">
+		<a class="chiron-text-field-run-callback btn btn-outline-secondary btn-xs" href="#" data-page="1">
+	      	<i class="fa fa-fast-forward fa-lg fa-rotate-180"></i> first
+	    </a>
+	    <a class="chiron-text-field-run-callback btn btn-outline-secondary btn-xs" href="#" data-page="{{ paginator.previous_page|default:'' }}">
+	        <i class="fa fa-step-forward fa-lg fa-rotate-180"></i> previous
+	    </a>
+	    <a class="chiron-text-field-run-callback btn btn-outline-secondary btn-xs" href="#" data-page="{{ paginator.next_page|default:'' }}">
+       		next <i class="fa fa-step-forward fa-lg"></i>
+       	</a>
+       	<a class="chiron-text-field-run-callback btn btn-outline-secondary btn-xs" href="#" data-page="{{ paginator.last_page|default:'' }}">
+       		last <i class="fa fa-fast-forward fa-lg"></i>
+       	</a>
+	</div>
+
+</div>
+<hr>
+<ul class="list-group">
+	{% for entry in paginated_results %}
+		<li class="list-group-item d-flex justify-content-between align-items-center py-1 px-3">
+			{{ entry.unique_values }}
+			<div class="float-right">
+				<button type="button" class="chiron-text-field-add-value btn btn-xs btn-success" data-string="{{entry.unique_values}}">
+	    			<i class="fas fa-plus"></i>
+	    		</button>
+			</div>
+  		</li>
+	{% endfor %}
+</ul>

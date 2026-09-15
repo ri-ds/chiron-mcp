@@ -1,0 +1,33 @@
+{
+    "count": 5,
+    "paginated_results": [
+        {
+            "unique_values": "Danvers  Massachusetts  US"
+        },
+        {
+            "unique_values": "Marigot  Saint Andrew Parish  DM"
+        },
+        {
+            "unique_values": "Patras  Achaea  GR"
+        },
+        {
+            "unique_values": "Springfield  Massachusetts  US"
+        },
+        {
+            "unique_values": "Yarmouth  Massachusetts  US"
+        }
+    ],
+    "count_subjects_with_missing_values": 1,
+    "count_missing_values": 1,
+    "paginator": {
+        "first_index": 1,
+        "last_index": 5,
+        "current_page": 1,
+        "previous_page": null,
+        "next_page": null,
+        "last_page": 1,
+        "total_records": 5
+    },
+    "is_callback": true,
+    "permanent_id": "birth_place"
+}

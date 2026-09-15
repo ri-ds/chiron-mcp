@@ -1,0 +1,19 @@
+{
+    "count_subjects_with_missing_values": "<5",
+    "count_missing_values": "<5",
+    "values": [
+        {
+            "count": "<5",
+            "category": "M",
+            "uniquePatientCount": "<5"
+        },
+        {
+            "count": "<5",
+            "category": "F",
+            "uniquePatientCount": "<5"
+        }
+    ],
+    "max_count": "<5",
+    "is_callback": true,
+    "permanent_id": "gender"
+}

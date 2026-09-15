@@ -1,0 +1,8 @@
+<div id="chiron-view-mode-widget-container" style="top:{% if CHIRON_INFOBAR %}78px{% else %}48px{% endif %};">
+	<div class="custom-control custom-switch" style="text-align:right;padding-right:10px;">
+	    <input type="checkbox" class="custom-control-input chiron-change-data-view-mode" id="customSwitch1" 
+	    	{% if data_view_mode == 'active' %}checked="checked"{% endif %}>
+	    <label class="custom-control-label" for="customSwitch1">query active cohort only</label>
+	</div>
+</div>
+

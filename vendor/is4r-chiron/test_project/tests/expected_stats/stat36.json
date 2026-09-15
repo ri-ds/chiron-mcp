@@ -1,0 +1,29 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "values": [
+        {
+            "count": 1,
+            "category": "subject 1",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "subject 2",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "subject 3",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "subject 4",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 1,
+    "is_callback": true,
+    "permanent_id": "subject_field_ytknherwcm"
+}

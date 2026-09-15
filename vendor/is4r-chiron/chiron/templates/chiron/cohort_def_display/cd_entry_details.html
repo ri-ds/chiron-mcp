@@ -1,0 +1,43 @@
+<li class="list-group-item p-2 chiron-cd-entry {% if relationship_type == 'or' %}chiron-or-group-member{% else %}chiron-and-group-member{% endif %}" 
+		data-entry-id="{{entry.entry_id}}" id="chiron-cd-entry-{{entry.entry_id}}">
+    <div class="chiron-cd-entry-buttons">
+    	{% if not entry.can_not_edit %}
+	        <button class="btn btn-info btn-xs chiron-edit-cd-entry" data-entry-id="{{entry.entry_id}}"
+	                data-concept-id="{{entry.concept_id}}" data-prefilter-value="{{entry.prefilter_value|default:''}}">
+	            <i class="fas fa-edit"></i>
+	        </button>
+	    {% endif %}
+        <button class="btn btn-danger btn-xs chiron-delete-cd-entry" data-entry-id="{{entry.entry_id}}">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    {% if relationship_type == 'and' %}
+	    {% if not forloop.last %}
+	        {% include 'chiron/cohort_def_display/cd_entry_relationship_tool.html' %}
+	    {% endif %}
+	{% else %}
+		{% if not forloop.last %}
+			{% include 'chiron/cohort_def_display/cd_entry_relationship_tool.html' %}
+		{% endif %}
+		{% if forloop.last and not forloop.parentloop.last %}
+			{% with relationship_type='and' %}
+	        	{% include 'chiron/cohort_def_display/cd_entry_relationship_tool.html' %}
+	        {% endwith %}
+	    {% endif %}
+	{% endif %}
+    <div class="chiron-cd-entry-handle">
+        <i class="fas fa-arrows-alt fa-2x text-muted"></i>
+    </div>
+    {% if entry.has_errors %}
+    	<div class="text-danger">
+    		<strong>[ERROR]</strong> {{ entry.label|safe }}
+    	</div>
+    {% else %}
+    	{{ entry.label|truncatechars_html:150|safe }}
+    	{% if entry.label|length > 150 %}
+    		<a class="no-underline" href="#" data-toggle="modal" data-target="#chiron-entry-details-modal-{{entry.entry_id}}">
+				[more]
+			</a>
+    	{% endif %}
+    {% endif %}
+</li>

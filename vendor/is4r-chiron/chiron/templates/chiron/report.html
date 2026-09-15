@@ -1,0 +1,183 @@
+{% extends 'chiron/core/base.html' %}
+
+
+{% block content %}
+
+
+<script>
+
+var chironReport = {};
+
+chironReport.leftSidebarVisible = true;
+
+chironReport.setPreviewEvents = function() {
+	$('.chiron-load-report-as-active').click(function() {
+		var url = $(this).attr('data-url');
+		$.ajax({
+			url: url,
+			type: 'post',
+			data: {}
+		})
+		.done(function( json ) {
+			window.open("../workspace#results_view","_self")
+		})
+		.fail(function() {
+			alert('There was an error loading the report.');
+		});
+	});
+	
+}
+
+
+
+$(document).ready(function() {
+	$.ajax({
+		url: "{% url 'chiron:api:report_tools-detail' oReport.id %}preview/",
+		headers: {          
+			Accept: "text/plain; charset=utf-8" 
+		},
+		data: {
+		    output_type: "html",
+			page: {{ page }}, 
+			records_per_page: 100,
+			sort_field: "{{ sort_field|default:'' }}",
+			sort_direction: {{ sort_direction|default:1 }}
+		}
+	})
+	.done(function( response ) {
+		json = JSON.parse(response);
+		$('#chiron-report-preview').html(json.html);
+		//chiron.dataPreview.attachEvents();
+		genericModal.setOpenFormModalFunctionality();
+		chironReport.setPreviewEvents();
+	});
+
+	$("#chiron-hide-left-sidebar").click(function(e) {
+		e.preventDefault();
+		$(".report-left-sidebar").hide();
+		$("#report-left-sidebar-placeholder").show();
+		$(".report-main-content").css("left", 0);
+		$(".report-main-content").css("width", "100vw");
+		chironReport.leftSidebarVisible = false;
+	});
+
+	$("#chiron-show-left-sidebar").click(function(e) {
+		e.preventDefault();
+		$(".report-left-sidebar").show();
+		$("#report-left-sidebar-placeholder").hide();
+		$(".report-main-content").css("left", "300px");
+		$(".report-main-content").css("width", "calc(100vw - 300px)");
+		chironReport.leftSidebarVisible = true;
+	});
+	
+	
+	
+});
+
+
+</script>
+
+
+
+<div class="row">
+	<div class="report-left-sidebar {% if CHIRON_INFOBAR %}infobar-active{% endif %}">
+		<div class="px-1" style="text-align:right;">
+			<a href="#" id="chiron-hide-left-sidebar" style="color:black;">
+				<i class="fa fa-minus-square" aria-hidden="true"></i>
+			</a>
+		</div>
+		<div class="mx-2">
+			<a class="btn btn-block btn-info" href="{% url 'chiron:reports' %}">
+				<i class="fas fa-chevron-left"></i> Back to Report List
+			</a>
+		</div> 
+		<div class="mx-2 my-3">
+		 	<h5><strong>{{ oReport.name }}</strong></h5>
+		</div>
+		<div class="mx-2 my-3">
+			<strong>Author:</strong> {{ oReport.creator }}
+		</div>
+		<div class="mx-2 my-3">
+			<strong>Date Created:</strong> {{ oReport.created|date:'SHORT_DATE_FORMAT' }}
+		</div>
+		<hr>
+		<div class="mx-2 my-3">
+			<strong>Cohort Definition</strong>
+			<div style="font-size: 0.875rem;" class="mt-2">
+				{% include 'chiron/cohort_def_display/active_cohort_display.html' %}
+			</div>
+		</div>
+		{% if oReport.description %}
+			<hr>
+			<div class="mx-2 my-3">
+				<strong>Description</strong>
+				<div style="font-size: 0.875rem;" class="mt-2">
+					{{ oReport.description|linebreaks }}
+				</div>
+			</div>
+		{% endif %}
+			 	
+
+			 	
+
+			 	
+
+
+	</div>
+	<div class="col pt-2 report-main-content {% if CHIRON_INFOBAR %}infobar-active{% endif %}">
+
+		<div class="top-bar {% if CHIRON_INFOBAR %}infobar-active{% endif %}">
+			<div id="report-left-sidebar-placeholder" class="float-left top-bar-entry" style="display:none;">
+				<a href="#" id="chiron-show-left-sidebar" class="no-underline">
+					<span style="color:black;"><i class="fa fa-plus-square" aria-hidden="true"></i></span> REPORT DETAILS
+				</a>
+			</div>
+		</div>
+
+		<h1 class="text-primary">Report {{ oReport.id }}: {{ oReport.name }}</h1>
+		<hr>
+		
+		<div id="chiron-report-preview">
+			<h4>Loading <i class="fas fa-sync fa-spin"></i></h4>
+		</div>
+
+	</div>
+</div>
+
+
+
+<div class="modal" id="chiron-share-report-modal">
+	<div class="modal-dialog">
+		<div class="modal-content">
+		
+			<!-- Modal Header -->
+			<div class="modal-header">
+			  	<h4 class="modal-title">Share Report</h4>
+			  	<button type="button" class="close" data-dismiss="modal">&times;</button>
+			</div>
+			
+			<!-- Modal body -->
+			<div class="modal-body">
+				<p>
+					Copy the link below to share this report. Recipients must be associated with 
+					the project
+					"{{ oReport.project.name }}" in order to access this link.
+				</p>
+				<div class="well">
+					{{ full_url }}
+				</div>
+			</div>
+			
+			<!-- Modal footer -->
+			<div class="modal-footer">
+			  	<button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+			</div>
+		
+		</div>
+	</div>
+</div>
+
+
+		
+
+{% endblock %}

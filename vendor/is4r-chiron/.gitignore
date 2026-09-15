@@ -1,0 +1,48 @@
+# General Python
+*.pyc
+__pycache__/
+build/
+
+# Python Packaging
+chiron.egg-info/
+dist/
+
+# Mac files
+*.DS_Store
+# IDE Files
+.project
+.settings
+.pydevproject
+# VSCode
+.vscode/
+# JetBrains IDEs such as IntelliJ or PyCharm
+.idea/*
+*.iml
+.fleet/
+
+# SQLite
+*.sqlite3
+
+*.sqlite3.backup
+*.sqlite3.old
+
+# Demo website
+demo/synthea/
+demo/synthea_full/
+
+# Media Directory
+/media
+media/
+
+.coverage
+htmlcov/
+
+# Sphinx documentation
+_build/
+
+# custom settings for testing
+test_settings_custom.py
+performance_settings_custom.py
+settings_custom.py
+custom_settings.py
+venv/

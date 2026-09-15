@@ -1,0 +1,46 @@
+[
+        [
+            "1",
+            1,
+            [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5"
+            ],
+            [
+                "subject 1 record 1",
+                "subject 1 record 2",
+                "subject 1,2 record 5",
+                "subjects 1, 2 record 4",
+                "subjects 1,2,3,99 record 3"
+            ]
+        ],
+        [
+            "2",
+            2,
+            [
+                "3",
+                "4",
+                "5"
+            ],
+            [
+                "subject 1,2 record 5",
+                "subjects 1, 2 record 4",
+                "subjects 1,2,3,99 record 3"
+            ]
+        ],
+        [
+            "3",
+            3,
+            "3",
+            "subjects 1,2,3,99 record 3"
+        ],
+        [
+            "4",
+            null,
+            null,
+            null
+        ]
+    ]

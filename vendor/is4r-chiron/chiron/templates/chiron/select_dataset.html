@@ -1,0 +1,46 @@
+{% extends 'chiron/core/base.html' %}
+
+
+{% block content %}
+
+    <h1 class="pt-3">Select a Dataset</h1>
+    <hr>
+    <p>Select the dataset to use for this session.</p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Dataset</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for oDataset in qDataset %}
+                <tr>
+
+                    <td class="{% if oDataset.selectable %}text-primary{% else %}text-muted{% endif %} h4">
+                        <i class="fa fa-folder-open" aria-hidden="true"></i>
+                        {{ oDataset.display_name }}
+                    </td>
+                    <td>{{ oDataset.description|default:"" }}</td>
+                    <td>
+                        {% if oDataset.selectable %}
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="dataset_id" value="{{ oDataset.id }}">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa fa-folder-open" aria-hidden="true"></i>
+                                    Open this dataset
+                                </button>
+                            </form>
+                        {% else %}
+                            You don't have permission to access this dataset.
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}

@@ -1,0 +1,111 @@
+<form class="chiron-event-date-form">
+
+	{% include 'chiron/event_date_forms/_event_form_errors.html' %}
+	{% csrf_token %}
+	<input type="hidden" name="option_type" value="relative_to_other_event" />
+	<input type="hidden" name="entry_id" value="{{ criteria_set_entry_id }}" />
+	
+	{% if other_events %}
+		<div class="form-group">
+	  		<label for="chiron-select-destination-event">Select existing event you want to compare against:</label>
+			<select class="form-control" id="chiron-select-destination-event" name="target_entry_id">
+				<option value=''>Select event:</option>
+				{% for other_event in other_events %}
+					<option value="{{ other_event.criteria_set_entry_id }}"
+							{% if other_event.criteria_set_entry_id == existing_event_rule.target_entry_id %}selected{% endif %}>
+						{{ other_event.criteria_set_name }}
+					</option>
+			    {% endfor %}
+			</select>
+		</div> 
+	{% else %}
+		There are not any other events defined for this cohort.
+	{% endif %}
+	
+	{% for other_event in other_events %}
+		<div class="row chiron-relative-event-input-set" style="display:none;"
+				id="chiron-relative-event-input-set-{{ other_event.criteria_set_entry_id }}">
+				
+				
+			<div class="mx-4 my-2 form-group">
+				
+			</div>
+			<div class="col-sm-12 form-inline mb-4">	
+				<div class="form-group">
+					{%  if collection_event_type == 'interval' %}
+						This event's
+						<select class="form-control mx-1" name="reference_date_{{ other_event.criteria_set_entry_id }}">
+							<option value="start" {% if existing_event_rule.reference_date == 'start' %}selected{% endif %}>
+								start date
+							</option>
+							<option value="end" {% if existing_event_rule.reference_date == 'end' %}selected{% endif %}>
+								end date
+							</option>
+						</select>
+					{% else %}
+						This event
+					{% endif %}
+					must occur between:
+				</div>
+			</div>
+			<div class="col-sm-12 form-inline">	
+				<div class="form-group">	  
+				  <select class="form-control mx-1" name="range_start_days_from_target_{{ other_event.criteria_set_entry_id }}">
+				  	{% for date_option in date_options %}
+				  		<option value="{{date_option.0}}" 
+				  			{% if existing_event_rule.range_start_days_from_target|default:0 == date_option.0 %}selected{%endif%}>
+				  			{{ date_option.1 }}
+				  		</option>
+				  	{% endfor %}
+				  </select>
+				  {%  if other_event.event_type == 'interval' %}
+				  	  <select class="form-control mx-1" name="range_start_target_{{ other_event.criteria_set_entry_id }}">
+					  		<option value="start" {% if existing_event_rule.range_start_target == 'start' %}selected{% endif %}>
+					  			{{ other_event.criteria_set_name }} start date
+					  		</option>
+					  		<option value="end" {% if existing_event_rule.range_start_target == 'end' %}selected{% endif %}>
+					  			{{ other_event.criteria_set_name }} end date
+					  		</option>
+					  </select>
+				  {% else %}
+				  	{{ other_event.criteria_set_name }}
+				  {% endif %}
+				  and 
+				  <select class="form-control mx-1" name="range_end_days_from_target_{{ other_event.criteria_set_entry_id }}">
+				  		{% for date_option in date_options %}
+					  		<option value="{{date_option.0}}"
+					  				{% if existing_event_rule.range_end_days_from_target|default:0 == date_option.0 %}selected{%endif%}>
+					  			{{ date_option.1 }}
+					  		</option>
+					  	{% endfor %}
+				  </select>
+				  {%  if other_event.event_type == 'interval' %}
+				  	  <select class="form-control mx-1" name="range_end_target_{{ other_event.criteria_set_entry_id }}">
+					  		<option value="start" {% if existing_event_rule.range_end_target == 'start' %}selected{% endif %}>
+					  			{{ other_event.criteria_set_name }} start date
+					  		</option>
+					  		<option value="end" {% if existing_event_rule.range_end_target == 'end' %}selected{% endif %}>
+					  			{{ other_event.criteria_set_name }} end date
+					  		</option>
+					  </select>
+				  {% else %}
+				  	{{ other_event.criteria_set_name }}
+				  {% endif %}
+				</div>
+			</div>
+			
+		</div>
+	{% endfor %}
+	
+	{% if other_events %}
+		<div class="col-sm-6" style="padding-top:30px;">	
+			<button class="btn btn-sm btn-block btn-info">
+				<i class="fas fa-calendar-plus fa-lg"></i>&nbsp;&nbsp;
+				Add to cohort definition
+			</button>
+		</div>
+	{% endif %}
+	
+	
+	
+</form>

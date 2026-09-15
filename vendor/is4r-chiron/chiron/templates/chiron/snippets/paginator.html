@@ -1,0 +1,43 @@
+{% load humanize %}
+
+<ul class="pagination">
+    
+   	<li class="page-item {% if not paginator.has_previous %}disabled{% endif %}">
+       	<a class="page-link chiron-change-paginator-page no-underline" href="?page=1{{ paginator_get_arg_str }}" data-page="1">
+       		<i class="fa fa-fast-forward fa-lg fa-rotate-180"></i>
+       	</a>
+       </li>
+       <li class="page-item {% if not paginator.has_previous %}disabled{% endif %}">
+       	<a class="page-link chiron-change-paginator-page no-underline" href="?page={{ paginator.get_previous_page_number }}{{ paginator_get_arg_str }}" 
+       			data-page="{{ paginator.get_previous_page_number }}">
+       		<i class="fa fa-step-forward fa-lg fa-rotate-180"></i>
+       	</a>
+       </li>
+   
+
+   	<li class="page-item active">
+       	<a class="page-link" href="#">
+       		Records 
+       		<span class="fa-lg">{{ paginator.get_first_index_of_page|intcomma }}</span> 
+       		- 
+       		<span class="fa-lg">{{ paginator.get_last_index_of_page|intcomma }}</span>
+       		of 
+       		<span class="fa-lg">{{ paginator.collection_count|intcomma }}</span>
+       	</a>
+   	</li>
+
+   
+   	<li class="page-item {% if not paginator.has_next %}disabled{% endif %}">
+       	<a class="page-link chiron-change-paginator-page no-underline" href="?page={{ paginator.get_next_page_number }}{{ paginator_get_arg_str }}" 
+       			data-page="{{ paginator.get_next_page_number }}">
+       		<i class="fa fa-step-forward fa-lg"></i>
+       	</a>
+       </li>
+       <li class="page-item {% if not paginator.has_next %}disabled{% endif %}">
+       	<a class="page-link chiron-change-paginator-page no-underline" href="?page={{ paginator.get_max_page_number }}{{ paginator_get_arg_str }}" 
+       			data-page="{{ paginator.get_max_page_number }}">
+       		<i class="fa fa-fast-forward fa-lg"></i>
+       	</a>
+       </li>
+   
+</ul>

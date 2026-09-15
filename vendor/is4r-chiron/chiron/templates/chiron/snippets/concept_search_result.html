@@ -1,0 +1,25 @@
+<div style="text-align:center;">
+	<button class="btn btn-info btn-xs btn-block chiron-close-concept-search">
+		<i class="fas fa-chevron-left"></i>
+		Back to all fields
+	</button>
+</div>
+<div class="text-primary my-2 mx-1" style="font-size:1.3em;font-weight:bold;">
+	 <span id="chiron-search-results-count"></span> results for "{{search_string}}":
+</div>
+
+<div style="max-height:65vh;overflow:auto;">
+	<div class="list-group">
+		{% for concept in results %}
+			<a href="#" class="chiron-concept-option no-underline list-group-item list-group-item-action {% if not concept.include_in_cohort_def %}hide-in-query-view{% endif %} {% if not concept.include_in_table_def %}hide-in-results-view{% endif %}" 
+					data-concept-id="{{concept.permanent_id}}">
+				<small class="text-muted">
+					{% for category in concept.category_hierarchy %}
+						{{ category.name }} <i class="fas fa-chevron-right"></i>
+					{% endfor %}
+				</small>
+				<div style="font-size:1.1em;">{{ concept.name }}</div>
+			</a>
+		{% endfor %}
+	</div>
+</div>

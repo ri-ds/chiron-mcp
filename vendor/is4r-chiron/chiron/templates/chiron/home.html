@@ -1,0 +1,73 @@
+{% extends 'chiron/core/base.html' %}
+
+
+{% block content %}
+
+
+<script>
+
+$(document).ready(function() {
+
+	$('.chiron-open-project').click(function() {
+		window.location.href = encodeURIComponent($(this).attr('data-href'));
+	});
+
+
+
+});
+
+</script>
+
+
+<style>
+
+	.chiron-open-project {
+	  cursor: pointer;
+	}
+
+</style>
+
+
+
+<div class="row pt-4">
+
+    {% if active_dataset and qDataset.count > 1 %}
+
+        <div class="col-sm-12">
+            <h2>
+                Active Dataset
+            </h2>
+            <hr>
+            <h3>
+                <strong class="text-primary pr-5">
+                    <i class="fa fa-folder-open" aria-hidden="true"></i> {{ active_dataset.display_name }}
+                </strong>
+                <a href="{% url 'chiron:select_dataset' %}" class="btn btn-sm btn-info">
+                    <i class="fa fa-folder-open" aria-hidden="true"></i> select a different dataset
+                </a>
+            </h3>
+        </div>
+        <div class="col-sm-12">
+            <hr>
+        </div>
+
+    {% endif %}
+
+	<div class="col-sm-12">
+		{{ data_summary_string|safe }}
+	</div>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+{% endblock %}

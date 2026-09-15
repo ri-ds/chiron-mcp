@@ -51,6 +51,7 @@ def _discover_chiron_src() -> str:
 
     here = Path(__file__).resolve().parent.parent
     for candidate in (
+        here / "vendor" / "is4r-chiron",
         here.parent / "is4r-chiron-develop",
         here.parent / "is4r-chiron",
         here / "is4r-chiron-develop",

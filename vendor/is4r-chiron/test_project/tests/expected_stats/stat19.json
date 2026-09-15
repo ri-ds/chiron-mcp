@@ -1,0 +1,60 @@
+{
+    "count_subjects_with_missing_values": 2,
+    "count_missing_values": 4,
+    "stats": {
+        "count_non_null": 45,
+        "max": 129,
+        "min": 0.0,
+        "avg": 68.6,
+        "unique_patients": 5
+    },
+    "histogram_data": [
+        [
+            "[0 - 18)",
+            13
+        ],
+        [
+            "[18 - 36)",
+            0
+        ],
+        [
+            "[36 - 54)",
+            4
+        ],
+        [
+            "[54 - 72)",
+            11
+        ],
+        [
+            "[72 - 90)",
+            0
+        ],
+        [
+            "[90 - 108)",
+            0
+        ],
+        [
+            "[108 - 126)",
+            0
+        ],
+        [
+            "[126 - 144]",
+            17
+        ]
+    ],
+    "values": [
+        {
+            "count": 4,
+            "category": "no payer",
+            "uniquePatientCount": 2
+        },
+        {
+            "count": 1,
+            "category": "needs followup",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 4,
+    "is_callback": true,
+    "permanent_id": "payer_coverage_float_with_text"
+}

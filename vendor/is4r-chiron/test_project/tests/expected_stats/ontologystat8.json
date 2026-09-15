@@ -1,0 +1,57 @@
+{
+    "transformation_successful": true,
+    "cohort_def": [
+        {
+            "entry_type": "criteria_set",
+            "entry_id": "CNokzAVTzSKc",
+            "collection_id": "d2_patients",
+            "list": [
+                {
+                    "terms": [
+                        {
+                            "label": "Family history",
+                            "code": "Family_history",
+                            "leaf": 1
+                        }
+                    ],
+                    "entry_id": "6vxjl7Vh9U6y",
+                    "concept_id": "FYLER",
+                    "exclude_selected": false,
+                    "include_null_and_missing": false,
+                    "include_ontology_unknown": false
+                }
+            ]
+        }
+    ],
+    "entry_id": "6vxjl7Vh9U6y",
+    "extended_cohort_def": [
+        {
+            "entry_type": "criteria_set",
+            "entry_id": "CNokzAVTzSKc",
+            "collection_id": "d2_patients",
+            "alias": "",
+            "label": "D2_Patients Criteria",
+            "is_root_collection": true,
+            "collection_name": "D2_Patients",
+            "subcol_count_restriction": {},
+            "has_event_field": false,
+            "entries": [
+                {
+                    "entry_id": "6vxjl7Vh9U6y",
+                    "concept_id": "FYLER",
+                    "prefilter_value": null,
+                    "label": "Fyler = Family history and dependent terms",
+                    "abbreviated_label": "Fyler = Family history and dependent terms",
+                    "exclude_selected": false,
+                    "values": null
+                }
+            ]
+        }
+    ],
+    "warnings": [],
+    "errors": [],
+    "describe": "D2_Patients Criteria<br>- Fyler = Family history and dependent terms<br>",
+    "snapshot_id": 6,
+    "previous_snapshot_id": 5,
+    "next_snapshot_id": null
+}

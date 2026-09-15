@@ -1,0 +1,15 @@
+{% for row in data %}
+	<tr>
+		{% for value in row %}
+			<td>
+				{% if value.link %}
+					<a href="{{ value.link }}">
+						{{ value.value }}
+					</a>
+				{% else %}
+					{{ value }}
+				{% endif %}
+			</td>
+		{% endfor %}
+	</tr>
+{% endfor %}

@@ -1,0 +1,121 @@
+{% load chiron_tags %}
+
+<style>
+
+.chiron-concept-stat-error {
+	font-size: 1.5em;
+	text-align:center;
+}
+
+
+</style>
+
+<form method="post" class="chiron-cohort-def-form">
+
+	<div>
+			{% for category in concept.category_hierarchy %}
+		    	{{ category.name|title2 }} <i class="fas fa-chevron-right"></i>
+		    {% endfor %}
+		</div>
+	<div>
+
+		<div style="float:right;">
+			{% if user.is_staff %}
+				<a href="{% url 'admin:chiron_concept_change' concept_numeric_id %}" rel="noreferrer noopener" target="_blank"
+						class="btn btn-outline-secondary btn-lg">
+					<i class="fas fa-tools"></i>
+					Edit Concept
+				</a>
+			{% endif %}
+			{% if not concept.statistics.error %}
+				{% if concept.cohort_def_options.entry_id %}
+					<button class="btn btn-info btn-lg">
+						<i class="fas fa-edit"></i>
+						Edit cohort definition
+					</button>
+				{% else %}
+					<button class="btn btn-success btn-lg">
+						<i class="fas fa-user-plus"></i>
+						Add to cohort definition
+					</button>
+				{% endif %}
+			{% endif %}
+		</div>
+
+
+		<h1>
+			{{ concept.name|title2 }}
+		</h1>
+	</div>
+	{% if concept.description %}
+		<hr>
+		<div class="well">
+			{{ concept.description|safe }}
+		</div>
+	{% endif %}
+	{% if concept.has_phi and request.chironuser.access_level == request.chironuser.AccessLevel.PHI %}
+		<div class="alert alert-info">
+			<i class="fas fa-unlock-alt fa-lg"></i> This field may contain PHI.
+		</div>
+	{% endif %}
+	<hr>
+
+	<div id="chiron-concept-form-errors">
+	</div>
+
+
+
+	{% csrf_token %}
+	<input type="hidden" name="concept_id" value="{{concept.permanent_id}}" />
+	{% if concept.cohort_def_options.entry_id %}
+		<input type="hidden" name="entry_id" value="{{concept.cohort_def_options.entry_id}}" />
+	{% endif %}
+
+	{% if concept.concept_for_prefilter.cohort_def_options %}
+		<div class="well mb-3">
+			{% if concept.concept_for_prefilter.cohort_def_options.all_values %}
+				<div class="form-group">
+					<label for="chiron-prefilter-selector">
+						Select a <em>{{ concept.concept_for_prefilter.name }}</em>
+						{% if concept.prefilter_mode == "optional" %}(optional){% endif %}
+					</label>
+					<select class="form-control" id="chiron-prefilter-selector">
+						{% if concept.prefilter_mode == "optional" %}
+							<option value="">--- ALL ---</option>
+						{% else %}
+							<option value="">--- select ---</option>
+						{% endif %}
+						{% for val in concept.concept_for_prefilter.cohort_def_options.all_values %}
+							<option {% if val == concept.prefilter_value %}selected{% endif %}>{{ val }}</option>
+						{% endfor %}
+					</select>
+				</div>
+			{% else %}
+				<div class="form-group">
+					<label for="chiron-prefilter-text-input">
+						Enter a <em>{{ concept.concept_for_prefilter.name }}</em>
+						{% if concept.prefilter_mode == "optional" %}(optional){% endif %}
+					</label>
+					<div class="input-group">
+						<input type="text" class="form-control" id="chiron-prefilter-text-input" value="{{concept.prefilter_value}}" />
+						<div class="input-group-append">
+							<button class="btn btn-info" type="button" id="chiron-prefilter-lookup-btn"
+									data-concept-id="{{ concept.concept_for_prefilter.permanent_id }}">
+								Search
+							</button>
+						</div>
+					</div>
+
+				</div>
+				{% if concept.prefilter_value %}
+					<strong>SELECTED: <span class="text-info">{{ concept.prefilter_value }}</span></strong>
+				{% endif %}
+			{% endif %}
+		</div>
+	{% endif %}
+
+	{% if not concept.concept_for_prefilter or concept.prefilter_value or concept.prefilter_mode == "optional" %}
+		{{ form_body|safe }}
+	{% endif %}
+</form>
+<br><br>

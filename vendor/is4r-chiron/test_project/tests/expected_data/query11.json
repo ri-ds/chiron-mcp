@@ -1,0 +1,37 @@
+[
+        [
+            "034e9e3b-2def-4559-bb2a-7850888ae060",
+            "Danvers  Massachusetts  US",
+            "white",
+            null,
+            793946.01,
+            false
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "Springfield  Massachusetts  US",
+            "African American",
+            2606,
+            574111.9,
+            false
+        ],
+        [
+            "1d604da9-9a81-4ba9-80c2-de3375d59b40",
+            "Marigot  Saint Andrew Parish  DM",
+            null,
+            [
+                2500,
+                13348
+            ],
+            271227.08,
+            true
+        ],
+        [
+            "ggggg-patient-with-no-subcollections",
+            null,
+            null,
+            null,
+            null,
+            null
+        ]
+    ]

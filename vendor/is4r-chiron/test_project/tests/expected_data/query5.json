@@ -1,0 +1,52 @@
+[
+        [
+            "034e9e3b-2def-4559-bb2a-7850888ae060",
+            "Danvers  Massachusetts  US",
+            "white",
+            null,
+            793946.01,
+            false
+        ],
+        [
+            "1d604da9-9a81-4ba9-80c2-de3375d59b40",
+            "Marigot  Saint Andrew Parish  DM",
+            null,
+            [
+                2500,
+                13348
+            ],
+            271227.08,
+            true
+        ],
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "Yarmouth  Massachusetts  US",
+            "white",
+            8756,
+            935630.3,
+            true
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Patras  Achaea  GR",
+            [
+                "Asian",
+                "white"
+            ],
+            [
+                1441,
+                2000,
+                3772
+            ],
+            598763.07,
+            null
+        ],
+        [
+            "ggggg-patient-with-no-subcollections",
+            null,
+            null,
+            null,
+            null,
+            null
+        ]
+    ]

@@ -1,0 +1,97 @@
+l{% extends 'chiron/core/base.html' %}
+{% load chiron_tags %}
+
+
+{% block content %}
+
+
+<div class="py-3">
+	<div class="float-right py-2">
+		<form method="GET" action="{% url 'chiron:single_subject' %}">
+			<input type="hidden" name="collection_name" value="{{ oCollection.permanent_id }}">
+			<input type="hidden" name="concept" value="{{ lookup_concept }}">
+			<div class="input-group">
+				<input type="text" class="form-control" name="value" placeholder="{{ lookup_concept }}">
+				<div class="input-group-append">
+					<button class="btn btn-success" type="submit">
+						<i class="fa fa-search" aria-hidden="true"></i>
+					</button>
+				</div>
+			
+			</div>
+		</form>
+	</div>
+	<h1 class="text-dark">
+		All Data for <span class="text-primary">{{ lookup_concept }} = {{ lookup_value }}</span>
+	</h1>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+	<li class="nav-item">
+	 	<a class="nav-link" href="{% url 'chiron:single_subject_timeline' %}?concept={{ lookup_concept }}&value={{ lookup_value }}">
+			Timeline
+	 	</a>
+	</li>
+	{% for oCollectionLoop in qCollection %}
+		<li class="nav-item">
+		 	<a class="nav-link {% if oCollectionLoop == oCollection %}active{% endif %}" 
+		 			href="{% url 'chiron:single_subject' oCollectionLoop.permanent_id %}?concept={{ lookup_concept }}&value={{ lookup_value }}">
+		 		{% if oCollectionLoop.is_root_collection %}
+		 			{{ oCollectionLoop.name|title2 }} Data
+		 		{% else %}
+		 			{{ oCollectionLoop.get_name_plural|title2 }} [{{ oCollectionLoop.doc_count }}]
+		 		{% endif %}
+		 	</a>
+		</li>
+	{% endfor %}
+</ul>
+
+{% if paginator %}
+	{% include 'chiron/snippets/paginator.html' %}
+{% endif %}
+	
+{% if oCollection.is_root_collection %}
+	{% for category_name, value_list in data.items %}
+		<h2 class="text-primary mt-4">{{ category_name|title2 }}</h2>
+		<div class="row mx-2">
+			{% for key, value in value_list.items %}
+				<div class="col-sm-3" style="border:1px solid #dfd7ca">
+					<strong>{{ key|title2 }}</strong>
+				</div>
+				<div class="col-sm-3" style="border:1px solid #dfd7ca">
+					{{ value }}
+				</div>
+			{% endfor %}
+		</div>
+	{% endfor %}
+{% else %}
+	<div class="table-responsive">
+		<table class="table table-bordered table-striped table-sm">
+			<thead>
+				<tr>
+					{% for header in data.headers %}
+						<th style="min-width:200px;">{{ header }}</th>
+					{% endfor %}
+				</tr>
+			</thead>
+			<tbody>
+				{% for record in data.records %}
+					<tr>
+						{% for entry in record %}
+							<td>{{ entry }}</td>
+						{% endfor %}
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+{% endif %}
+
+
+
+
+<hr>
+
+<br><br><br><br>
+
+{% endblock %}

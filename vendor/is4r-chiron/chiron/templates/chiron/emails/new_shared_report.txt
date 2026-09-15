@@ -1,0 +1,9 @@
+Hello {{ user.get_full_name }},
+
+A query has been shared with you. Below are the details:
+
+Query Name: {{ user_content.name }}
+Shared By: {{ user_content.creator.user.get_full_name }}
+Description: {{ user_content.description }}
+
+Link to reports: {{ link }}

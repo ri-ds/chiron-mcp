@@ -1,0 +1,8 @@
+-r base.txt
+
+# requirements for formatting and testing
+pytest-cov>=7.0.0,<8
+pytest-django>=4.5.2,<5
+ruff>=0.14.5
+Faker
+

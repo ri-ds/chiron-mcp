@@ -1,0 +1,291 @@
+
+
+<style>
+
+	.chiron-date-rule {
+		position:relative;
+	}
+	
+	.chiron-date-rule-buttons {
+		position:absolute;
+		right:5px;
+		top:5px;
+	}
+
+	.chiron-cd-entry {
+		position:relative;
+	}
+
+	.chiron-criteria-set {
+		position:relative;
+	}
+	
+	.chiron-criteria-set-buttons {
+		position:absolute;
+		right:5px;
+		top:5px;
+		display: none;
+	}
+	
+	.chiron-date-rule-buttons {
+		position:absolute;
+		right:5px;
+		top:5px;
+		display: none;
+	}
+	
+	.chiron-cd-entry-buttons {
+		position:absolute;
+		right:5px;
+		top:5px;
+		display: none;
+	}
+	
+	.chiron-cd-entry-handle {
+		position:absolute;
+		left:5px;
+		top:5px;
+		display: none;
+	}
+	
+	
+	
+	.chiron-cd-entry-relationship-display {
+		position:absolute;
+		left:140px;
+		bottom:-9px;
+		z-index: 100;
+	}
+	
+
+	
+	.chiron-cd-entry-relationship-tool {
+		position:absolute;
+		left:100px;
+		bottom:-9px;
+		 z-index: 100;
+		 display: none;
+	}
+	
+	.badge-join-right {
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
+	}
+	
+	.badge-join-left {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
+	
+	.chiron-or-group-member {
+		border: 1px solid #3e3f3a !important;
+		border-left: 6px solid #3e3f3a !important;
+		background-color: #e6e6e6;
+	}
+	
+</style> 
+
+
+{% if interactive %}
+	<div class="card-header p-1 clearfix">
+	
+		<div class="float-right" style="margin-top:-4px;">
+			<button class="btn btn-xs btn-info chiron-cohort-def-undo-redo"
+					{% if not previous_snapshot_id %}disabled{% endif %}
+					data-snapshot-id="{{ previous_snapshot_id }}">
+				<i class="fas fa-undo"></i>
+			</button>
+			<button class="btn btn-xs btn-info chiron-cohort-def-undo-redo"
+					{% if not next_snapshot_id %}disabled{% endif %}
+					data-snapshot-id="{{ next_snapshot_id }}">
+				<i class="fas fa-redo"></i>
+			</button>
+			<button class="btn btn-xs btn-info chiron-cohort-def-clear"
+					{% if not cohort_def %}disabled{% endif %}>
+				<i class="fas fa-eraser"></i>
+				Clear
+			</button>
+		</div>
+		<strong class="text-primary">Cohort Criteria</strong>
+	</div>
+{% endif %}
+
+{% if extended_cohort_def %}
+	<div class="card-header p-1 clearfix">
+		<button type="button" class="btn btn-xs btn-block btn-info" data-toggle="modal" data-target="#describe-cohort-modal">
+			Describe Cohort
+		</button>
+	</div>
+{%  endif%}
+
+<div class="card_body" id="active-cohort-def-div" style="padding:5px 0 0 0;margin:5px 0 0 0;">
+
+	{% if warnings %}
+		<div class="alert alert-warning">
+			<strong>WARNING:</strong><br>
+			{% for msg in warnings %}
+				&middot; {{ msg }}<br>
+			{% endfor %}
+	
+		</div>
+	{% endif %}
+	
+	{% if errors %}
+		<div class="alert alert-danger">
+			<strong>ERROR:</strong><br>
+			{% for msg in errors %}
+				&middot; {{ msg }}<br>
+			{% endfor %}
+		</div>
+	{% endif %}
+	
+	
+	
+	
+	{% for criteria_set in extended_cohort_def %}
+		<div class="card border-secondary mb-3">
+
+			{% if not criteria_set.is_root_collection %}
+				<div class="card-header px-2 py-0 chiron-criteria-set-name" id="chiron-criteria-set-name-{{criteria_set.entry_id}}">
+					<strong style="font-size:0.8em;">
+						{{ criteria_set.criteria_set_name|upper }}
+						<span style="display:none;" class="chiron-criteria-set-name-buttons">
+						<a href="#" class="chiron-show-criteria-set-modal" data-tab="chiron-criteria-set-alias-tab"
+							   		data-entry-id="{{criteria_set.entry_id}}" data-collection-id="{{criteria_set.collection_id}}">
+							<i class="fas fa-edit"></i>
+						</a>
+						</span>
+					</strong>
+				</div>
+			{% endif %}
+		    <div class="card-header text-white {% if criteria_set.has_errors %}bg-danger{% else %}bg-secondary{% endif %} p-2 chiron-criteria-set" 
+		    		id="chiron-criteria-set-{{criteria_set.entry_id}}">
+		    	
+			    	<div class="chiron-criteria-set-buttons">
+			    		{% if not criteria_set.is_root_collection %}
+				    		<a href="#" class="chiron-show-criteria-set-modal btn btn-info btn-xs"
+							   		data-entry-id="{{criteria_set.entry_id}}" data-collection-id="{{criteria_set.collection_id}}">
+				    			<i class="fas fa-edit fa-lg text-light"></i>
+							</a>
+						{% endif %}
+			    		{% if criteria_set.has_event_field %}
+                            {% if not criteria_set.event_rule_label %}
+                                <a href="#" class="chiron-create-event-rule btn btn-info btn-xs" data-entry-id="{{criteria_set.entry_id}}"
+                                        data-csrf-token="{{ csrf_token }}">
+                                    <i class="fas fa-calendar-plus fa-lg text-light"></i>
+                                </a>
+                            {% endif %}
+						{% endif %}
+						<a href="#" class="chiron-delete-cd-container btn btn-danger btn-xs" data-entry-id="{{criteria_set.entry_id}}">
+			    			<i class="fas fa-times fa-lg text-light"></i>
+						</a>
+			    	</div>
+			    <div>
+		    		{{ criteria_set.label|safe }}
+		    	</div>
+		    </div>
+		    {% if criteria_set.event_rule_label %}
+		    	{% if criteria_set.event_rule_error %}
+		    		<div class="card-header text-white bg-danger p-2 chiron-date-rule" 
+							id="chiron-date-rule-{{criteria_set.entry_id}}">
+						<div class="chiron-date-rule-buttons">
+							{% if criteria_set.can_edit_event_rule %}
+								<button class="chiron-show-event-modal btn btn-xs btn-info"
+										data-collection-id="{{criteria_set.collection_id}}}" data-entry-id="{{criteria_set.entry_id}}">
+					    			<i class="fas fa-calendar-plus"></i>
+								</button>
+							{% endif %}
+							<button class="chiron-delete-event-rule btn btn-xs btn-primary" data-entry-id="{{criteria_set.entry_id}}">
+								<i class="fas fa-times"></i>
+							</button>
+				    	</div>
+				    	<span style="font-size:0.9em;">
+							<i class="fas fa-calendar fa-fw"></i>
+						</span>
+						{{ criteria_set.event_rule_label }}
+					</div>
+		    	
+		    	{% else %}
+					<div class="card-header text-white bg-primary p-2 chiron-date-rule" 
+							id="chiron-date-rule-{{criteria_set.entry_id}}">
+						<div class="chiron-date-rule-buttons">
+							<button class="chiron-show-event-modal btn btn-xs btn-info"
+									data-collection-id="{{criteria_set.collection_id}}" data-entry-id="{{criteria_set.entry_id}}">
+				    			<i class="fas fa-calendar-plus"></i>
+							</button>
+							<button class="chiron-delete-event-rule btn btn-xs btn-danger" data-entry-id="{{criteria_set.entry_id}}">
+								<i class="fas fa-times"></i>
+							</button>
+				    	</div>
+				    	<span style="font-size:0.9em;">
+							<i class="fas fa-calendar fa-fw"></i>
+						</span>
+						{{ criteria_set.event_rule_label }}
+					</div>
+				{% endif %}
+			{% endif %}
+			<ul class="list-group list-group-flush chiron-cd-entry-group {% if criteria_set.collection.is_root_collection %}chiron-cd-entry-group-root-collection{% else %}chiron-cd-entry-group-subcollection{% endif %}" 
+					data-entry-id="{{criteria_set.entry_id}}">
+		    	{% for collection_child_entry in criteria_set.entries %}
+		    		{% if collection_child_entry.entry_type == 'or_group' %}
+		    			{% for entry in collection_child_entry.entries  %}
+		    				{% with relationship_type='or' %}
+		    					{% include 'chiron/cohort_def_display/cd_entry_details.html' %}
+				        	{% endwith %}
+		    			{% endfor %}
+		    		{% else %}
+			    		{% with entry=collection_child_entry relationship_type='and' %}
+				        	{% include 'chiron/cohort_def_display/cd_entry_details.html' %}
+				        {% endwith %}
+				    {% endif %}
+		    	{% empty %}
+		    		<div class="m-2">
+		    			<em>All {{ criteria_set.collection.get_name_plural }}</em>
+		    		</div>
+		    	{% endfor %}
+		    </ul>
+		</div>
+		
+
+		
+		
+		
+		
+		
+	
+			
+	{% empty %}
+		<div class="my-4">
+			<em class="text-muted">No cohort criteria set</em>
+		</div>
+	{% endfor %}
+</div>
+
+
+
+{% if interactive %}
+	<div>
+		<div class="my-2" style="text-align:center;">
+			<button class="chiron-toggle-add-container-tool btn btn-xs btn-block btn-primary">
+				Add Criteria Set
+			</button>
+		</div>
+		<div id="chiron-add-container-tool" class="mb-4 invisible">
+	
+			{% for oCollection in qCollection %}
+				{% if not oCollection.is_root_collection %}
+					<button class="btn btn-xs btn-block btn-info chiron-add-container" data-collection-id={{oCollection.permanent_id}}>
+						<i class="fa fa-plus" aria-hidden="true"></i>
+						{{ oCollection.name }} Criteria 
+					</button>
+				{% endif %}
+			{% endfor %}
+	
+		</div>
+	</div>
+{% endif %}
+
+
+
+
+

@@ -1,0 +1,292 @@
+.top-bar {
+	position: static;
+	background-color: #8e8c84;
+	width: inherit;
+	margin-left: -15px;
+	min-height: 31px;
+	padding-left: 5px;
+	padding-right: 5px;
+	overflow: auto;
+	display: block;
+	padding-top: 0;
+	margin-top: 0;
+}
+
+.left-sidebar-frozen {
+	position: fixed;
+	overflow: auto;
+	left: 0;
+	width: 250px;
+	border-right: 1px black solid;
+	background-color: #e6e6e6;
+	padding: 0;
+	top: 48px;
+}
+
+.left-sidebar-frozen.infobar-active {
+	top: 78px;
+}
+
+.left-sidebar-body {
+	position: fixed;
+	overflow: auto;
+	left: 0;
+	width: 250px;
+	border-right: 1px black solid;
+	background-color: #e6e6e6;
+	padding: 0;
+	top: 108px;
+	min-height: calc(100vh - 168px);
+	max-height: calc(100vh - 168px);
+}
+
+.left-sidebar-body.infobar-active {
+	top: 138px;
+	min-height: calc(100vh - 198px);
+	max-height: calc(100vh - 198px);
+}
+
+.right-sidebar-frozen {
+	position: fixed;
+	overflow: auto;
+	right: 0;
+	top: 48px;
+	width: 350px;
+	border-left: 1px black solid;
+	background-color: #e6e6e6;
+	padding: 0;
+}
+
+.right-sidebar-frozen.infobar-active {
+	top: 78px;
+}
+
+.hidden {
+	display: none;
+}
+
+
+
+.right-sidebar-body {
+	position: fixed;
+	overflow: auto;
+	right: 0;
+	width: 350px;
+	border-left: 1px black solid;
+	background-color: #e6e6e6;
+	padding: 0;
+	top: 118px;
+	min-height: calc(100vh - 178px);
+	max-height: calc(100vh - 178px);
+}
+
+.right-sidebar-body.infobar-active {
+	top: 148px;
+	min-height: calc(100vh - 208px);
+	max-height: calc(100vh - 208px);
+}
+
+.main-content {
+	position: fixed;
+	overflow: auto;
+	left: 250px;
+	margin-bottom: 60px;
+	width: calc(100vw - 600px);
+	min-height: calc(100vh - 99px);
+	max-height: calc(100vh - 99px);
+	padding-top: 0;
+	margin-top: -8px;
+}
+
+.main-content.infobar-active {
+	min-height: calc(100vh - 129px);
+	max-height: calc(100vh - 129px);
+}
+
+.main-content.right-sidebar-hidden {
+	width: calc(100vw - 250px);
+}
+
+.footer {
+	position: fixed;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	border-top: solid 1px #b3b3b3;
+	margin: 0 auto;
+	padding-top: 3px;
+	background-color: white;
+	min-height: 60px;
+}
+
+#query-view-window {
+	max-width: 1300px;
+	margin: 0 auto;
+	padding-top: 10px;
+}
+
+#analysis-view-window {
+	padding-top: 10px;
+}
+
+
+
+#chiron-infobar {
+	color: white;
+	text-align: center;
+	height: 30px;
+	max-height: 30px;
+	font-size: 1.2em;
+	padding-top: 2px;
+	font-weight: bold;
+}
+
+.infobar-info {
+	background-color: #29abe0;
+}
+
+.infobar-warning {
+	background-color: #f47c3c;
+}
+
+.infobar-danger {
+	background-color: #d9534f;
+}
+
+#chiron-infobar a {
+	color: white;
+}
+
+
+
+.top-bar-entry {
+	display: block;
+	border-right: white 2px solid;
+	border-left: white 2px solid;
+	padding: 5px;
+	background-color: #e6e6e6;
+}
+
+.top-bar-entry a {
+	color: black;
+}
+
+.chiron-category-option {
+	display: block;
+	text-decoration: none;
+	background-color: #dadad7;
+	color: white;
+	padding: 6px;
+	margin-bottom: 3px;
+}
+
+.chiron-category-option:hover {
+	text-decoration: none;
+	color: white;
+}
+
+.chiron-concept-option {
+	display: block;
+	padding: 2px 2px 2px 20px;
+	background-color: #fff;
+}
+
+#chiron-concept-container-top>.chiron-concepts-list>.chiron-concept-option {
+	padding: 6px;
+}
+
+.chiron-category-option-level-0 {
+	background-color: black;
+	font-weight: bold;
+}
+
+.chiron-category-option-level-1 {
+	background-color: #6a6862;
+}
+
+.chiron-category-option-level-2 {
+	background-color: #a9a8a2;
+}
+
+.chiron-concepts-list {
+	max-height: 200px;
+	overflow: auto;
+	background-color: #f2f2f2;
+
+}
+
+.chiron-concepts-list a {
+	text-decoration: none;
+}
+
+.chiron-concepts-list a:hover {
+	text-decoration: none;
+}
+
+#cohort-def-concept-selector {
+	padding-bottom: 20px;
+	border-top: solid #8e8c84 5px;
+}
+
+.chiron-selected-concept-option {
+	background-color: #b9d98a !important;
+	cursor: default;
+}
+
+.btn-xs {
+	padding: 0.1rem 0.5rem;
+	font-size: 0.765625rem;
+	line-height: 1.5;
+	border-radius: 0.2rem;
+}
+
+
+#chiron-concept-search-input,
+#chiron-concept-search-btn {
+	border-radius: 0;
+}
+
+#chiron-concept-search-results {
+	display: none;
+}
+
+.disabled-section {
+	pointer-events: none;
+	opacity: 0.4;
+}
+
+
+.report-left-sidebar {
+	position: fixed;
+	overflow: auto;
+	left: 0;
+	top: 48px;
+	border-right: 1px black solid;
+	background-color: #e6e6e6;
+	padding: 0;
+	width: 300px;
+	min-height: calc(100vh - 108px);
+	max-height: calc(100vh - 108px);
+}
+
+.report-left-sidebar.infobar-active {
+	top: 78px;
+	min-height: calc(100vh - 138px);
+	max-height: calc(100vh - 138px);
+}
+
+.report-main-content {
+	position: fixed;
+	overflow: auto;
+	left: 300px;
+	width: calc(100vw - 300px);
+	min-height: calc(100vh - 99px);
+	max-height: calc(100vh - 99px);
+	padding-top: 0;
+	margin-top: -8px;
+}
+
+.report-main-content.infobar-active {
+	min-height: calc(100vh - 129px);
+	max-height: calc(100vh - 129px);
+}

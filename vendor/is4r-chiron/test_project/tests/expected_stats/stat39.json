@@ -1,0 +1,18 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "stats": {
+        "count_non_null": 4,
+        "unique_patients": 2,
+        "max": "2022-08-25",
+        "min": "2022-08-25"
+    },
+    "histogram_data": [
+        [
+            "Aug 2022",
+            4
+        ]
+    ],
+    "is_callback": true,
+    "permanent_id": "date_field_epuhzpuycl"
+}

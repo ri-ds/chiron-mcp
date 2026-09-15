@@ -1,0 +1,62 @@
+{% if results %}
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr class="text-light bg-primary">
+                <th></th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Project</th>
+                <th>Created By</th>
+                <th>Creation Date</th>
+                <th>Sharing</th>
+                <th>Description</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in results %}
+                <tr class="chiron-table-row-link"
+                        data-href="{% url 'chiron:report' report.id %}">
+                    <td>
+                        {% if report.starred %}
+                            <a href="#" class="chiron-report-flag"
+                                    data-add-or-remove="remove"
+                                    data-url="{% url 'chiron:api:reports-detail' report.id %}flag/">
+                                <i class="fas fa-lg fa-star" style="color:#e6b800"></i>
+                            </a>
+                        {% else %}
+                            <a href="#" class="chiron-report-flag"
+                                    data-add-or-remove="add"
+                                    data-url="{% url 'chiron:api:reports-detail' report.id %}flag/">
+                                <i class="far fa-lg fa-star text-muted"></i>
+                            </a>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ report.id }}</strong></td>
+                    <td>
+                        <strong>{{ report.name }}</strong>
+                    </td>
+                    <td><strong>{{ report.project_name }}</strong></td>
+                    <td>{{ report.creator_name }}</td>
+                    <td>{{ report.created|slice:":10" }}</td>
+                    <td>{{ report.sharing_description }}</td>
+                    <td>{{ report.description|linebreaks }}</td>
+                    <td style="text-align:right;font-size:1.2em;">
+                        {% if report.creator == request.chironuser.id %}
+                            <a href="#" class="badge badge-info open-form-modal stop-propagation"
+                                    data-url="{% url 'chiron:api:reports-detail' report.id %}edit_form/">
+                                <i class="fa fa-pencil" aria-hidden="true"></i>
+                            </a>
+                            <a href="#" class="badge badge-danger open-form-modal stop-propagation"
+                                    data-url="{% url 'chiron:api:reports-detail' report.id %}delete_form/">
+                                <i class="fa fa-times" aria-hidden="true"></i>
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <em>No reports were found.</em>
+{% endif %}

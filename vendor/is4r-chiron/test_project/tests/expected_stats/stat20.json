@@ -1,0 +1,54 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "stats": {
+        "count_non_null": 496,
+        "max": "2019-11-14",
+        "min": "2010-05-25",
+        "unique_patients": 5
+    },
+    "histogram_data": [
+        [
+            "2010",
+            35
+        ],
+        [
+            "2011",
+            68
+        ],
+        [
+            "2012",
+            90
+        ],
+        [
+            "2013",
+            25
+        ],
+        [
+            "2014",
+            54
+        ],
+        [
+            "2015",
+            52
+        ],
+        [
+            "2016",
+            16
+        ],
+        [
+            "2017",
+            53
+        ],
+        [
+            "2018",
+            79
+        ],
+        [
+            "2019",
+            24
+        ]
+    ],
+    "is_callback": true,
+    "permanent_id": "lab_date"
+}

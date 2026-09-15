@@ -1,0 +1,19 @@
+{
+    "count_subjects_with_missing_values": "<5",
+    "count_missing_values": 8,
+    "values": [
+        {
+            "count": 24,
+            "category": "True",
+            "uniquePatientCount": 5
+        },
+        {
+            "count": 22,
+            "category": "False",
+            "uniquePatientCount": "<5"
+        }
+    ],
+    "max_count": 24,
+    "is_callback": true,
+    "permanent_id": "subcol_simple_paid"
+}

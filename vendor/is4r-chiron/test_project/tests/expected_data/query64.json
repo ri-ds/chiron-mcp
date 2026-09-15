@@ -1,0 +1,51 @@
+[
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "Consultation for treatment",
+            "QALY",
+            "2010-05-05",
+            "2010-05-28"
+        ],
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "Consultation for treatment",
+            "QALY",
+            "2011-04-30",
+            "2011-05-28"
+        ],
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "Patient encounter procedure",
+            "QALY",
+            "2013-05-19",
+            "2013-05-28"
+        ],
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "Consultation for treatment",
+            "QALY",
+            "2014-04-23",
+            "2014-05-28"
+        ],
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "Patient encounter procedure",
+            "QALY",
+            "2017-05-21",
+            "2017-05-28"
+        ],
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "General examination of patient (procedure)",
+            "QALY",
+            "2018-06-03",
+            "2018-05-28"
+        ],
+        [
+            "10339b10-3cd1-4ac3-ac13-ec26728cb592",
+            "Encounter for check up (procedure)",
+            "QALY",
+            "2019-05-07",
+            "2019-06-02"
+        ]
+    ]

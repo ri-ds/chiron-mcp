@@ -1,0 +1,28 @@
+{
+    "count": 5,
+    "action_results": [
+        {
+            "label": "Ventricles and ventricular septum",
+            "code": "Ventricles_and_ventricular_septum",
+            "leaf": 1,
+            "count": 2,
+            "uniqueSubjectCount": 2
+        }
+    ],
+    "parents": [],
+    "term": {
+        "label": "Cardiovascular diagnoses",
+        "code": "Cardiovascular_diagnoses",
+        "leaf": 1,
+        "count": 2,
+        "uniqueSubjectCount": 2
+    },
+    "count_subjects_with_missing_values": 0,
+    "count_unknown_ontology_values": {
+        "count": 1,
+        "uniqueSubjectCount": 1
+    },
+    "count_missing_values": 0,
+    "is_callback": true,
+    "permanent_id": "FYLER"
+}

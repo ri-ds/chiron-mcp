@@ -1,0 +1,35 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "stats": {
+        "count_non_null": 24,
+        "max": 193.3,
+        "min": 162.5,
+        "avg": 176,
+        "unique_patients": 5
+    },
+    "histogram_data": [
+        [
+            "[162.5 - 168.7)",
+            9
+        ],
+        [
+            "[168.7 - 174.8)",
+            1
+        ],
+        [
+            "[174.8 - 181)",
+            5
+        ],
+        [
+            "[181 - 187.1)",
+            5
+        ],
+        [
+            "[187.1 - 193.3]",
+            4
+        ]
+    ],
+    "is_callback": true,
+    "permanent_id": "lab_value_number"
+}

@@ -1,0 +1,52 @@
+
+
+
+<form class="chiron-event-date-form">
+
+	{% include 'chiron/event_date_forms/_event_form_errors.html' %}
+	{% csrf_token %}
+	<input type="hidden" name="option_type" value="interval_date_range" />
+	<input type="hidden" name="entry_id" value="{{ criteria_set_entry_id }}" />
+	
+	
+	<div class="row">	
+		<div class="col-sm-4">
+			<div class="form-group">
+			  <label class="control-label">Min Start Date (inclusive)</label>
+			  <input class="form-control datepicker {% if 'date_start_min' in error_fields %}is-invalid{% endif %}"
+			  		placeholder="{{ stats.min|date:'SHORT_DATE_FORMAT' }}" type="text" name="date_start_min"
+			  	value="{{ date_start_min }}">
+			</div>
+		</div>	
+		<div class="col-sm-4">	
+			<div class="form-group">
+			  <label class="control-label">Max Start Date (inclusive)</label>
+			  <input class="form-control datepicker {% if 'date_start_max' in error_fields %}is-invalid{% endif %}"
+			  		placeholder="{{ stats.max|date:'SHORT_DATE_FORMAT' }}" type="text" name="date_start_max"
+			  	value="{{ date_start_max }}">
+			</div>
+		</div>
+		<div class="col-sm-4">
+			<div class="form-group">
+			  <label class="control-label">Min End Date (inclusive)</label>
+			  <input class="form-control datepicker {% if 'date_end_min' in error_fields %}is-invalid{% endif %}"
+			  		placeholder="{{ stats.min|date:'SHORT_DATE_FORMAT' }}" type="text" name="date_end_min"
+			  	value="{{ date_end_min }}">
+			</div>
+		</div>	
+		<div class="col-sm-4">	
+			<div class="form-group">
+			  <label class="control-label">Max End Date (inclusive)</label>
+			  <input class="form-control datepicker {% if 'date_end_max' in error_fields %}is-invalid{% endif %}"
+			  		placeholder="{{ stats.max|date:'SHORT_DATE_FORMAT' }}" type="text" name="date_end_max"
+			  	value="{{ date_end_max }}">
+			</div>
+		</div>
+		<div class="col-sm-4" style="padding-top:30px;">	
+			<button class="btn btn-sm btn-block btn-info" type="submit">
+				<i class="fas fa-calendar-plus fa-lg"></i>&nbsp;&nbsp;
+				Add to cohort definition
+			</button>
+		</div>
+	</div>
+</form>

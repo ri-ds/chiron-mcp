@@ -1,0 +1,80 @@
+{
+    "count": 5,
+    "action_results": [
+        {
+            "label": "Personal history",
+            "code": "Personal_history",
+            "leaf": 1
+        },
+        {
+            "label": "Family history",
+            "code": "Family_history",
+            "leaf": 1
+        },
+        {
+            "label": "Symptoms and physical findings",
+            "code": "Symptoms_and_physical_findings",
+            "leaf": 1
+        },
+        {
+            "label": "Laboratory findings",
+            "code": "Laboratory_findings",
+            "leaf": 1
+        },
+        {
+            "label": "Non-cardiovascular diagnoses",
+            "code": "Non-cardiovascular_diagnoses",
+            "leaf": 1
+        },
+        {
+            "label": "Cardiovascular diagnoses",
+            "code": "Cardiovascular_diagnoses",
+            "leaf": 1
+        },
+        {
+            "label": "Electrophysiology diagnosis codes",
+            "code": "Electrophysiology_diagnosis_codes",
+            "leaf": 1
+        },
+        {
+            "label": "Exercise test findings",
+            "code": "Exercise_test_findings",
+            "leaf": 1
+        },
+        {
+            "label": "Procedures",
+            "code": "Procedures",
+            "leaf": 1
+        },
+        {
+            "label": "Complications",
+            "code": "Complications",
+            "leaf": 1
+        },
+        {
+            "label": "Risk factors",
+            "code": "Risk_factors",
+            "leaf": 1
+        },
+        {
+            "label": "Administrative codes",
+            "code": "Administrative_codes",
+            "leaf": 1
+        },
+        {
+            "label": "Death",
+            "code": "0001",
+            "leaf": 1
+        }
+    ],
+    "parents": [],
+    "term": null,
+    "count_subjects_with_missing_values": 0,
+    "count_unknown_ontology_values": {
+        "count": 1,
+        "uniqueSubjectCount": 1
+    },
+    "count_missing_values": 0,
+    "is_callback": true,
+    "permanent_id": "FYLER"
+}

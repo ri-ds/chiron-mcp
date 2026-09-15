@@ -1,0 +1,79 @@
+{% extends 'chiron/core/base.html' %}
+{% load chiron_tags %}
+
+
+{% block content %}
+
+<h1 class="pt-3">Chiron User Report</h1>
+<hr>
+
+{% if not request.view_as_other_user_middleware_installed %}
+    <div class="well">
+        Chiron has the ability for an admin to temporarily switch to another user account for
+        testing, but it requires the ViewAsOtherUser middleware.
+        <br><br>
+        To install, see <code>chiron/middleware/view_as_other_user.py</code> for instructions.
+    </div>
+    <hr>
+{% endif %}
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>Name</th>
+			<th>Is Staff?</th>
+			<th>Django Account Created</th>
+			<th>Last Login</th>
+			<th>Site Access</th>
+			<th>Permission Groups</th>
+			<th>Created content</th>
+			<th>Actions</th>
+		</tr>
+	</thead>
+	<tbody>
+		{%  for oChironUser in qChironUser %}
+			<tr>
+				<td>
+					<a href="{% url 'admin:chiron_chironuser_change' oChironUser.id %}">
+						<strong>
+							{{ oChironUser.get_name }}
+						</strong>
+					</a>
+				</td>
+				<td>{{ oChironUser.user.is_staff }}</td>
+				<td>{{ oChironUser.user.date_joined|date:"SHORT_DATE_FORMAT" }}</td>
+				<td>{{ oChironUser.user.last_login|date:"SHORT_DATE_FORMAT" }}</td>
+				<td>
+					ACCESS LEVEL: {{ oChironUser.access_level }}<br>
+					{{ oChironUser.can_view_workspace|show_as_bool:'view workspace'|safe }}<br>
+					{{ oChironUser.can_view_subject_details|show_as_bool:'view subject details'|safe }}<br>
+				</td>
+				<td>{{ oChironUser.list_permission_groups }}</td>
+				<td>
+					{{ oChironUser.get_created_cohorts|length|zero_is_bad:'cohorts'|safe }}<br>
+					{{ oChironUser.get_created_tables|length|zero_is_bad:'reports'|safe }}<br>
+					{{ oChironUser.get_viewable_reports|length|zero_is_bad:'reports viewable'|safe }}<br>
+					
+				</td>
+				</td>
+				<td>
+                    {% if request.view_as_other_user_middleware_installed %}
+                        {% if not oChironUser.user == user %}
+                            <form method="post">
+                                {% csrf_token %}
+                                <input name="override_user_id" type="hidden" value="{{ oChironUser.user.id }}" />
+                                <button class="btn btn-sm btn-primary" type="submit">
+                                    View site as this user
+                                </button>
+                            </form>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">(ViewAsOtherUser middleware not installed)</span>
+                    {% endif %}
+				</td>
+			</tr>
+		{% endfor %}
+	</tbody>
+</table>
+
+{% endblock %}

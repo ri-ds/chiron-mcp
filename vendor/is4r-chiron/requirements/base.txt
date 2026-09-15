@@ -1,0 +1,11 @@
+django>=3.2.23,<6
+djangorestframework>=3.12.4,<4
+django-crispy-forms>=1.13.0,<2
+psycopg2-binary
+SQLAlchemy>=2
+requests>=2.26.0,<3
+pandas
+natsort
+python-dateutil>=2.8.0
+unicodecsv>=0.14.1
+

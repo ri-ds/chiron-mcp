@@ -1,0 +1,8 @@
+-r base.txt
+
+# requirements for building documentation
+sphinx
+sphinx-django-command
+sphinx-rtd-theme
+sphinxcontrib-mermaid
+myst-parser

@@ -1,0 +1,32 @@
+<form class="chiron-event-date-form">
+
+	{% include 'chiron/event_date_forms/_event_form_errors.html' %}
+	{% csrf_token %}
+	<input type="hidden" name="option_type" value="age_in_days_range" />
+	<input type="hidden" name="entry_id" value="{{ criteria_set_entry_id }}" />
+
+	<div class="row">
+		<div class="col-sm-4">
+			<div class="form-group">
+			  <label class="control-label">Min (inclusive)</label>
+			  <input class="form-control {% if 'age_min' in error_fields %}is-invalid{% endif %}"
+			  		placeholder="{{ stats.min }}" type="text" name="age_min"
+			  	value="{{ age_min }}">
+			</div>
+		</div>
+		<div class="col-sm-4">
+			<div class="form-group">
+			  <label class="control-label">Max (inclusive)</label>
+			  <input class="form-control {% if 'age_max' in error_fields %}is-invalid{% endif %}"
+			  		placeholder="{{ stats.max }}" type="text" name="age_max"
+			  	value="{{ age_max }}">
+			</div>
+		</div>
+		<div class="col-sm-4" style="padding-top:30px;">
+			<button class="btn btn-sm btn-block btn-info" type="submit">
+				<i class="fas fa-calendar-plus fa-lg"></i>&nbsp;&nbsp;
+				Add to cohort definition
+			</button>
+		</div>
+	</div>
+</form>

@@ -1,0 +1,19 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "values": [
+        {
+            "count": 3,
+            "category": "group1",
+            "uniquePatientCount": 3
+        },
+        {
+            "count": 2,
+            "category": "group2",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 3,
+    "is_callback": true,
+    "permanent_id": "m2m_category_field_hujffwhfmd"
+}

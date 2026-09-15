@@ -1,0 +1,19 @@
+<form class="chiron-event-date-form">
+
+	{% include 'chiron/event_date_forms/_event_form_errors.html' %}
+	{% csrf_token %}
+	<input type="hidden" name="option_type" value="no_restriction" />
+	<input type="hidden" name="entry_id" value="{{ criteria_set_entry_id }}" />
+	
+	<div class="row my-4">	
+		<div class="col-sm-8">
+			Create event with no restriction (allow any date/age)
+		</div>
+		<div class="col-sm-4">	
+			<button class="btn btn-sm btn-block btn-info" type="submit">
+				<i class="fas fa-calendar-plus fa-lg"></i>&nbsp;&nbsp;
+				Add to cohort definition
+			</button>
+		</div>
+	</div>
+</form>

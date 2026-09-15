@@ -1,0 +1,43 @@
+{% load humanize %}
+
+<ul class="pagination">
+    
+   	<li class="page-item {% if not paginator.previous_page %}disabled{% endif %}">
+       	<a class="page-link chiron-change-paginator-page no-underline" href="?page=1" data-page="1">
+       		<i class="fa fa-fast-forward fa-lg fa-rotate-180"></i>
+       	</a>
+       </li>
+       <li class="page-item {% if not paginator.previous_page %}disabled{% endif %}">
+       	<a class="page-link chiron-change-paginator-page no-underline" href="?page={{ paginator.previous_page }}" 
+       			data-page="{{ paginator.previous_page }}">
+       		<i class="fa fa-step-forward fa-lg fa-rotate-180"></i>
+       	</a>
+       </li>
+   
+
+   	<li class="page-item active">
+       	<a class="page-link" href="#">
+       		Records 
+       		<span class="fa-lg">{{ paginator.first_index|intcomma }}</span> 
+       		- 
+       		<span class="fa-lg">{{ paginator.last_index|intcomma }}</span>
+       		of 
+       		<span class="fa-lg">{{ paginator.total_records|intcomma }}</span>
+       	</a>
+   	</li>
+
+   
+   	<li class="page-item {% if not paginator.next_page %}disabled{% endif %}">
+       	<a class="page-link chiron-change-paginator-page no-underline" href="?page={{ paginator.next_page }}" 
+       			data-page="{{ paginator.next_page }}">
+       		<i class="fa fa-step-forward fa-lg"></i>
+       	</a>
+       </li>
+       <li class="page-item {% if not paginator.next_page %}disabled{% endif %}">
+       	<a class="page-link chiron-change-paginator-page no-underline" href="?page={{ paginator.last_page }}" 
+       			data-page="{{ paginator.last_page }}">
+       		<i class="fa fa-fast-forward fa-lg"></i>
+       	</a>
+       </li>
+   
+</ul>

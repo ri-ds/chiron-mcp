@@ -1,0 +1,651 @@
+[
+{
+    "model": "patient_models.subject",
+    "pk": 1,
+    "fields": {
+        "subject_field": "subject 1",
+        "current_age": 66.0,
+        "alt_subject_id1": "alt1",
+        "alt_subject_id2": 1,
+        "one_to_one": 1,
+        "many_to_many": [
+            1
+        ]
+    }
+},
+{
+    "model": "patient_models.subject",
+    "pk": 2,
+    "fields": {
+        "subject_field": "subject 2",
+        "current_age": 90.0,
+        "alt_subject_id1": "alt2",
+        "alt_subject_id2": 2,
+        "one_to_one": 2,
+        "many_to_many": [
+            2,
+            3,
+            4
+        ]
+    }
+},
+{
+    "model": "patient_models.subject",
+    "pk": 3,
+    "fields": {
+        "subject_field": "subject 3",
+        "current_age": 23.9,
+        "alt_subject_id1": "alt3",
+        "alt_subject_id2": 3,
+        "one_to_one": null,
+        "many_to_many": []
+    }
+},
+{
+    "model": "patient_models.subject",
+    "pk": 4,
+    "fields": {
+        "subject_field": "subject 4",
+        "current_age": null,
+        "alt_subject_id1": null,
+        "alt_subject_id2": null,
+        "one_to_one": null,
+        "many_to_many": []
+    }
+},
+{
+    "model": "patient_models.sample",
+    "pk": 1,
+    "fields": {
+        "subject": 1,
+        "sample_id": "sA sub:1"
+    }
+},
+{
+    "model": "patient_models.sample",
+    "pk": 2,
+    "fields": {
+        "subject": 2,
+        "sample_id": "sB sub:2"
+    }
+},
+{
+    "model": "patient_models.sample",
+    "pk": 3,
+    "fields": {
+        "subject": 2,
+        "sample_id": "sC sub:2"
+    }
+},
+{
+    "model": "patient_models.sample",
+    "pk": 4,
+    "fields": {
+        "subject": 2,
+        "sample_id": "sD sub:2"
+    }
+},
+{
+    "model": "patient_models.sample",
+    "pk": 5,
+    "fields": {
+        "subject": 3,
+        "sample_id": "sE sub:3"
+    }
+},
+{
+    "model": "patient_models.sample",
+    "pk": 6,
+    "fields": {
+        "subject": 3,
+        "sample_id": "sF sub:3"
+    }
+},
+{
+    "model": "patient_models.sample",
+    "pk": 7,
+    "fields": {
+        "subject": 3,
+        "sample_id": "sG sub:3"
+    }
+},
+{
+    "model": "patient_models.file",
+    "pk": 1,
+    "fields": {
+        "file_id": "1A",
+        "subjects": [
+            1
+        ],
+        "samples": [
+            1
+        ]
+    }
+},
+{
+    "model": "patient_models.file",
+    "pk": 2,
+    "fields": {
+        "file_id": "1A, 2B, 3E",
+        "subjects": [
+            1,
+            2,
+            3
+        ],
+        "samples": [
+            1,
+            2,
+            5
+        ]
+    }
+},
+{
+    "model": "patient_models.file",
+    "pk": 3,
+    "fields": {
+        "file_id": "2B, 2C, 3E, 3F",
+        "subjects": [
+            2,
+            3
+        ],
+        "samples": [
+            2,
+            3,
+            5,
+            6
+        ]
+    }
+},
+{
+    "model": "patient_models.file",
+    "pk": 4,
+    "fields": {
+        "file_id": "2B, 2C, 2D",
+        "subjects": [
+            2
+        ],
+        "samples": [
+            2,
+            3,
+            4
+        ]
+    }
+},
+{
+    "model": "patient_models.onetomanycollection",
+    "pk": 1,
+    "fields": {
+        "subject": 1,
+        "one_to_many_field": "s1 val1"
+    }
+},
+{
+    "model": "patient_models.onetomanycollection",
+    "pk": 2,
+    "fields": {
+        "subject": 2,
+        "one_to_many_field": "s2 val 1"
+    }
+},
+{
+    "model": "patient_models.onetomanycollection",
+    "pk": 3,
+    "fields": {
+        "subject": 2,
+        "one_to_many_field": "s2 val 2"
+    }
+},
+{
+    "model": "patient_models.onetomanycollection",
+    "pk": 4,
+    "fields": {
+        "subject": 2,
+        "one_to_many_field": "s2 val 3"
+    }
+},
+{
+    "model": "patient_models.secondonetomanycollection",
+    "pk": 1,
+    "fields": {
+        "parent": 1,
+        "second_one_to_many_field": "s1 val 1A"
+    }
+},
+{
+    "model": "patient_models.secondonetomanycollection",
+    "pk": 2,
+    "fields": {
+        "parent": 2,
+        "second_one_to_many_field": "s2 val 1A"
+    }
+},
+{
+    "model": "patient_models.secondonetomanycollection",
+    "pk": 3,
+    "fields": {
+        "parent": 2,
+        "second_one_to_many_field": "s2 val 1B"
+    }
+},
+{
+    "model": "patient_models.secondonetomanycollection",
+    "pk": 4,
+    "fields": {
+        "parent": 2,
+        "second_one_to_many_field": "s2 val 1C"
+    }
+},
+{
+    "model": "patient_models.secondonetomanycollection",
+    "pk": 5,
+    "fields": {
+        "parent": 3,
+        "second_one_to_many_field": "s2 val 2A"
+    }
+},
+{
+    "model": "patient_models.secondonetomanycollection",
+    "pk": 6,
+    "fields": {
+        "parent": 3,
+        "second_one_to_many_field": "s2 val 2B"
+    }
+},
+{
+    "model": "patient_models.secondonetomanycollection",
+    "pk": 7,
+    "fields": {
+        "parent": 3,
+        "second_one_to_many_field": "s2 val 2C"
+    }
+},
+{
+    "model": "patient_models.onetoonecollection",
+    "pk": 1,
+    "fields": {
+        "subject": 1,
+        "one_to_one_field": "s1 val 1"
+    }
+},
+{
+    "model": "patient_models.onetoonecollection",
+    "pk": 2,
+    "fields": {
+        "subject": 2,
+        "one_to_one_field": "s2 val 1"
+    }
+},
+{
+    "model": "patient_models.reverseonetoonecollection",
+    "pk": 1,
+    "fields": {
+        "reverse_one_to_one_field": "s1 val 1"
+    }
+},
+{
+    "model": "patient_models.reverseonetoonecollection",
+    "pk": 2,
+    "fields": {
+        "reverse_one_to_one_field": "s2 val 1"
+    }
+},
+{
+    "model": "patient_models.manytomanycollection",
+    "pk": 1,
+    "fields": {
+        "many_to_many_field": "s1 val 1",
+        "subject": [
+            1
+        ]
+    }
+},
+{
+    "model": "patient_models.manytomanycollection",
+    "pk": 2,
+    "fields": {
+        "many_to_many_field": "s2 val 1",
+        "subject": [
+            2
+        ]
+    }
+},
+{
+    "model": "patient_models.manytomanycollection",
+    "pk": 3,
+    "fields": {
+        "many_to_many_field": "s2 val 2",
+        "subject": [
+            2
+        ]
+    }
+},
+{
+    "model": "patient_models.manytomanycollection",
+    "pk": 4,
+    "fields": {
+        "many_to_many_field": "s2 val 3",
+        "subject": [
+            2
+        ]
+    }
+},
+{
+    "model": "patient_models.reversemanytomanycollection",
+    "pk": 1,
+    "fields": {
+        "reverse_many_to_many_field": "s1 val 1"
+    }
+},
+{
+    "model": "patient_models.reversemanytomanycollection",
+    "pk": 2,
+    "fields": {
+        "reverse_many_to_many_field": "s2 val 1"
+    }
+},
+{
+    "model": "patient_models.reversemanytomanycollection",
+    "pk": 3,
+    "fields": {
+        "reverse_many_to_many_field": "s2 val 2"
+    }
+},
+{
+    "model": "patient_models.reversemanytomanycollection",
+    "pk": 4,
+    "fields": {
+        "reverse_many_to_many_field": "s2 val 3"
+    }
+},
+{
+    "model": "patient_models.subcollection",
+    "pk": 1,
+    "fields": {
+        "subject": 1,
+        "category_field": "cat 1",
+        "text_field": "this is a longer text field",
+        "date_field": "2022-08-25",
+        "integer_field": 5,
+        "float_field": 5.5,
+        "boolean_field": true
+    }
+},
+{
+    "model": "patient_models.subcollection",
+    "pk": 2,
+    "fields": {
+        "subject": 2,
+        "category_field": "cat 2A",
+        "text_field": "this is a longer text field also",
+        "date_field": "2022-08-25",
+        "integer_field": 6,
+        "float_field": 6.6,
+        "boolean_field": true
+    }
+},
+{
+    "model": "patient_models.subcollection",
+    "pk": 3,
+    "fields": {
+        "subject": 2,
+        "category_field": "cat 2B",
+        "text_field": "this is a longer text field also also",
+        "date_field": "2022-08-25",
+        "integer_field": 7,
+        "float_field": 7.7,
+        "boolean_field": false
+    }
+},
+{
+    "model": "patient_models.subcollection",
+    "pk": 4,
+    "fields": {
+        "subject": 2,
+        "category_field": "cat 2C",
+        "text_field": "this is a longer text field also also also",
+        "date_field": "2022-08-25",
+        "integer_field": 8,
+        "float_field": 8.8,
+        "boolean_field": null
+    }
+},
+{
+    "model": "patient_models.manytomanysubcollection",
+    "pk": 1,
+    "fields": {
+        "m2m_id_field": "scA s1,2,3",
+        "m2m_category_field": "group1",
+        "m2m_sometimes_field": "val1",
+        "m2m_text_field": "textval1",
+        "m2m_date_field": "2021-05-12",
+        "m2m_integer_field": null,
+        "m2m_float_field": null,
+        "m2m_boolean_field": true,
+        "m2m_integer_category_field": "16",
+        "m2m_float_category_field": "fcat2",
+        "m2m_subjects": [
+            1,
+            2,
+            3
+        ]
+    }
+},
+{
+    "model": "patient_models.manytomanysubcollection",
+    "pk": 2,
+    "fields": {
+        "m2m_id_field": "scB s2",
+        "m2m_category_field": "group1",
+        "m2m_sometimes_field": null,
+        "m2m_text_field": "textval2",
+        "m2m_date_field": "2021-09-09",
+        "m2m_integer_field": 15,
+        "m2m_float_field": 9.13,
+        "m2m_boolean_field": false,
+        "m2m_integer_category_field": "16",
+        "m2m_float_category_field": "7.77",
+        "m2m_subjects": [
+            2
+        ]
+    }
+},
+{
+    "model": "patient_models.manytomanysubcollection",
+    "pk": 3,
+    "fields": {
+        "m2m_id_field": "scC s2",
+        "m2m_category_field": "group2",
+        "m2m_sometimes_field": "val2",
+        "m2m_text_field": "textval1",
+        "m2m_date_field": "2021-05-12",
+        "m2m_integer_field": 12,
+        "m2m_float_field": 5.55,
+        "m2m_boolean_field": true,
+        "m2m_integer_category_field": "19",
+        "m2m_float_category_field": "13.188",
+        "m2m_subjects": [
+            2
+        ]
+    }
+},
+{
+    "model": "patient_models.manytomanysubcollection",
+    "pk": 4,
+    "fields": {
+        "m2m_id_field": "scD s2,3",
+        "m2m_category_field": "group1",
+        "m2m_sometimes_field": null,
+        "m2m_text_field": "",
+        "m2m_date_field": null,
+        "m2m_integer_field": null,
+        "m2m_float_field": 5.55,
+        "m2m_boolean_field": false,
+        "m2m_integer_category_field": "cat1",
+        "m2m_float_category_field": "fcat1",
+        "m2m_subjects": [
+            2,
+            3
+        ]
+    }
+},
+{
+    "model": "patient_models.manytomanysubcollection",
+    "pk": 5,
+    "fields": {
+        "m2m_id_field": "scE s2",
+        "m2m_category_field": "group2",
+        "m2m_sometimes_field": null,
+        "m2m_text_field": "",
+        "m2m_date_field": null,
+        "m2m_integer_field": 12,
+        "m2m_float_field": null,
+        "m2m_boolean_field": false,
+        "m2m_integer_category_field": null,
+        "m2m_float_category_field": null,
+        "m2m_subjects": [
+            2
+        ]
+    }
+},
+{
+    "model": "patient_models.subcolcomplexsubjectmatching",
+    "pk": 1,
+    "fields": {
+        "alt_subject_id": "alt1",
+        "submatch_text_field": "record 1 on subject 1"
+    }
+},
+{
+    "model": "patient_models.subcolcomplexsubjectmatching",
+    "pk": 2,
+    "fields": {
+        "alt_subject_id": "alt1",
+        "submatch_text_field": "record 2 on subject 1"
+    }
+},
+{
+    "model": "patient_models.subcolcomplexsubjectmatching",
+    "pk": 3,
+    "fields": {
+        "alt_subject_id": "alt2",
+        "submatch_text_field": "record 1 on subject 2"
+    }
+},
+{
+    "model": "patient_models.subcolcomplexsubjectmatching",
+    "pk": 4,
+    "fields": {
+        "alt_subject_id": "alt0",
+        "submatch_text_field": "record1 with no subject match"
+    }
+},
+{
+    "model": "patient_models.subcolcomplexsubjectmatching",
+    "pk": 5,
+    "fields": {
+        "alt_subject_id": "alt0",
+        "submatch_text_field": "record2 with no subject match"
+    }
+},
+{
+    "model": "patient_models.subcolcomplexsubjectmatching",
+    "pk": 6,
+    "fields": {
+        "alt_subject_id": "alt1",
+        "submatch_text_field": "record 3 on subject 1"
+    }
+},
+{
+    "model": "patient_models.altsubject",
+    "pk": 1,
+    "fields": {
+        "alt_subject_id2": 1
+    }
+},
+{
+    "model": "patient_models.altsubject",
+    "pk": 2,
+    "fields": {
+        "alt_subject_id2": 2
+    }
+},
+{
+    "model": "patient_models.altsubject",
+    "pk": 3,
+    "fields": {
+        "alt_subject_id2": 3
+    }
+},
+{
+    "model": "patient_models.altsubject",
+    "pk": 4,
+    "fields": {
+        "alt_subject_id2": 99
+    }
+},
+{
+    "model": "patient_models.m2msubcolcomplexsubjectmatching",
+    "pk": 1,
+    "fields": {
+        "m2m_alt_text_field": "subject 1 record 1",
+        "m2m_alt_subjects": [
+            1
+        ]
+    }
+},
+{
+    "model": "patient_models.m2msubcolcomplexsubjectmatching",
+    "pk": 2,
+    "fields": {
+        "m2m_alt_text_field": "subject 1 record 2",
+        "m2m_alt_subjects": [
+            1
+        ]
+    }
+},
+{
+    "model": "patient_models.m2msubcolcomplexsubjectmatching",
+    "pk": 3,
+    "fields": {
+        "m2m_alt_text_field": "subjects 1,2,3,99 record 3",
+        "m2m_alt_subjects": [
+            1,
+            2,
+            3,
+            4
+        ]
+    }
+},
+{
+    "model": "patient_models.m2msubcolcomplexsubjectmatching",
+    "pk": 4,
+    "fields": {
+        "m2m_alt_text_field": "subjects 1, 2 record 4",
+        "m2m_alt_subjects": [
+            1,
+            2
+        ]
+    }
+},
+{
+    "model": "patient_models.m2msubcolcomplexsubjectmatching",
+    "pk": 5,
+    "fields": {
+        "m2m_alt_text_field": "subject 1,2 record 5",
+        "m2m_alt_subjects": [
+            1,
+            2
+        ]
+    }
+},
+{
+    "model": "patient_models.m2msubcolcomplexsubjectmatching",
+    "pk": 6,
+    "fields": {
+        "m2m_alt_text_field": "subject 99, record 6",
+        "m2m_alt_subjects": [
+            4
+        ]
+    }
+}
+]

@@ -1,0 +1,32 @@
+<form class="chiron-event-date-form">
+
+	{% include 'chiron/event_date_forms/_event_form_errors.html' %}
+	{% csrf_token %}
+	<input type="hidden" name="option_type" value="date_range" />
+	<input type="hidden" name="entry_id" value="{{ criteria_set_entry_id }}" />
+	
+	<div class="row">	
+		<div class="col-sm-4">
+			<div class="form-group">
+			  <label class="control-label">Min (inclusive)</label>
+			  <input class="form-control datepicker {% if 'date_end_max' in error_fields %}is-invalid{% endif %}" 
+			  		placeholder="{{ stats.min|date:'SHORT_DATE_FORMAT' }}" type="text" name="date_min"
+			  	value="{{ date_min }}">
+			</div>
+		</div>	
+		<div class="col-sm-4">	
+			<div class="form-group">
+			  <label class="control-label">Max (inclusive)</label>
+			  <input class="form-control datepicker {% if 'date_end_max' in error_fields %}is-invalid{% endif %}" 
+			  		placeholder="{{ stats.max|date:'SHORT_DATE_FORMAT' }}" type="text" name="date_max"
+			  	value="{{ date_max }}">
+			</div>
+		</div>
+		<div class="col-sm-4" style="padding-top:30px;">	
+			<button class="btn btn-sm btn-block btn-info" type="submit">
+				<i class="fas fa-calendar-plus fa-lg"></i>&nbsp;&nbsp;
+				Add to cohort definition
+			</button>
+		</div>
+	</div>
+</form>

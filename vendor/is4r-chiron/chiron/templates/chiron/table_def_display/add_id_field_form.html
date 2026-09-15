@@ -1,0 +1,24 @@
+{% load chiron_tags %}
+
+
+<table class="table" id="chiron-add-id-field-table">
+	{% for oCollection in qCollection %}
+		<tr>
+			<td>
+				<strong class="text-primary">{{ oCollection.event_id_field.name|title2 }}</strong>
+			</td>
+			<td>
+				<input type="checkbox" class="form-check-input" value="" 
+					data-concept-id="{{ oCollection.event_id_field.permanent_id }}"
+					data-aggregation-method="" />
+				<strong>stack</strong> - ensure unique row for each {{ oCollection.name }}<br>
+				<input type="checkbox" class="form-check-input" value=""
+					data-concept-id="{{ oCollection.event_id_field.permanent_id }}"
+					data-aggregation-method="count_distinct" />
+				<strong>count distinct</strong> - get {{ oCollection.name }} count for each row<br>
+			</td>
+		</tr>
+	{% endfor %}
+</table>
+
+

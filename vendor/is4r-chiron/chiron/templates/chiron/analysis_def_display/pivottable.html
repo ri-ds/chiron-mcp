@@ -1,0 +1,35 @@
+
+
+<style>
+
+    .dataframe, .dataframe th, .dataframe thead th, .dataframe td  {
+        border: 2px solid #8e8c84;
+    }
+
+    .dataframe thead th {
+        background-color: #d6dfe7;
+    }
+
+    .dataframe tbody th {
+        background-color: #d4eef9;
+    }
+
+    /*.dataframe > tbody > tr:last-child > td, .dataframe > tbody > tr:last-child > th {*/
+    /*    font-weight: bold;*/
+    /*    background-color: #e5e5e5;*/
+    /*}*/
+
+    /*.dataframe > tbody > tr > td:last-child, .dataframe > thead > tr > th:last-child {*/
+    /*    font-weight: bold;*/
+    /*    background-color: #e5e5e5;*/
+    /*}*/
+
+</style>
+{% if pivot_table_html %}
+    <div><strong>Subject Count:</strong></div>
+    {{ pivot_table_html|safe }}
+{% else %}
+<div style="width:100%;text-align:center;padding-top:50px;font-size:1.1em;" class="text-primary">
+    <em>Use the left sidebar to select a concept.</em>
+</div>
+{% endif %}

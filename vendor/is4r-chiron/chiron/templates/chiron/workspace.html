@@ -1,0 +1,167 @@
+{% extends 'chiron/core/base.html' %}
+{% load crispy_forms_tags %}
+
+
+{% block content %}
+
+<input type="hidden" id="access_level" value="{{ request.chironuser.access_level }}">
+
+<script>
+	{% include 'chiron/js/state.js' %}
+	{% include 'chiron/js/manager.js' %}
+	{% include 'chiron/js/components/main_navigator.js' %}
+	{% include 'chiron/js/components/active_cohort_display.js' %}
+	{% include 'chiron/js/components/patient_count_display.js' %}
+	{% include 'chiron/js/components/concept_selector.js' %}
+	{% include 'chiron/js/components/concept_view_mode_selector.js' %}
+	{% include 'chiron/js/components/concept_view_window.js' %}
+	{% include 'chiron/js/components/data_preview.js' %}
+	{% include 'chiron/js/components/data_analysis.js' %}
+	{% include 'chiron/js/components/event_modal.js' %}
+	{% include 'chiron/js/components/criteria_set_modal.js' %}
+	{% include 'chiron/js/components/table_def_sort_modal.js' %}
+	{% include 'chiron/js/components/add_id_field_modal.js' %}
+
+
+
+	$(document).ready(function () {
+
+
+
+		// $("#chiron-hide-right-sidebar").click(function() {
+		// 	$("#active-cohort-def-div").hide();
+		// 	$(".right-sidebar").animate(
+		// 		{
+		// 			'flex-basis':'80px'
+		// 			// to move it towards the right and, probably, off-screen.
+		// 		},1000,
+		// 		function(){
+		// 			//$(this).slideUp('fast');
+		// 			// once it's finished moving to the right, just
+		// 			// removes the the element from the display, you could use
+		// 			// `remove()` instead, or whatever.
+		// 		}
+		// 	);
+		// });
+
+
+
+		chiron.manager.initialize();
+
+	});
+
+</script>
+
+<div class="row">
+	<div class="col left-sidebar">
+		<div class="left-sidebar-frozen {% if CHIRON_INFOBAR %}infobar-active{% endif %}">
+			<div class="px-1" style="text-align:right;">
+				<a href="#" id="chiron-hide-left-sidebar" style="color:black;">
+					<i class="fa fa-minus-square" aria-hidden="true"></i>
+				</a>
+			</div>
+			<div class="input-group pb-2" style="margin-bottom:0;">
+				<input type="text" class="form-control" id="chiron-concept-search-input"
+					placeholder="search concepts...">
+				<div class="input-group-append">
+					<button class="btn btn-secondary" type="button" id="chiron-concept-search-btn">
+						<i class="fas fa-search"></i>
+					</button>
+				</div>
+			</div>
+		</div>
+		<div class="left-sidebar-body {% if CHIRON_INFOBAR %}infobar-active{% endif %}">
+			<div id="chiron-concept-search-results"></div>
+			<div id="cohort-def-concept-selector"></div>
+		</div>
+	</div>
+
+
+
+	<div
+		class="col pt-2 main-content {% if CHIRON_INFOBAR %}infobar-active{% endif %} {% if request.chironuser.access_level == request.chironuser.AccessLevel.AGG %}right-sidebar-hidden{% endif %}">
+
+		<div class="top-bar {% if CHIRON_INFOBAR %}infobar-active{% endif %}">
+			<div id="left-sidebar-placeholder" class="float-left top-bar-entry" style="display:none;">
+				<a href="#" id="chiron-show-left-sidebar" class="no-underline">
+					<span style="color:black;"><i class="fa fa-plus-square" aria-hidden="true"></i></span> CONCEPT LIST
+				</a>
+			</div>
+			<div id="right-sidebar-placeholder"
+				class="float-right top-bar-entry bg-success {% if request.chironuser.access_level == request.chironuser.AccessLevel.AGG %} hidden {% endif %}"
+				style="display:none;">
+				<a href="#" id="chiron-show-right-sidebar" class="no-underline">
+					<span style="color:black;"><i class="fa fa-plus-square" aria-hidden="true"></i></span>
+					COHORT: <strong class="active-cohort-count"></strong>
+				</a>
+			</div>
+			<div id="data-view-mode-widget-div" class="float-right top-bar-entry"></div>
+		</div>
+
+
+		{% if request.chironuser.access_level != request.chironuser.AccessLevel.AGG %}
+		<div id="query-view-window">
+
+			<div id="cohort-def-output" style="padding-top:0;">
+				<div style="width:100%;text-align:center;padding-top:100px;font-size:1.1em;" class="text-primary">
+					<em>Use the left sidebar to select a field.</em>
+				</div>
+			</div>
+		</div>
+		{% endif %}
+
+		<div id="results-view-window">
+			<div id="export_data_preview"></div>
+		</div>
+
+		<div id="analysis-view-window">
+			<h1>Aggregate Data View</h1>
+			<hr>
+			<div id="analysis_data_preview"></div>
+		</div>
+
+	</div>
+	<div
+		class="col right-sidebar px-0 {% if request.chironuser.access_level == request.chironuser.AccessLevel.AGG %} hidden {% endif %}">
+		<div class="right-sidebar-frozen {% if CHIRON_INFOBAR %}infobar-active{% endif %}">
+			<div class="px-1" style="text-align:left;">
+				<a href="#" id="chiron-hide-right-sidebar" style="color:black;">
+					<i class="fa fa-minus-square" aria-hidden="true"></i>
+				</a>
+			</div>
+			<div class="px-2">
+				<div class="card mb-2 border-primary" style="width: 100%">
+					<div class="card-body"
+						style="padding:0;border-top:1px solid #93c54b;border-bottom:1px solid #93c54b;">
+						<div class="text-light bg-success"
+							style="float:right;padding:8px;min-width:60px;text-align:center;font-size:1.2em;">
+							<strong class="active-cohort-count"></strong>
+						</div>
+						<div style="padding:10px;font-weight:bold;" class="text-success">Subject Count</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="px-2 right-sidebar-body {% if CHIRON_INFOBAR %}infobar-active{% endif %}">
+			<div class="card mb-3 border-primary" style="width: 100%">
+				<div class="card_body" id="active-cohort-def-div" style="padding:3px;margin:3px;">
+				</div>
+			</div>
+			<div>
+				{{ cohort_def }}
+			</div>
+		</div>
+	</div>
+</div>
+
+{% include 'chiron/cohort_def_display/event_date_modal.html' %}
+{% include 'chiron/cohort_def_display/criteria_set_modal.html' %}
+{% include 'chiron/table_def_display/edit_td_entry_modal.html' %}
+{% include 'chiron/table_def_display/td_resort_modal.html' %}
+{% include 'chiron/table_def_display/add_id_field_modal.html' %}
+
+
+
+
+{% endblock %}

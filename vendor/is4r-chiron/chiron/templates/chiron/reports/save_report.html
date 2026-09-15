@@ -1,0 +1,40 @@
+{% load crispy_forms_tags %}
+
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link active open-form-modal" href="#" id="chiron-show-create-report-tab"
+                data-url="{% url 'chiron:api:reports-list' %}create_form/">
+            Create a New Report
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#" id="chiron-show-edit-report-tab">
+            Overwrite an Existing Report
+        </a>
+    </li>
+</ul>
+
+<div id="chiron-edit-report-selector-div" class="mt-4" style="display:none;">
+    <div class="form-group">
+        <label for="chiron-select-report-to-overwrite">Select the report to overwrite</label>
+        <select class="form-control" id="chiron-select-report-to-overwrite">
+            <option value="">----select a report----</option>
+            {% for oReport in qReport %}
+                <option value="{{oReport.id}}" data-url="{% url 'chiron:api:reports-detail' oReport.id %}edit_form/">
+                    {{oReport.id}}: {{ oReport.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <hr>
+</div>
+
+<div id="chiron-report-form-div" class="mt-4">
+    <form method="post" class="ajax-form" data-url="{% url 'chiron:api:reports-list' %}create_form/">
+        {% csrf_token %}
+        {{ fForm|crispy }}
+        <button type="submit" class="btn btn-primary ajax-form-button">
+            <i class="fas fa-edit"></i> Save Report
+        </button>
+    </form>
+</div>

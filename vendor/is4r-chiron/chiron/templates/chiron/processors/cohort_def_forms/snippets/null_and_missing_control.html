@@ -1,0 +1,19 @@
+{% load humanize %}
+
+<div class="form-check">
+ 		<input class="form-check-input" type="checkbox"
+ 				value="include" id="cat-form-no-value-chk" name="include_null_and_missing"
+ 				{% if form_options.include_null_and_missing %}checked="checked"{% endif %}
+ 			>
+ 		<label class="form-check-label" for="cat-form-no-value-chk" >
+			null or missing values for field
+			<span id="chiron-null-and-missing-stats" style="display:none;">
+				{% if oConcept.collection.is_root_collection %}
+					(<span id="chiron-count-subjects-with-missing-values">{{ count_subjects_with_missing_values|intcomma }}</span> subjects)
+				{% else %}
+					(<span id="chiron-count-missing-values">{{ count_missing_values|intcomma }}</span> entries
+					for <span id="chiron-count-subjects-with-missing-values">{{ count_subjects_with_missing_values|intcomma }}</span> subjects)
+				{%endif %}
+			</span>
+ 		</label>
+</div>

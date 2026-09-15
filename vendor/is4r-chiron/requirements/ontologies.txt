@@ -1,0 +1,2 @@
+# optional extra requirements for ontologies-datatype
+git+https://github.com/cchmc/is4r-chiron-ontology.git@v1.0.0#egg=ontologies

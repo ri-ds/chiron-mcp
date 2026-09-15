@@ -1,0 +1,57 @@
+{
+    "transformation_successful": true,
+    "cohort_def": [
+        {
+            "entry_type": "criteria_set",
+            "entry_id": "pH1YiLcwHVfb",
+            "collection_id": "d2_patients",
+            "list": [
+                {
+                    "terms": [
+                        {
+                            "label": "Family history",
+                            "code": "Family_history",
+                            "leaf": 1
+                        }
+                    ],
+                    "entry_id": "BXOwiDoxmn6P",
+                    "concept_id": "FYLER",
+                    "exclude_selected": false,
+                    "include_null_and_missing": false,
+                    "include_ontology_unknown": true
+                }
+            ]
+        }
+    ],
+    "entry_id": "BXOwiDoxmn6P",
+    "extended_cohort_def": [
+        {
+            "entry_type": "criteria_set",
+            "entry_id": "pH1YiLcwHVfb",
+            "collection_id": "d2_patients",
+            "alias": "",
+            "label": "D2_Patients Criteria",
+            "is_root_collection": true,
+            "collection_name": "D2_Patients",
+            "subcol_count_restriction": {},
+            "has_event_field": false,
+            "entries": [
+                {
+                    "entry_id": "BXOwiDoxmn6P",
+                    "concept_id": "FYLER",
+                    "prefilter_value": null,
+                    "label": "Fyler in \"Family history\", \"[All unmatched codes]\" and dependent terms",
+                    "abbreviated_label": "Fyler in \"Family history\", \"[All unmatched codes]\" and dependent terms",
+                    "exclude_selected": false,
+                    "values": null
+                }
+            ]
+        }
+    ],
+    "warnings": [],
+    "errors": [],
+    "describe": "D2_Patients Criteria<br>- Fyler in \"Family history\", \"[All unmatched codes]\" and dependent terms<br>",
+    "snapshot_id": 4,
+    "previous_snapshot_id": 3,
+    "next_snapshot_id": null
+}

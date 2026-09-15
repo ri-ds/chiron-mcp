@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
-# Set up chiron-mcp. Needs python3.12+ and a Chiron checkout.
+# Set up chiron-mcp. Chiron itself is vendored at vendor/is4r-chiron, so this needs
+# nothing but python3.12+.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-CHIRON_SRC="${CHIRON_MCP_CHIRON_SRC:-$(cd .. && pwd)/is4r-chiron-develop}"
+CHIRON_SRC="${CHIRON_MCP_CHIRON_SRC:-$PWD/vendor/is4r-chiron}"
 if [ ! -f "$CHIRON_SRC/chiron/__init__.py" ]; then
   echo "Chiron source not found at: $CHIRON_SRC"
-  echo "Clone is4r-chiron next to this project, or set CHIRON_MCP_CHIRON_SRC."
+  echo "The bundled copy should be at vendor/is4r-chiron. If you removed it, set"
+  echo "CHIRON_MCP_CHIRON_SRC to your own is4r-chiron checkout."
   exit 1
 fi
 echo "Chiron source: $CHIRON_SRC"
 
 python3 -m venv .venv
 .venv/bin/pip install -q --upgrade pip
-echo "Installing dependencies (this takes a minute)..."
+echo "Installing dependencies (takes a minute)..."
 .venv/bin/pip install -q "mcp>=2.0.0" -r "$CHIRON_SRC/requirements/base.txt"
 
 echo
-echo "Done. Next:"
-echo "  1. cp .env.example .env   and set CHIRON_MCP_USERNAME"
-echo "  2. CHIRON_MCP_USERNAME=<user> .venv/bin/python scripts/harness.py"
-echo "     -> confirms Chiron imports, the databases resolve, and which datasets that user can reach"
-echo "  3. add the block from claude_mcp_config.example.json to your Claude config"
+echo "Done. For a working demo with data, run:"
+echo "  docker compose up -d"
+echo "  .venv/bin/python scripts/bootstrap_demo.py"
+echo
+echo "That builds a metadata database, runs a real ETL into Postgres, creates demo"
+echo "accounts, and prints the exact Claude config block to paste."

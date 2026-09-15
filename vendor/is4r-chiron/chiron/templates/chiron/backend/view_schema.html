@@ -1,0 +1,78 @@
+{% extends 'chiron/core/base.html' %}
+
+
+{% block content %}
+
+<script>
+    $(document).ready(function() {
+        $('#subcollection-selector .form-check-input').change(function() {
+            $('#subcollection-selector').submit();
+        });
+    });
+</script>
+
+<h1 class="pt-3">View Schema for dataset "{{ active_dataset }}"</h1>
+
+<hr>
+
+
+<div class="row">
+    <div class="col-sm-3">
+        <h4>Options</h4>
+        <hr>
+        <form id="subcollection-selector" method="post">
+            {% csrf_token %}
+            <div class="form-check">
+                <input {% if show_related %}checked{% endif %} type="checkbox" class="form-check-input" id="chk-show-related" name="show_related">
+                <label class="form-check-label" for="chk-show-related">Show related subcollections</label>
+            </div>
+        <h5 class="pt-3">Subcollections:</h5>
+            {% for oCollection in qCollection %}
+                <div class="form-check">
+                    <input {% if oCollection.permanent_id in selected_collections %}checked{% endif %} type="checkbox" class="form-check-input" id="collection-{{ oCollection.permanent_id }}" name="subcollections" value="{{ oCollection.permanent_id }}">
+                    <label class="form-check-label" for="collection-{{ oCollection.permanent_id }}">{{ oCollection.name }}</label>
+                </div>
+            {% endfor %}
+        </form>
+    </div>
+    <div class="col-sm-9">
+        {% if validation_errors %}
+            <div class="alert alert-danger">
+                <p>This dataset had the following validation errors:</p>
+                {% for msg in validation_errors %}
+                    <p>{{ msg }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <pre class="mermaid">{{ diagram }}</pre>
+        <div>
+            <hr>
+            <h4>The Subject Collection</h4>
+            <p>- For every dataset, there is one and only one subject collection as defined in <code>Dataset.root_collection</code>.
+
+            <h4>Subcollections</h4>
+            <p>- Every subcollection has a direct relationship to the subject collection. It will be 1:many
+            or many:may depending on the booean value of <code>Collection.many_to_many_with_subject</code>.
+            <p>- A collection can be turned into a "point event" by defining <code>Collection.event_date_field</code>.
+            This allows longitudinal queries on the collection.
+            <p>- A collection can be turned into an "interval event" by also defining <code>Collection.event_end_date_field</code>.
+            This allows longitudinal queries on the collection.
+
+            <h4>Subcollection Relationships</h4>
+            <p>- Subcollections will always have a many:many relationship to each other through the subject collection.
+            But if subcollections have a more precise direct relationship (ex. procedures are performed during a specific encounter)
+            it is good to define that relationship as well.
+            <p>- Those relationships are defined in the CollectionRelationship table.
+            You need a shared concept in both tables (like an encounter ID) to define the relationship.
+            The primary key concept can never be multivalue. If the foreign key concept is multivalue,
+            it will be a many:many relationship. If it isn't multivalue, it will be a 1:many relationship.
+        </div>
+    </div>
+    <script src="//cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
+
+</div>
+
+
+<br><br><br><br><br>
+
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'chiron/core/base.html' %}
+
+
+{% block content %}
+
+<h1 class="pt-3">ETL Logs</h1>
+
+<hr>
+
+{% with pObj=pLog %}
+	{% include 'chiron/core/pagination.html' %}
+{% endwith %}
+
+<table class="table table-striped">
+	<thead>
+		<tr>
+			<th>ID</th>
+			<th>Dataset Unique ID</th>
+			<th>Status</th>
+			<th>Start</th>
+			<th>End</th>
+			<th>Duration</th>
+			<th>Tracking Subject Matching</th>
+			<th>Using Staging</th>
+			<th>Abbreviated Load</th>
+			<th>Sources Loaded</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for oLog in pLog %}
+			<tr>
+				<td>
+					<a href="{% url 'chiron:etl_log_details' oLog.id %}">
+						{{ oLog.id }}
+					</a>
+				</td>
+                <td>{{ oLog.dataset }}</td>
+				<td>{{ oLog.status }}</td>
+				<td>
+					{{ oLog.start_date }}
+				</td>
+				<td>{{ oLog.end_date|default_if_none:'' }}</td>
+				<td>{{ oLog.get_duration|default_if_none:'' }}</td>
+                <td>{{ oLog.tracking_subject_matching }}</td>
+                <td>{{ oLog.using_staging }}</td>
+                <td>{{ oLog.abbreviated_load }}</td>
+				<td>{{ oLog.count_sources_loaded }}</td>
+			</tr>
+		{% endfor %}
+	</tbody>
+</table>
+
+<br><br><br><br><br>
+
+{% endblock %}

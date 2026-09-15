@@ -1,0 +1,185 @@
+{% load humanize %}
+
+
+<style>
+	.col-danger {
+		background-color: #f4cfce;
+	}
+	.col-info {
+		background-color: #c3e7f6;
+	}
+	.col-secondary {
+		background-color: #dfdfdd;
+	}
+</style>
+
+
+
+	<div class="row mt-2">
+		<div class="col-xl-6">
+			<h3 id="chiron-preview-metadata"></h3>
+		</div>
+		<div class="col-xl-6" style="text-align:right;">
+			<div class="btn-group" role="group" aria-label="Basic example">
+				<a href="#" class="open-form-modal btn btn-outline-primary" data-url="{% url 'chiron:api:reports-list' %}create_form/">
+	  				<i class="fas fa-save"></i> Save As Report
+	  			</a>
+  				<a href="{% url 'chiron:api:query_tools-list'  %}export_csv" class="btn btn-outline-primary">
+  					<i class="fas fa-download"></i> Export As CSV
+  				</a>
+  				
+			</div>
+		</div>
+	</div>
+	<hr>
+	<div class="row">
+		<div class="col-xl-8" id="chiron-preview-paginator-div">
+		</div>
+		<div class="col-xl-4 mb-3" style="text-align:right;">
+			<div class="btn-group" role="group" aria-label="Basic example">
+				<a href="#" title="undo" data-snapshot-id="{{ previous_snapshot_id }}"
+					class="btn btn-sm btn-outline-info chiron-table-def-undo-redo {% if not previous_snapshot_id %}disabled{% endif %}">
+	  				<i class="fas fa-undo"></i>
+	  			</a>
+	  			<a href="#" title="redo" data-snapshot-id="{{ next_snapshot_id }}"
+	  				class="btn btn-sm btn-outline-info chiron-table-def-undo-redo {% if not next_snapshot_id %}disabled{% endif %}">
+	  				<i class="fas fa-redo"></i>
+	  			</a>
+                {% comment %}
+                This feature needs to be thought through better.
+				<a href="#" title="add ID fields" class="btn btn-sm btn-outline-info chiron-get-add-id-field-form">
+	  				<i class="fas fa-fingerprint"></i> Add ID fields
+	  			</a>
+                {% endcomment %}
+				<a href="#" title="clear all fields" class="btn btn-sm btn-outline-info chiron-clear-all-td-fields">
+					<i class="fas fa-eraser"></i> Clear all fields
+				</a>
+	 				
+			</div>
+		</div>
+	</div>
+	
+	{% for warning in warnings %}
+		<div class="alert alert-warning">{{ warning }}</div>
+	{% endfor %}
+	{% for error in errors %}
+		<div class="alert alert-danger">{{ error }}</div>
+	{% endfor %}
+
+    {% if not extended_table_def.fields %}
+        <div style="width:100%;text-align:center;padding:100px 0; font-size:1.1em;" class="text-primary">
+			<em>Use the left sidebar to add fields to your table.</em>
+		</div>
+    {% else %}
+
+		<div id="chiron-preview-loading-screen" style="display:none;">
+			<em><i class="fa fa-spinner fa-pulse fa-lgx fa-fw"></i> loading data</em>
+		</div>
+
+		<table class="table table-bordered table-striped">
+			<colgroup>
+				{% for entry in extended_table_def.fields %}
+					{% if entry.has_errors %}
+						<col class="col-danger">
+					{% else %}
+						<col>
+					{% endif %}
+				{% endfor %}
+			</colgroup>
+			<thead>
+				<tr>
+					{% for entry in extended_table_def.fields %}
+
+							{% if entry.aggregate %}
+								<th class="py-0 bg-info text-light">
+									<div class="text-center" title="aggregated (multiple values are collapsed for each row by merging or removing values)">
+										AGGREGATED
+									</div>
+								</th>
+							{% else %}
+								<th class="py-0 bg-warning text-light">
+									<div class="text-center" title="stacked (multiple values will generate new rows)">
+										STACKED
+									</div>
+								</th>
+							{% endif %}
+						</th>
+					{% endfor %}
+				</tr>
+				<tr id="chiron-data-preview-header-row">
+					{% for entry in extended_table_def.fields %}
+						<th class="p-1 chiron-td-entry" id="chiron-td-entry-{{entry.entry_id}}" style="position: relative;min-width:150px;">
+							{% if entry.can_delete %}
+								<div style="position:absolute;top:4px;right:4px;display:none;" class="chiron-td-entry-buttons">
+									<button class="btn btn-xs btn-primary chiron-get-td-resort-form" title="change column order">
+										<i class="fas fa-arrows-alt-h"></i>
+									</button>
+									<button class="btn btn-xs btn-primary chiron-duplicate-td-entry" title="duplicate column"
+											data-entry-id="{{entry.entry_id}}" data-concept-id="{{entry.concept_id}}">
+										<i class="fas fa-clone"></i>
+									</button>
+									<button class="btn btn-xs btn-info chiron-get-td-entry-form" title="edit column"
+											data-entry-id="{{entry.entry_id}}" data-concept-id="{{entry.concept_id}}">
+										<i class="fas fa-edit"></i>
+									</button>
+									<button class="btn btn-xs btn-danger chiron-delete-td-entry"  title="delete column"
+											data-entry-id="{{entry.entry_id}}">
+										<i class="fas fa-times"></i>
+									</button>
+								</div>
+							{% endif %}
+							<div style="padding-right:30px;">
+								{% if entry.has_errors %}
+									<span class="text-danger">{{ entry.label }}</span>
+								{% else %}
+									<div>
+										<small class="text-muted">
+											{% for category in entry.categories %}
+												{{ category }} <i class="fas fa-chevron-right"></i>
+											{% endfor %}
+										</small>
+									</div>
+
+									<a href="#" style="text-decoration:none;font-size:1.1em;" class="chiron-change-sort-order" data-entry-id="{{entry.entry_id}}">
+										{% if entry.alias %}
+											<span class="badge badge-primary">alias</span>
+											<span class="text-primary">{{ entry.alias }}</span>
+										{% else %}
+											{{ entry.label }}
+										{% endif %}
+										{% if extended_table_def.sort.0.entry_id == entry.entry_id %}
+											{% if extended_table_def.sort.0.direction == 1 %}
+												<i class="fas fa-sort-down text-primary"></i>
+											{% else %}
+												<i class="fas fa-sort-up text-primary"></i>
+											{% endif %}
+										{% else %}
+											<i class="fas fa-sort"></i>
+										{% endif %}
+									</a>
+								{% endif %}
+							</div>
+
+						</th>
+					{% endfor %}
+				</tr>
+			</thead>
+			<tbody id="chiron-preview-tbody">
+			</tbody>
+		</table>
+
+    {% endif %}
+	
+
+    <div id="chiron-preview-show-report-btn" style="text-align:center;">
+		<button class="btn btn-outline-info btn-lg" type="button">
+			<i class="fas fa-table"></i> Show data
+		</button>
+	</div>
+	
+	{% if has_errors %}
+		<em class="text-danger">Can't show results preview until errors are resolved.</em>
+	{% endif %}
+
+
+

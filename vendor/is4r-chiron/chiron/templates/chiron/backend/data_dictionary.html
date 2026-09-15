@@ -1,0 +1,49 @@
+{% extends 'chiron/core/base.html' %}
+
+
+{% block content %}
+
+<div style="margin-bottom:100px;">
+    <h1>Data Dictionary ({{ qConcept.count }} Concepts)</h1>
+    <hr>
+    
+    <table class="table table-striped">
+        <thead>
+        	<tr>
+	            <th>Category</th>
+	            <th>Concept name</th>
+	            <th>Associated with</th>
+	            <th>Data type</th>
+	            <th>Contains PHI</th>
+	            <th>Description</th>
+	            <th>Count values</th>
+	            <th>Count distinct values</th>
+	            <th>Count distinct subjects</th>
+            </tr>
+        </thead>
+        <tbody>
+        	{% for oConcept in qConcept %}
+        		<tr>
+        			<td>
+        				{% for category in oConcept.get_category_hierarchy %}
+							{{ category.name }} >
+						{% endfor %}
+
+        			</td>
+        			<td>{{ oConcept.name }}</td>
+        			<td>{{ oConcept.collection.get_name_plural }}</td>
+        			<td>{{ oConcept.data_type }}</td>
+        			<td>{{ oConcept.has_phi }}</td>
+        			<td>{{ oConcept.description|default:"" }}</td>
+        			<td>{{ oConcept.summary_statistics.value_count }}</td>
+        			<td>{{ oConcept.summary_statistics.unique_value_count }}</td>
+        			<td>{{ oConcept.summary_statistics.unique_patient_count }}</td>
+        		</tr>
+        	{% endfor %}
+        </tbody>
+    </table>
+    
+    
+</div>
+
+{% endblock %}

@@ -1,0 +1,29 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "values": [
+        {
+            "count": 1,
+            "category": "cat 1",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "cat 2A",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "cat 2B",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "cat 2C",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 1,
+    "is_callback": true,
+    "permanent_id": "category_field_anfexdlodx"
+}

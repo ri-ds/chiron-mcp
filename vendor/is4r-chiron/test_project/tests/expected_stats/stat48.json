@@ -1,0 +1,23 @@
+{
+    "count_subjects_with_missing_values": 3,
+    "count_missing_values": 2,
+    "stats": {
+        "count_non_null": 3,
+        "max": 15,
+        "min": 12,
+        "avg": 13.0,
+        "unique_patients": 1
+    },
+    "histogram_data": [
+        [
+            "[12 - 14)",
+            2
+        ],
+        [
+            "[14 - 16]",
+            1
+        ]
+    ],
+    "is_callback": true,
+    "permanent_id": "m2m_integer_field_ylydosqhmv"
+}

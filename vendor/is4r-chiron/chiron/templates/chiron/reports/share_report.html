@@ -1,0 +1,31 @@
+{% load crispy_forms_tags %}
+
+<strong>
+	Report direct link:
+</strong>
+	{% if not oReport.public %}
+		(user must have the correct permissions to view)
+	{% endif %}
+
+<div class="well">
+	{{ full_url }}
+</div>
+<hr>
+
+{% if oReport.public %}
+	<p>This report is set to public and can be viewed by all users.</p>
+{% else %}
+	<p>
+		<strong>Report owner:</strong>
+		{{ oReport.creator }}
+	</p>
+
+	<form method="post" class="ajax-form" data-url="{% url 'chiron:api:reports-detail' oReport.id %}share_form/">
+		{% csrf_token %}
+	    {{ fForm|crispy }}
+	    <hr>
+	    <button type="submit" class="btn btn-primary ajax-form-button">
+	    	<i class="fas fa-edit"></i> Save Changes
+	    </button>
+	</form>
+{% endif %}

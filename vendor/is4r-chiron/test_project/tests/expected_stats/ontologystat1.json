@@ -1,0 +1,43 @@
+{
+    "count": 5,
+    "action_results": [
+        {
+            "label": "Family history",
+            "code": "Family_history",
+            "leaf": 1,
+            "count": 1,
+            "uniqueSubjectCount": 1
+        },
+        {
+            "label": "Cardiovascular diagnoses",
+            "code": "Cardiovascular_diagnoses",
+            "leaf": 1,
+            "count": 2,
+            "uniqueSubjectCount": 2
+        },
+        {
+            "label": "Procedures",
+            "code": "Procedures",
+            "leaf": 1,
+            "count": 1,
+            "uniqueSubjectCount": 1
+        },
+        {
+            "label": "Death",
+            "code": "0001",
+            "leaf": 1,
+            "count": 1,
+            "uniqueSubjectCount": 1
+        }
+    ],
+    "parents": [],
+    "term": null,
+    "count_subjects_with_missing_values": 0,
+    "count_unknown_ontology_values": {
+        "count": 1,
+        "uniqueSubjectCount": 1
+    },
+    "count_missing_values": 0,
+    "is_callback": true,
+    "permanent_id": "FYLER"
+}

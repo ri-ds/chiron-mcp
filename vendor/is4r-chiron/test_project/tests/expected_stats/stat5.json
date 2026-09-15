@@ -1,0 +1,29 @@
+{
+    "count_subjects_with_missing_values": 2,
+    "count_missing_values": 2,
+    "values": [
+        {
+            "count": 3,
+            "category": "white",
+            "uniquePatientCount": 3
+        },
+        {
+            "count": 2,
+            "category": "African American",
+            "uniquePatientCount": 2
+        },
+        {
+            "count": 1,
+            "category": "Asian",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "multiracial",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 3,
+    "is_callback": true,
+    "permanent_id": "race_2"
+}

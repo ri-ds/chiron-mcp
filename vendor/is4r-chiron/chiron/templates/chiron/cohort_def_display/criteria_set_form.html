@@ -1,0 +1,92 @@
+
+
+<!-- Tabs -->
+<ul class="nav nav-pills mb-4">
+
+	<li class="nav-item">
+		<a class="nav-link active" data-toggle="pill"
+				href="#chiron-criteria-set-count">
+			Count Rule
+		</a>
+	</li>
+	<li class="nav-item">
+		<a class="nav-link" data-toggle="pill" id="chiron-criteria-set-alias-tab"
+				href="#chiron-criteria-set-alias">
+			Alias
+		</a>
+	</li>
+
+</ul>
+
+<!-- Tab panes -->
+
+<div class="tab-content" style="margin: 50px 0;">
+	<div class="tab-pane container active" id="chiron-criteria-set-count">
+		{% if count_rule.allowed %}
+			<form class="chiron-criteria-set-count-form">
+				{% csrf_token %}
+				<input type="hidden" name="entry_id" value="{{ criteria_set_entry_id }}" />
+				<div class="row">
+					<div class="col-sm-12 form-inline">
+						<div class="form-group">
+							Subject has
+							<select class="form-control mx-1" name="rule_operator">
+								<option value="at least" {% if count_rule.type == "at least" %}selected{% endif %}>
+									at least
+								</option>
+								<option value="at most" {% if count_rule.type == "at most" %}selected{% endif %}>
+									at most
+								</option>
+								<option value="exactly" {% if count_rule.type == "exactly" %}selected{% endif %}>
+									exactly
+								</option>
+							</select>
+							<input type="number" class="form-control mx-1" name="rule_count" value="{{ count_rule.value }}" />
+							matching {{ get_name_plural }}
+						</div>
+					</div>
+				</div>
+
+				<div class="pt-4">
+					<button class="btn btn-sm btn-info">
+						<i class="fas fa-plus fa-lg"></i>&nbsp;&nbsp;
+						Add to cohort definition
+					</button>
+				</div>
+			</form>
+		{% else %}
+			<div class="text-danger">{{ count_rule.disallowed_reason }}</div>
+		{% endif %}
+	</div>
+
+	<div class="tab-pane container fade" id="chiron-criteria-set-alias">
+		<form class="chiron-criteria-set-alias-form">
+			{% csrf_token %}
+			<input type="hidden" name="entry_id" value="{{ criteria_set_entry_id }}" />
+
+			<div class="form-group">
+  				<label>Set a custom name for this criteria set:</label>
+  				<input type="text" name="alias" class="form-control" value="{{alias_rule.alias|default:''}}" />
+				<div class="text-muted">
+					Set to blank to use the default criteria set name
+				</div>
+			</div>
+
+
+
+			<div class="pt-4">
+				<button class="btn btn-sm btn-info">
+					<i class="fas fa-edit fa-lg"></i>&nbsp;&nbsp;
+					Set new alias
+				</button>
+			</div>
+		</form>
+	</div>
+
+</div>
+
+
+
+
+
+

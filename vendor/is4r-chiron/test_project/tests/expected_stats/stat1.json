@@ -1,0 +1,24 @@
+{
+    "count_subjects_with_missing_values": 1,
+    "count_missing_values": 1,
+    "values": [
+        {
+            "count": 1,
+            "category": "African American",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "multiracial",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "white",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 1,
+    "is_callback": true,
+    "permanent_id": "permission_test_race"
+}

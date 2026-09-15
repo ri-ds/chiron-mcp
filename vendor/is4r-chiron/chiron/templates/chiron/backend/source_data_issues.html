@@ -1,0 +1,72 @@
+{% extends 'chiron/core/base.html' %}
+{% load humanize %}
+
+{% block content %}
+
+    <nav aria-label="breadcrumb" class="pt-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'chiron:etl_logs' %}">ETL Logs</a></li>
+            <li class="breadcrumb-item active" aria-current="page"><a href="{% url 'chiron:etl_log_details' oLog.id %}">Log ID {{ oLog.id }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Source {{ oSourceLog.source }}</li>
+        </ol>
+    </nav>
+
+    <h1>Log Details for Source {{ oSourceLog.source }} on Log ID {{ oLog.id }} </h1>
+
+    <hr>
+
+    <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" data-bs-toggle="tab" href="{% url 'chiron:source_data_issues' oSourceLog.id %}" aria-selected="true" role="tab">
+                Data Issues
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-bs-toggle="tab" href="{% url 'chiron:source_record_subject_matching' oSourceLog.id %}" aria-selected="false" tabindex="-1" role="tab">
+                Record Subject Matching
+            </a>
+        </li>
+    </ul>
+
+    <div class="alert alert-info">
+        This is a list of all the data-related issues that were handled during the data load for
+        the concepts in this source.
+    </div>
+
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Concept Permanent ID</th>
+                <th>Issue</th>
+                <th>Occurrence Count</th>
+                <th>Examples (input value/type => stored value/type)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for oConceptIssue in oSourceLog.conceptissueetllog_set.all %}
+                <tr>
+                    <td>{{ oConceptIssue.concept_id }}</td>
+                    <td>{{ oConceptIssue.issue }}</td>
+                    <td>{{ oConceptIssue.count }}</td>
+                    <td>
+                        {% for oExample in oConceptIssue.conceptissueexampleetllog_set.all %}
+                            {{ oExample.input_value }}
+                            <span class="text-muted">({{ oExample.input_datatype }})</span>
+                            =>
+                            {{ oExample.stored_value }}
+                            <span class="text-muted">({{ oExample.stored_datatype }})</span>
+                            <br>
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+
+
+
+        <br><br><br><br><br><br>
+
+{% endblock %}

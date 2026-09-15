@@ -1,0 +1,48 @@
+{
+    "count": 54,
+    "paginated_results": [
+        {
+            "unique_values": "03a1b666-eda5-44e9-b263-18e6e533ffce"
+        },
+        {
+            "unique_values": "046399ee-09e9-41ec-b74e-12ca57252f7c"
+        },
+        {
+            "unique_values": "04f69a96-6f77-4ca6-95f5-b7a45bb9e476"
+        },
+        {
+            "unique_values": "080cf288-b7e8-4095-9b67-9e0ecb720197"
+        },
+        {
+            "unique_values": "12a8ece0-878e-4ef8-94fa-f47d930176ba"
+        },
+        {
+            "unique_values": "16300c56-a035-4126-a656-68c093da6dfc"
+        },
+        {
+            "unique_values": "1923c698-accd-4d70-ba09-e1938f6e96d1"
+        },
+        {
+            "unique_values": "19e04f6c-8a80-4901-aa20-54ec7da8cced"
+        },
+        {
+            "unique_values": "1b3d7c95-f4d3-4dfb-83de-8773f5ce01f7"
+        },
+        {
+            "unique_values": "1e0d6b0e-1711-4a25-99f9-b1c700c9b260"
+        }
+    ],
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "paginator": {
+        "first_index": 1,
+        "last_index": 10,
+        "current_page": 1,
+        "previous_page": null,
+        "next_page": 2,
+        "last_page": 6,
+        "total_records": 54
+    },
+    "is_callback": true,
+    "permanent_id": "subcol_simple_encounter_id"
+}

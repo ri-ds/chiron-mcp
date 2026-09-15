@@ -1,0 +1,34 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "values": [
+        {
+            "count": 1,
+            "category": "scA s1,2,3",
+            "uniquePatientCount": 3
+        },
+        {
+            "count": 1,
+            "category": "scB s2",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "scC s2",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "scD s2,3",
+            "uniquePatientCount": 2
+        },
+        {
+            "count": 1,
+            "category": "scE s2",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 1,
+    "is_callback": true,
+    "permanent_id": "m2m_id_field_vzysttcvef"
+}

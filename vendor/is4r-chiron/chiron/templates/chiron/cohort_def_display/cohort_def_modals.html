@@ -1,0 +1,20 @@
+{% comment %}
+If the length of an entry is more than 100 characters, it will be truncated and we must create a modal for "view more"
+{% endcomment %}
+
+
+{% for criteria_set in extended_cohort_def %}
+    {% for collection_child_entry in criteria_set.entries %}
+        {% if collection_child_entry.entry_type == 'or_group' %}
+            {% for entry in collection_child_entry.entries  %}
+                {% with relationship_type='or' %}
+                    {% include 'chiron/cohort_def_display/cohort_def_entry_details_modal.html' %}
+                {% endwith %}
+            {% endfor %}
+        {% else %}
+            {% with entry=collection_child_entry relationship_type='and' %}
+                {% include 'chiron/cohort_def_display/cohort_def_entry_details_modal.html' %}
+            {% endwith %}
+        {% endif %}
+    {% endfor %}
+{% endfor %}

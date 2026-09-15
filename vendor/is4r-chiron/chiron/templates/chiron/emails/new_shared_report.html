@@ -1,0 +1,16 @@
+<html>
+  <head>
+    <title>Query shared with you</title>
+  </head>
+  <body>
+    <p>Hello {{ user.get_full_name }}</p>
+    <p>A query has been shared with you. Below are the details:</p>
+    <ul>
+      <li>Query Name: {{ user_content.name }}</li>
+      <li>Shared By: {{user_content.creator.user.get_full_name }}</li>
+      <li>Description: {{ user_content.description }}</li>
+    </ul>
+    <p>Link to reports: <a href="{{ link }}">{{ link }}</a></p>
+    <footer>{{ footer }}</footer>
+  </body>
+</html>

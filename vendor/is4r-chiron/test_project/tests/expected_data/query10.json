@@ -1,0 +1,33 @@
+[
+        [
+            "1d604da9-9a81-4ba9-80c2-de3375d59b40",
+            "Marigot  Saint Andrew Parish  DM",
+            null,
+            13348,
+            271227.08,
+            true
+        ],
+        [
+            "8d4c4326-e9de-4f45-9a4c-f8c36bff89ae",
+            "Yarmouth  Massachusetts  US",
+            [
+                "African American",
+                "multiracial",
+                "white"
+            ],
+            8756,
+            935630.3,
+            true
+        ],
+        [
+            "f5dcd418-09fe-4a2f-baa0-3da800bd8c3a",
+            "Patras  Achaea  GR",
+            [
+                "Asian",
+                "white"
+            ],
+            3772,
+            598763.07,
+            null
+        ]
+    ]

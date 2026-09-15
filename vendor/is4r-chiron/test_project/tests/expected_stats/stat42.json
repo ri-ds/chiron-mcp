@@ -1,0 +1,29 @@
+{
+    "count_subjects_with_missing_values": 0,
+    "count_missing_values": 0,
+    "values": [
+        {
+            "count": 1,
+            "category": "this is a longer text field",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "this is a longer text field also",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "this is a longer text field also also",
+            "uniquePatientCount": 1
+        },
+        {
+            "count": 1,
+            "category": "this is a longer text field also also also",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 1,
+    "is_callback": true,
+    "permanent_id": "text_field_jzhvijebaz"
+}

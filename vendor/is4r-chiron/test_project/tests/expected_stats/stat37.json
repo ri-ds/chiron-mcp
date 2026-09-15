@@ -1,0 +1,19 @@
+{
+    "count_subjects_with_missing_values": 1,
+    "count_missing_values": 1,
+    "values": [
+        {
+            "count": 2,
+            "category": "True",
+            "uniquePatientCount": 2
+        },
+        {
+            "count": 1,
+            "category": "False",
+            "uniquePatientCount": 1
+        }
+    ],
+    "max_count": 2,
+    "is_callback": true,
+    "permanent_id": "boolean_field_ipgmegsgrf"
+}

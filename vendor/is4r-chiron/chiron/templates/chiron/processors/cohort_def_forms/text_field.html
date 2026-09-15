@@ -1,0 +1,51 @@
+{% load humanize %}
+
+{% for form_error in form_options.form_errors %}
+	<div class="alert alert-danger">{{ form_error }}</div>
+{% endfor %}
+
+<div class="row">
+	<div class="col-sm-6">
+		{% include 'chiron/processors/cohort_def_forms/snippets/null_and_missing_control.html' %}
+	</div>
+	
+	<div class="col-md-6" style="text-align:right;">
+		{% include 'chiron/processors/cohort_def_forms/snippets/exclude_selected_control.html' %}
+	</div>
+</div>
+
+
+
+<hr>
+
+<div class="row">
+	<div class="col-sm-6">
+		<div class="well">
+
+			<div class="input-group pb-2" style="margin-bottom:0;">
+	    		<input type="text" class="form-control" id="chiron-text-field-search-input" placeholder="search {{ name_plural }}...">
+	    		<div class="input-group-append">
+	    			<button class="btn btn-secondary" type="button" id="chiron-text-field-search">
+	    				<i class="fas fa-search" aria-hidden="true"></i>
+	    			</button>
+	  			</div>
+	  		</div>
+
+			<div id="chiron-data-still-streaming">
+				<i class="fa fa-spinner fa-pulse fa-lg fa-fw"></i>
+				Loading
+			</div>
+	  		
+	  		<div id="chiron-text-field-paginated-results"></div>
+  		</div>
+	</div>
+	<div class="col-sm-6">
+		<div class="form-group">
+			<label for="chiron-text-field-selection">Enter values (one per line)</label>
+			<textarea id="chiron-text-field-selection" name="chiron_text_field_selection" class="form-control" 
+				rows="13">{{ form_options.terms }}</textarea>
+		</div>
+	</div>
+</div>
+
+
