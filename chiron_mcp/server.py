@@ -119,6 +119,19 @@ def _header_from(table) -> list[str]:
     return names
 
 
+def cohort_describe(ident, cohort_def: list):
+    """Chiron's own plain-English rendering of a cohort definition."""
+    from chiron.query_definition import cohort_def_functions as cdfuncs
+
+    try:
+        cd_info = cdfuncs.clean_cohort_def(
+            cohort_def, identity.checked_chironuser(ident), include_metadata=True
+        )
+        return cdfuncs.describe_cohort_def(cd_info["extended_cohort_def"])
+    except Exception:  # noqa: BLE001
+        return None
+
+
 # --- orientation -------------------------------------------------------------
 
 
@@ -711,6 +724,126 @@ def chiron_run_saved_report(
             "record_count": response.get("record_count"),
             "subject_count": response.get("subject_count"),
             "paginator": response.get("paginator"),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
+# --- hand-off to the Chiron UI -----------------------------------------------
+
+
+@mcp.tool()
+def chiron_open_in_ui(
+    dataset_id: str,
+    cohort_def: list,
+    columns: list[dict] | None = None,
+    name: str | None = None,
+    mode: str = "report",
+    description: str | None = None,
+) -> dict:
+    """Hand a cohort built here over to the real Chiron web UI, and return a link.
+
+    Use this when the user says "open this in Chiron", "let me keep working on this in the
+    UI", or "send me the filters". The cohort you built in conversation becomes real Chiron
+    filters the researcher can see and edit.
+
+    Two modes:
+
+    * mode="report" (default, SAFE) saves the cohort and columns as a Chiron report. The link
+      opens that report. Nothing the user is currently working on is touched.
+    * mode="workspace" (DESTRUCTIVE) loads the cohort straight into the user's live query
+      workspace, so the link opens the filter builder with these filters already applied.
+      This REPLACES whatever cohort and table they currently have open and ERASES their
+      undo history, exactly as Chiron's own "load report as active" does. Ask the user
+      before using it.
+
+    Requires CHIRON_MCP_ALLOW_SAVE=1, because both modes write to Chiron.
+    """
+    import json as _json
+
+    from chiron import models
+
+    try:
+        if not CONFIG.allow_save:
+            raise AccessError(
+                "Writing to Chiron is disabled. Set CHIRON_MCP_ALLOW_SAVE=1 to allow this "
+                "server to create reports and load cohorts into the UI."
+            )
+        if mode not in ("report", "workspace"):
+            raise AccessError(f"mode must be 'report' or 'workspace', got {mode!r}.")
+
+        ident = identity.resolve(dataset_id)
+        identity.require_workspace(ident)
+        identity.require_subject_level(ident)
+        cu = identity.checked_chironuser(ident)
+
+        # Never hand over a definition that does not survive validation: an errored one is
+        # reduced to empty, which in Chiron means every subject in the dataset.
+        cohort = _validated_cohort(ident, cohort_def)
+        table_def = _table_def_from_columns(ident, cohort.cohort_def, columns or [])
+
+        base = f"{CONFIG.ui_url}/{ident.dataset_id}"
+        subject_count = None
+        try:
+            from chiron.query_engine import get_querytool
+
+            subject_count = int(get_querytool(cu, cohort.cohort_def).get_cohort_count())
+        except Exception:  # noqa: BLE001
+            pass
+
+        if mode == "workspace":
+            # Mirrors report_tools load_as_active (chiron/api_v2/viewsets/report_tools.py:108-133).
+            models.CohortDefSnapshot.clear_history(cu)
+            oCohort = models.CohortDefSnapshot(chironuser=cu)
+            oCohort.set_cohort_def(cohort.cohort_def)
+            oCohort.save()
+
+            models.TableDefSnapshot.clear_history(cu)
+            oTable = models.TableDefSnapshot(chironuser=cu)
+            oTable.set_table_def(table_def)
+            oTable.save()
+
+            return {
+                "mode": "workspace",
+                "url": f"{base}/query",
+                "results_url": f"{base}/results",
+                "dataset_id": ident.dataset_id,
+                "subject_count": subject_count,
+                "loaded_for_user": CONFIG.username,
+                "describe": cohort_describe(ident, cohort.cohort_def),
+                "note": (
+                    "Loaded into the live workspace of Django user "
+                    f"'{CONFIG.username}'. Their previous cohort, table and undo history on "
+                    "this dataset were replaced. Open the url to see the filters applied."
+                ),
+            }
+
+        # mode == "report": additive, nothing existing is disturbed.
+        oReport = models.UserCreatedContent(
+            dataset=ident.dataset,
+            name=name or "Cohort from Claude",
+            description=description or "",
+            creator=cu,
+            type=models.UserCreatedContent.Type.TABLE,
+            definition=_json.dumps({"cohort_def": cohort.cohort_def, "table_def": table_def}),
+            public=False,
+        )
+        oReport.save()
+        return {
+            "mode": "report",
+            "report_id": oReport.pk,
+            "url": f"{base}/reports/{oReport.pk}",
+            "reports_url": f"{base}/reports",
+            "dataset_id": ident.dataset_id,
+            "name": oReport.name,
+            "subject_count": subject_count,
+            "public": False,
+            "describe": cohort_describe(ident, cohort.cohort_def),
+            "note": (
+                "Saved as a private report. Open the url to view it, then use Chiron's own "
+                "'load as active' to pull it into the filter builder. Nothing currently open "
+                "in the UI was changed."
+            ),
         }
     except Exception as exc:  # noqa: BLE001
         return _err(exc)

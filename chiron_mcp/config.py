@@ -89,6 +89,10 @@ class Config:
     )
     dataset_allowlist: list[str] = field(default_factory=lambda: _csv("CHIRON_MCP_DATASETS"))
     operator: bool = field(default_factory=lambda: _flag("CHIRON_MCP_OPERATOR"))
+    # Base URL of the Chiron web UI, used to build hand-off links.
+    ui_url: str = field(
+        default_factory=lambda: os.environ.get("CHIRON_MCP_UI_URL", "http://localhost:3000").rstrip("/")
+    )
     allow_save: bool = field(default_factory=lambda: _flag("CHIRON_MCP_ALLOW_SAVE"))
     max_export_rows: int = field(
         default_factory=lambda: int(os.environ.get("CHIRON_MCP_MAX_EXPORT_ROWS", "50000"))

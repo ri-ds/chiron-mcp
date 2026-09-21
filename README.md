@@ -403,6 +403,12 @@ See `.env.example`. A superuser is refused in analyst mode; point it at a dedica
 | `chiron_event_rule_options` | Which date/age restrictions apply to a criteria set |
 | `chiron_count_cohort` | How many subjects match |
 
+### Hand off to the Chiron UI
+
+| Tool | Purpose |
+|---|---|
+| `chiron_open_in_ui` | Turn a cohort built in conversation into real Chiron filters and return a link. Requires `CHIRON_MCP_ALLOW_SAVE=1` |
+
 ### Get results
 
 | Tool | Purpose |
@@ -470,6 +476,42 @@ chiron_edit_cohort(ds, cohort_def, {
 
 Note the key is `option_type`, not `option_id`. `chiron_event_rule_options` asks Chiron directly
 rather than relying on a transcription, so it cannot drift from the code.
+
+## Handing a cohort to the Chiron UI
+
+The point of building a cohort in conversation is usually to keep working on it somewhere else.
+`chiron_open_in_ui` writes the cohort into Chiron proper and returns a link.
+
+It has two modes, because there are two genuinely different things a user means by "open it in
+Chiron".
+
+**`mode="report"` (default, non-destructive).** Saves the cohort and columns as a private Chiron
+report and returns `/<dataset>/reports/<id>`. Nothing the researcher currently has open is
+touched. They can then use Chiron's own "load as active" to pull it into the builder when ready.
+
+**`mode="workspace"` (destructive).** Writes the cohort and table straight into the user's live
+query workspace and returns `/<dataset>/query`, so the link opens the filter builder with the
+filters already applied. This is the mode that makes a conversation become a UI page.
+
+Be deliberate about the second one. It mirrors what Chiron's own `load_as_active` does
+(`chiron/api_v2/viewsets/report_tools.py:108-133`): it calls `clear_history` on both snapshot
+models, so the researcher's current cohort, current table **and their entire undo history on
+that dataset** are replaced. Ask before using it.
+
+### Why a link is enough
+
+The React UI's query route fetches `GET /api/v2/<dataset>/cohort_def/`
+(`src/store/cohortSlice.ts:319`), and that endpoint returns
+`CohortDefSnapshot.get_active_cohort_def(request.chironuser)`. So writing an active snapshot for
+that ChironUser *is* the hand-off; no URL parameters or deep-link encoding are involved, and the
+UI needs no changes.
+
+One consequence worth understanding: the hand-off lands in the workspace of the Django user the
+server is bound to (`CHIRON_MCP_USERNAME`). If several people share one service account, they
+share one workspace and will overwrite each other. Give each person their own account, or use
+`mode="report"`, which has no such problem.
+
+Set `CHIRON_MCP_UI_URL` to point the links at your deployment (default `http://localhost:3000`).
 
 ## Access model and safety
 
