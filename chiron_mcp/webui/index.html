@@ -113,20 +113,6 @@ replay();
   button.chiron-link.load::before { content: "⇄"; }
   button.chiron-link.load:hover { background: var(--teal-50); }
   button.chiron-link:disabled { opacity: .6; cursor: default; }
-  .load-note { font-size: 12px; color: var(--grey-600); margin: -6px 0 12px; }
-  .confirm-box {
-    border: 1px solid var(--teal-700); border-left-width: 3px; border-radius: 4px;
-    padding: 12px 14px; margin: 0 0 12px; background: var(--teal-50);
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .confirm-box p { margin: 0; font-size: 14px; color: var(--teal-900); }
-  .confirm-actions { display: flex; gap: 8px; }
-  .confirm-actions button {
-    font-family: inherit; font-size: 14px; padding: 7px 14px; border-radius: 4px;
-    cursor: pointer; border: 1px solid var(--teal-700);
-  }
-  .confirm-actions .yes { background: var(--teal-700); color: #fff; }
-  .confirm-actions .no  { background: #fff; color: var(--teal-900); }
 
   .err {
     background: var(--danger-bg); color: var(--danger);
@@ -249,6 +235,7 @@ function replay() {
     thread.appendChild(botMsg);
     if (turn.answer) render(bubble, turn.answer);
     else bubble.appendChild(el('div', 'err', turn.error || 'No answer was recorded.'));
+    if (turn.link) addLink(bubble, turn.link);
     if (turn.cohort) offerLoad(bubble, turn.cohort);
   });
   if (history.length) { empty.style.display = 'none'; scroll(); }
@@ -302,7 +289,7 @@ function ask() {
   const working = el('span', 'step working', 'thinking');
   steps.appendChild(working);
 
-  const turn = { q, answer: '', cohort: null, error: '' };
+  const turn = { q, answer: '', cohort: null, link: null, error: '' };
   history.push(turn);
 
   const url = '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET);
@@ -315,6 +302,9 @@ function ask() {
     scroll();
   });
   let cohort = null;
+  src.addEventListener('link', e => {
+    try { turn.link = JSON.parse(e.data); saveHistory(); } catch (_) {}
+  });
   src.addEventListener('cohort', e => {
     try {
       cohort = JSON.parse(e.data);
@@ -346,38 +336,25 @@ function ask() {
 }
 
 // Offer to make the cohort behind this answer the user's live Chiron query.
+function addLink(target, link) {
+  let box = target.querySelector('.chiron-links');
+  if (!box) { box = el('div', 'chiron-links'); target.appendChild(box); }
+  const a = el('a', 'chiron-link', link.label || 'Open');
+  a.href = link.url; a.target = '_top';
+  box.appendChild(a);
+}
+
 function offerLoad(target, cohort) {
   let box = target.querySelector('.chiron-links');
   if (!box) { box = el('div', 'chiron-links'); target.appendChild(box); }
   const b = el('button', 'chiron-link load', 'Query');
   b.type = 'button';
+  // Says what it does on hover; the label and the button are the whole explanation.
+  b.title = 'Load these filters into the Chiron query builder, replacing what is open there';
   box.appendChild(b);
-  const note = el('div', 'load-note',
-    'Replaces the filters open in Chiron with the ones behind this answer.');
-  target.appendChild(note);
 
-  // Deliberately not window.confirm(): this page always runs in an iframe inside the
-  // Chiron UI, and browsers suppress or block native dialogs in embedded frames, so the
-  // button would silently do nothing. Ask inline instead.
-  b.onclick = () => {
-    if (target.querySelector('.confirm-box')) return;
-    const box = el('div', 'confirm-box');
-    box.appendChild(el('p', null,
-      'Replace the query currently open in Chiron with this one? Your current filters ' +
-      'and undo history on this dataset will be lost.'));
-    const actions = el('div', 'confirm-actions');
-    const yes = el('button', 'yes', 'Replace my query');
-    const no = el('button', 'no', 'Cancel');
-    yes.type = no.type = 'button';
-    actions.append(yes, no);
-    box.appendChild(actions);
-    note.after(box);
-    no.onclick = () => box.remove();
-    yes.onclick = () => { box.remove(); doLoad(); };
-  };
-
-  async function doLoad() {
-    b.disabled = true; b.textContent = 'Loading into Chiron…';
+  b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Loading…';
     try {
       const r = await fetch('/load', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -385,18 +362,14 @@ function offerLoad(target, cohort) {
       });
       const res = await r.json();
       if (res.error) throw new Error(res.error);
-      b.textContent = 'Loaded' + (res.browser_user ? ' for ' + res.browser_user : '');
-      note.textContent = (res.subject_count != null ? res.subject_count + ' subjects. ' : '') +
-        'Opening the filter builder…';
-      const dest = res.url || '';
       // Inside the Chiron UI this page is an iframe: navigate the UI itself so the
-      // filter builder reloads the new workspace.
-      setTimeout(() => { (window.top || window).location.href = dest; }, 600);
+      // filter builder reloads with the new workspace.
+      (window.top || window).location.href = res.url || '';
     } catch (err) {
       b.disabled = false; b.textContent = 'Query';
-      target.appendChild(el('div', 'err', 'Could not load into Chiron: ' + err.message));
+      target.appendChild(el('div', 'err', err.message));
     }
-  }
+  };
 }
 
 function render(target, markdown) {
@@ -424,8 +397,14 @@ function render(target, markdown) {
   if (links.length) {
     const box = el('div', 'chiron-links');
     links.forEach(a => {
-      const b = el('a', 'chiron-link', a.textContent.trim() || 'Open in Chiron');
-      b.href = a.getAttribute('href'); b.target = '_top';
+      const href = a.getAttribute('href') || '';
+      // The model tends to paste the whole URL as the link text. Name the button by
+      // where it goes instead.
+      const label = /\/reports\//.test(href) ? 'Report'
+                  : /\/results/.test(href) ? 'Results'
+                  : 'Query';
+      const b = el('a', 'chiron-link', label);
+      b.href = href; b.target = '_top';
       box.appendChild(b);
       a.replaceWith(el('span'));
     });

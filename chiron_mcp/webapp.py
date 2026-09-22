@@ -63,16 +63,27 @@ How to work:
   known Chiron defect, not your mistake. If it happens, filter on one collection and put
   the other variable in the columns instead, and tell the user why.
 
-How to answer:
-- Lead with the number or the answer. Be brief.
+How to answer. Be sparing with words: the reader wants the figure, not an essay.
+- Open with the answer itself, in one short sentence. Usually that is the whole reply.
+- Add a second sentence only when something would mislead without it, such as counting
+  spelling variants together.
 - Use a markdown table whenever you have more than two rows of figures.
 - To draw a chart, emit a fenced block tagged `chart` containing JSON:
   {"type":"bar","label":"Patients","data":[{"x":"Asthma","y":838},{"x":"COPD","y":199}]}
   Types: bar, line, doughnut. Use one when comparing categories or showing a trend, not
   for a single number.
-- When the user wants to keep working in Chiron, call chiron_open_in_ui and give them the
-  link it returns. Use mode="workspace" only if they ask to load it into their workspace,
-  and warn that it replaces what they currently have open.
+
+Never write these, they are clutter:
+- Any sentence about what the user can do next: no "you can open this in Chiron", no
+  "from there use load as active", no "click the link below".
+- Any explanation of a link or button. The interface labels its own buttons, and a bare
+  URL is rendered as a button, so describing it just repeats it.
+- Restating the question, or a closing summary of what you just said.
+
+Links and the cohort behind an answer are surfaced as buttons automatically, so you do
+not need to mention them. Call chiron_open_in_ui only when the user actually asks to save
+or open something, and then give the URL alone on its own line with no commentary. Use
+mode="workspace" only when they ask for their workspace specifically.
 """
 
 
@@ -118,6 +129,7 @@ class _CohortTracker:
 
     def __init__(self):
         self.state: dict | None = None
+        self.link: dict | None = None  # {"label", "url"} from a hand-off
         self._names: dict[str, str] = {}  # tool_use_id -> tool name
 
     def tool_use(self, block: dict) -> None:
@@ -132,7 +144,8 @@ class _CohortTracker:
             }
 
     def tool_result(self, block: dict) -> None:
-        if self._names.get(block.get("tool_use_id", "")) != "chiron_edit_cohort":
+        name = self._names.get(block.get("tool_use_id", ""))
+        if name not in ("chiron_edit_cohort", "chiron_open_in_ui"):
             return
         content = block.get("content")
         if isinstance(content, list):
@@ -141,6 +154,17 @@ class _CohortTracker:
             data = json.loads(content or "")
         except (TypeError, ValueError):
             return
+
+        if name == "chiron_open_in_ui":
+            # Do not rely on the model pasting the URL into its prose: take the link
+            # straight from the tool result so the button always appears.
+            if isinstance(data, dict) and data.get("url") and not data.get("error"):
+                self.link = {
+                    "label": "Report" if data.get("mode") == "report" else "Query",
+                    "url": data["url"],
+                }
+            return
+
         if isinstance(data, dict) and data.get("successful") and data.get("cohort_def"):
             prev = self.state or {}
             self.state = {
@@ -206,6 +230,8 @@ def ask_stream(question: str, dataset: str | None):
                 if ev.get("is_error"):
                     yield "error", ev.get("result") or "Claude returned an error."
                 else:
+                    if tracker.link:
+                        yield "link", tracker.link
                     if tracker.state and tracker.state.get("dataset_id"):
                         yield "cohort", tracker.state
                     yield "answer", ev.get("result", "")
@@ -299,6 +325,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
+        # The page is read from disk on every request, so never let a browser hold on
+        # to an old copy: an edit here should show up on reload, not after a hard
+        # refresh someone has to know to do.
+        self.send_header("Cache-Control", "no-store, must-revalidate")
         self._cors()
         self.end_headers()
         self.wfile.write(body)
