@@ -36,7 +36,10 @@ pids+=($!)
 UI="$ROOT/vendor/is4r-chiron-ui"
 if [ ! -d "$UI/node_modules" ]; then
   echo "[3/3] installing UI dependencies (first run only, a few minutes)..."
-  (cd "$UI" && npm install --no-audit --no-fund > /tmp/chiron-ui-install.log 2>&1) \
+  # --legacy-peer-deps: the UI pins eslint 9 while eslint-config-react-app wants
+  # eslint 8. It is a lint-only conflict that does not affect the built app.
+  (cd "$UI" && npm install --legacy-peer-deps --no-audit --no-fund \
+      > /tmp/chiron-ui-install.log 2>&1) \
     || { echo "npm install failed, see /tmp/chiron-ui-install.log"; exit 1; }
 fi
 echo "[3/3] Chiron UI         http://localhost:5173   <- open this one"
