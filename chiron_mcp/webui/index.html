@@ -100,6 +100,12 @@
   }
   .chiron-link:hover { background: var(--teal-900); }
   .chiron-link::before { content: "↗"; font-size: 15px; }
+  button.chiron-link { border: 0; cursor: pointer; font-family: inherit; }
+  button.chiron-link.load { background: #fff; color: var(--teal-900); border: 1px solid var(--teal-700); }
+  button.chiron-link.load::before { content: "⇄"; }
+  button.chiron-link.load:hover { background: var(--teal-50); }
+  button.chiron-link:disabled { opacity: .6; cursor: default; }
+  .load-note { font-size: 12px; color: var(--grey-600); margin: -6px 0 12px; }
 
   .err {
     background: var(--danger-bg); color: var(--danger);
@@ -195,6 +201,9 @@ fetch('/datasets').then(r => r.json()).then(d => {
   const params = new URLSearchParams(location.search);
   if (params.get('dataset')) dsSel.value = params.get('dataset');
   if (d.identity) who.textContent = 'as ' + d.identity;
+  if (d.browser_user && d.browser_user !== d.identity) {
+    who.textContent += ' · your workspace: ' + d.browser_user;
+  }
 }).catch(() => {});
 
 qBox.addEventListener('keydown', e => {
@@ -246,9 +255,12 @@ function ask() {
     steps.appendChild(working);
     scroll();
   });
+  let cohort = null;
+  src.addEventListener('cohort', e => { cohort = JSON.parse(e.data); });
   src.addEventListener('answer', e => {
     working.remove();
     render(bubble, JSON.parse(e.data));
+    if (cohort) offerLoad(bubble, cohort);
     scroll();
   });
   src.addEventListener('error', e => {
@@ -262,6 +274,42 @@ function ask() {
   src.onerror = () => { src.close(); working.remove(); finish(); };
 
   function finish() { busy = false; sendBtn.disabled = false; qBox.focus(); }
+}
+
+// Offer to make the cohort behind this answer the user's live Chiron query.
+function offerLoad(target, cohort) {
+  let box = target.querySelector('.chiron-links');
+  if (!box) { box = el('div', 'chiron-links'); target.appendChild(box); }
+  const b = el('button', 'chiron-link load', 'Use as my current query');
+  b.type = 'button';
+  box.appendChild(b);
+  const note = el('div', 'load-note',
+    'Replaces the filters open in Chiron with the ones behind this answer.');
+  target.appendChild(note);
+
+  b.onclick = async () => {
+    if (!confirm('Replace the query currently open in Chiron with this one?\n' +
+                 'Your current filters and undo history on this dataset will be lost.')) return;
+    b.disabled = true; b.textContent = 'Loading into Chiron…';
+    try {
+      const r = await fetch('/load', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cohort),
+      });
+      const res = await r.json();
+      if (res.error) throw new Error(res.error);
+      b.textContent = 'Loaded' + (res.browser_user ? ' for ' + res.browser_user : '');
+      note.textContent = (res.subject_count != null ? res.subject_count + ' subjects. ' : '') +
+        'Opening the filter builder…';
+      const dest = res.url || '';
+      // Inside the Chiron UI this page is an iframe: navigate the UI itself so the
+      // filter builder reloads the new workspace.
+      setTimeout(() => { (window.top || window).location.href = dest; }, 600);
+    } catch (err) {
+      b.disabled = false; b.textContent = 'Use as my current query';
+      target.appendChild(el('div', 'err', 'Could not load into Chiron: ' + err.message));
+    }
+  };
 }
 
 function render(target, markdown) {

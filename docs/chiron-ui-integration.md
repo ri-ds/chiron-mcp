@@ -61,15 +61,26 @@ Two gotchas worth knowing:
 - Markdown tables
 - Charts, via a fenced ```chart block the page renders with Chart.js
 - Links into Chiron, rendered as buttons, from `chiron_open_in_ui`
+- **"Use as my current query"** under any answer that came from a cohort. It replaces
+  the filters open in Chiron's query builder with the ones behind that answer, then
+  opens the builder. The server watches the tool calls behind each answer and keeps
+  the last `cohort_def` that was counted, tabulated or handed off; the button posts it
+  to `/load`. It asks for confirmation first, because Chiron's workspace load also
+  erases the undo history.
 - Live progress: each Chiron tool call appears as a chip while it works
 
 A question takes roughly 25 to 60 seconds, because the model makes several tool calls.
 
 ## Limits
 
-- **One identity.** The server acts as `CHIRON_MCP_USERNAME` for everyone who opens the
-  page. It is fine for a single analyst or a trusted team on a private network; it is
-  not multi-user. There is no login, and a workspace hand-off lands in that one user's
-  workspace.
+- **One identity for answers.** Questions are answered as `CHIRON_MCP_USERNAME` for
+  everyone who opens the page. It is fine for a single analyst or a trusted team on a
+  private network; it is not multi-user. There is no login of its own.
+- **Workspace loads follow the browser.** The "Use as my current query" button and the
+  `/load` endpoint act as the Chiron user behind the browser's `sessionid` cookie, so
+  the query lands in the workspace of whoever clicked. That works because Chiron, the
+  UI and this server share a host and cookies ignore the port. With no session cookie
+  the load falls back to `CHIRON_MCP_USERNAME`. A `chiron_open_in_ui` hand-off that
+  the model performs itself still lands in `CHIRON_MCP_USERNAME`'s workspace.
 - **Bind it to localhost** or put it behind your own auth before exposing it.
 - It inherits the operator's Claude usage limits.

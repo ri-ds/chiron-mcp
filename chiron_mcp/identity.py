@@ -48,22 +48,27 @@ class Identity:
         return self.dataset.unique_id
 
 
-def _django_user():
+def _django_user(username: str | None = None):
+    """The Django user this server acts as.
+
+    `username` overrides CHIRON_MCP_USERNAME.  It is never exposed to the model: the
+    only caller that passes it is the Ask web server, which uses it to act as the
+    person whose browser session it received (see chiron_mcp.webapp).
+    """
     from django.contrib.auth import get_user_model
 
+    name = username or CONFIG.username
     User = get_user_model()
-    user = User.objects.filter(username=CONFIG.username).first()
+    user = User.objects.filter(username=name).first()
     if not user:
-        raise AccessError(
-            f"No Django user named {CONFIG.username!r} exists in the metadata database."
-        )
+        raise AccessError(f"No Django user named {name!r} exists in the metadata database.")
     if not user.is_active:
-        raise AccessError(f"Django user {CONFIG.username!r} is inactive.")
+        raise AccessError(f"Django user {name!r} is inactive.")
     # A superuser bypasses nothing in Chiron itself, but running the server as one
     # makes the blast radius of any mistake the whole instance.
     if user.is_superuser and not CONFIG.operator:
         raise AccessError(
-            f"Django user {CONFIG.username!r} is a superuser. Refusing to start in "
+            f"Django user {name!r} is a superuser. Refusing to start in "
             "analyst mode. Point CHIRON_MCP_USERNAME at a dedicated service user, or "
             "set CHIRON_MCP_OPERATOR=1 if this is deliberate."
         )
@@ -83,8 +88,11 @@ def _ceiling(actual: str) -> str:
     return ceiling
 
 
-def resolve(dataset_id: str) -> Identity:
+def resolve(dataset_id: str, username: str | None = None) -> Identity:
     """Resolve the bound identity against one dataset, or raise AccessError.
+
+    `username` resolves someone other than CHIRON_MCP_USERNAME.  Only the Ask web
+    server passes it, to act as the browser's logged-in Chiron user; no MCP tool does.
 
     Deliberately does NOT reproduce the autocreate branch of
     `get_request_chironuser` (chiron/authorization.py:61-72).  That branch writes
@@ -104,7 +112,7 @@ def resolve(dataset_id: str) -> Identity:
     if not oDataset:
         raise AccessError(f"No dataset with unique_id {dataset_id!r}.")
 
-    user = _django_user()
+    user = _django_user(username)
 
     # The exact lookup Chiron performs at chiron/authorization.py:59 -- minus the
     # autocreate fallback that follows it.
@@ -119,7 +127,7 @@ def resolve(dataset_id: str) -> Identity:
                 "ChironUser deliberately if access is intended."
             )
         raise AccessError(
-            f"User {CONFIG.username!r} has no ChironUser on dataset {dataset_id!r}.{hint}"
+            f"User {user.username!r} has no ChironUser on dataset {dataset_id!r}.{hint}"
         )
 
     if oChironUser.access_level is None:

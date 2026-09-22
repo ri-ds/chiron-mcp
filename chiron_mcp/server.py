@@ -764,6 +764,27 @@ def chiron_open_in_ui(
 
     Requires CHIRON_MCP_ALLOW_SAVE=1, because both modes write to Chiron.
     """
+    return open_in_ui(dataset_id, cohort_def, columns, name, mode, description)
+
+
+def open_in_ui(
+    dataset_id: str,
+    cohort_def: list,
+    columns: list[dict] | None = None,
+    name: str | None = None,
+    mode: str = "report",
+    description: str | None = None,
+    *,
+    username: str | None = None,
+) -> dict:
+    """The body of chiron_open_in_ui, callable without going through MCP.
+
+    `username` makes the hand-off land in someone else's workspace or report list
+    instead of CHIRON_MCP_USERNAME's.  It is deliberately not a tool parameter: the
+    model never chooses whose workspace to overwrite.  The Ask web server passes the
+    user behind the browser session it received, so "use this as my query" replaces
+    the query of the person who clicked, not the server's service account.
+    """
     import json as _json
 
     from chiron import models
@@ -777,10 +798,11 @@ def chiron_open_in_ui(
         if mode not in ("report", "workspace"):
             raise AccessError(f"mode must be 'report' or 'workspace', got {mode!r}.")
 
-        ident = identity.resolve(dataset_id)
+        ident = identity.resolve(dataset_id, username=username)
         identity.require_workspace(ident)
         identity.require_subject_level(ident)
         cu = identity.checked_chironuser(ident)
+        who = cu.user.username
 
         # Never hand over a definition that does not survive validation: an errored one is
         # reduced to empty, which in Chiron means every subject in the dataset.
@@ -814,11 +836,11 @@ def chiron_open_in_ui(
                 "results_url": f"{base}/results",
                 "dataset_id": ident.dataset_id,
                 "subject_count": subject_count,
-                "loaded_for_user": CONFIG.username,
+                "loaded_for_user": who,
                 "describe": cohort_describe(ident, cohort.cohort_def),
                 "note": (
                     "Loaded into the live workspace of Django user "
-                    f"'{CONFIG.username}'. Their previous cohort, table and undo history on "
+                    f"'{who}'. Their previous cohort, table and undo history on "
                     "this dataset were replaced. Open the url to see the filters applied."
                 ),
             }
