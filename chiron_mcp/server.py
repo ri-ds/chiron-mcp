@@ -14,6 +14,7 @@ writes a snapshot.
 
 from __future__ import annotations
 
+import copy
 import json
 import sys
 from typing import Any
@@ -361,7 +362,11 @@ def chiron_edit_cohort(
                 f"Unknown transformation type {ttype!r}. Available: {sorted(lookup)}"
             )
 
-        result = lookup[ttype](cu, cohort_def or [], transformation)
+        # Chiron's transformations are not all pure: apply_transformation_add_entry
+        # mutates the list it is handed (unlike create_event_rule, which deepcopies).
+        # This tool promises to be functional, and a caller branching two cohorts from
+        # one base would otherwise silently corrupt the base, so copy before applying.
+        result = lookup[ttype](cu, copy.deepcopy(cohort_def or []), transformation)
         successful = result.get("transformation_successful", False)
 
         if not successful:
