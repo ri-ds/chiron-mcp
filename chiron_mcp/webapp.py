@@ -331,6 +331,25 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001
             return self._json({"datasets": [], "error": str(exc)})
 
+    def _origin_ok(self) -> bool:
+        """Reject cross-site POSTs to /load.
+
+        /load writes to the workspace of whoever the request's session cookie belongs
+        to, so without this a page on another origin could make a visitor's browser
+        clobber their Chiron query. Same-origin requests from the page itself send an
+        Origin of this server; the UI embeds us in an iframe, which does not change it.
+        """
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True  # curl, scripts, and same-origin form posts from this page
+        allowed = {
+            f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}",
+            CONFIG.ui_url,
+        }
+        extra = os.environ.get("CHIRON_MCP_ALLOWED_ORIGINS", "")
+        allowed |= {o.strip() for o in extra.split(",") if o.strip()}
+        return origin in allowed
+
     def _load(self):
         """Replace the browser user's live Chiron query with a cohort from an answer.
 
@@ -339,6 +358,8 @@ class Handler(BaseHTTPRequestHandler):
         CHIRON_MCP_USERNAME when there is none.  Same guards as chiron_open_in_ui:
         CHIRON_MCP_ALLOW_SAVE must be on, and an errored definition is refused.
         """
+        if not self._origin_ok():
+            return self._json({"error": "Refused: request came from an untrusted origin."})
         try:
             length = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(length) or b"{}")

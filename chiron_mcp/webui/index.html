@@ -4,8 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ask Chiron</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js">
+// Restore the thread last, once render() and offerLoad() are defined.
+replay();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+// Restore the thread last, once render() and offerLoad() are defined.
+replay();
+</script>
 <style>
   :root {
     --teal-900: #004d40; --teal-700: #00796b; --teal-50: #e0f2f1;
@@ -34,11 +40,13 @@
     margin: 0; font-size: 1.15rem; font-weight: 500; color: var(--purple-900);
   }
   header .spacer { flex: 1; }
-  select {
-    font-family: inherit; font-size: 14px; padding: 6px 10px;
-    border: 1px solid var(--grey-300); border-radius: 4px; background: #fff;
-    color: var(--grey-800);
+  .dsname { font-size: 14px; color: var(--grey-800); font-weight: 500; }
+  button.clear {
+    font-family: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+    background: none; border: 1px solid var(--grey-300); border-radius: 4px;
+    color: var(--grey-600);
   }
+  button.clear:hover { border-color: var(--teal-700); color: var(--teal-900); }
   .who { font-size: 12px; color: var(--grey-600); }
 
   main { flex: 1; overflow-y: auto; padding: 22px 20px 8px; }
@@ -106,6 +114,19 @@
   button.chiron-link.load:hover { background: var(--teal-50); }
   button.chiron-link:disabled { opacity: .6; cursor: default; }
   .load-note { font-size: 12px; color: var(--grey-600); margin: -6px 0 12px; }
+  .confirm-box {
+    border: 1px solid var(--teal-700); border-left-width: 3px; border-radius: 4px;
+    padding: 12px 14px; margin: 0 0 12px; background: var(--teal-50);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .confirm-box p { margin: 0; font-size: 14px; color: var(--teal-900); }
+  .confirm-actions { display: flex; gap: 8px; }
+  .confirm-actions button {
+    font-family: inherit; font-size: 14px; padding: 7px 14px; border-radius: 4px;
+    cursor: pointer; border: 1px solid var(--teal-700);
+  }
+  .confirm-actions .yes { background: var(--teal-700); color: #fff; }
+  .confirm-actions .no  { background: #fff; color: var(--teal-900); }
 
   .err {
     background: var(--danger-bg); color: var(--danger);
@@ -146,8 +167,9 @@
 
 <header>
   <h1>Ask Chiron</h1>
-  <select id="dataset" aria-label="Dataset"></select>
+  <span class="dsname" id="dsname"></span>
   <span class="spacer"></span>
+  <button class="clear" id="clear" type="button" hidden>Clear chat</button>
   <span class="who" id="who"></span>
 </header>
 
@@ -173,7 +195,8 @@ const thread = document.getElementById('thread');
 const empty  = document.getElementById('empty');
 const qBox   = document.getElementById('q');
 const sendBtn= document.getElementById('send');
-const dsSel  = document.getElementById('dataset');
+const dsName = document.getElementById('dsname');
+const clearBtn = document.getElementById('clear');
 const who    = document.getElementById('who');
 const suggs  = document.getElementById('suggestions');
 
@@ -192,19 +215,56 @@ SUGGESTIONS.forEach(s => {
   suggs.appendChild(b);
 });
 
+// The dataset is fixed by the route that embedded this page (/<dataset>/ask), so
+// there is nothing to choose here; just name it.
+const DATASET = new URLSearchParams(location.search).get('dataset') || '';
+
 fetch('/datasets').then(r => r.json()).then(d => {
-  (d.datasets || []).forEach(x => {
-    const o = document.createElement('option');
-    o.value = x.id; o.textContent = x.name;
-    dsSel.appendChild(o);
-  });
-  const params = new URLSearchParams(location.search);
-  if (params.get('dataset')) dsSel.value = params.get('dataset');
+  const match = (d.datasets || []).find(x => x.id === DATASET);
+  dsName.textContent = match ? match.name : DATASET;
   if (d.identity) who.textContent = 'as ' + d.identity;
   if (d.browser_user && d.browser_user !== d.identity) {
     who.textContent += ' · your workspace: ' + d.browser_user;
   }
-}).catch(() => {});
+}).catch(() => { dsName.textContent = DATASET; });
+
+// --- history -----------------------------------------------------------------
+// Following a link into Chiron navigates the whole UI, and coming back reloads this
+// iframe from scratch, so the thread has to outlive the page. Kept per dataset.
+const HKEY = 'chiron-ask:' + DATASET;
+const HMAX = 30;
+let history = [];
+try { history = JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (_) { history = []; }
+
+function saveHistory() {
+  try { localStorage.setItem(HKEY, JSON.stringify(history.slice(-HMAX))); } catch (_) {}
+  clearBtn.hidden = history.length === 0;
+}
+
+function replay() {
+  history.forEach(turn => {
+    const userMsg = el('div', 'msg user');
+    userMsg.appendChild(el('div', 'bubble', turn.q));
+    thread.appendChild(userMsg);
+
+    const botMsg = el('div', 'msg bot');
+    const bubble = el('div', 'bubble');
+    botMsg.appendChild(bubble);
+    thread.appendChild(botMsg);
+    if (turn.answer) render(bubble, turn.answer);
+    else bubble.appendChild(el('div', 'err', turn.error || 'No answer was recorded.'));
+    if (turn.cohort) offerLoad(bubble, turn.cohort);
+  });
+  if (history.length) { empty.style.display = 'none'; scroll(); }
+  clearBtn.hidden = history.length === 0;
+}
+
+clearBtn.onclick = () => {
+  history = [];
+  saveHistory();
+  thread.querySelectorAll('.msg').forEach(n => n.remove());
+  empty.style.display = '';
+};
 
 qBox.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
@@ -246,7 +306,10 @@ function ask() {
   const working = el('span', 'step working', 'thinking');
   steps.appendChild(working);
 
-  const url = '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(dsSel.value || '');
+  const turn = { q, answer: '', cohort: null, error: '' };
+  history.push(turn);
+
+  const url = '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET);
   const src = new EventSource(url);
 
   src.addEventListener('step', e => {
@@ -256,10 +319,18 @@ function ask() {
     scroll();
   });
   let cohort = null;
-  src.addEventListener('cohort', e => { cohort = JSON.parse(e.data); });
+  src.addEventListener('cohort', e => {
+    try {
+      cohort = JSON.parse(e.data);
+      turn.cohort = cohort;
+      saveHistory();
+    } catch (_) {}
+  });
   src.addEventListener('answer', e => {
     working.remove();
-    render(bubble, JSON.parse(e.data));
+    turn.answer = JSON.parse(e.data);
+    saveHistory();
+    render(bubble, turn.answer);
     if (cohort) offerLoad(bubble, cohort);
     scroll();
   });
@@ -267,6 +338,8 @@ function ask() {
     working.remove();
     let m = 'Something went wrong.';
     try { m = JSON.parse(e.data); } catch (_) {}
+    turn.error = m;
+    saveHistory();
     bubble.appendChild(el('div', 'err', m));
     scroll();
   });
@@ -287,9 +360,27 @@ function offerLoad(target, cohort) {
     'Replaces the filters open in Chiron with the ones behind this answer.');
   target.appendChild(note);
 
-  b.onclick = async () => {
-    if (!confirm('Replace the query currently open in Chiron with this one?\n' +
-                 'Your current filters and undo history on this dataset will be lost.')) return;
+  // Deliberately not window.confirm(): this page always runs in an iframe inside the
+  // Chiron UI, and browsers suppress or block native dialogs in embedded frames, so the
+  // button would silently do nothing. Ask inline instead.
+  b.onclick = () => {
+    if (target.querySelector('.confirm-box')) return;
+    const box = el('div', 'confirm-box');
+    box.appendChild(el('p', null,
+      'Replace the query currently open in Chiron with this one? Your current filters ' +
+      'and undo history on this dataset will be lost.'));
+    const actions = el('div', 'confirm-actions');
+    const yes = el('button', 'yes', 'Replace my query');
+    const no = el('button', 'no', 'Cancel');
+    yes.type = no.type = 'button';
+    actions.append(yes, no);
+    box.appendChild(actions);
+    note.after(box);
+    no.onclick = () => box.remove();
+    yes.onclick = () => { box.remove(); doLoad(); };
+  };
+
+  async function doLoad() {
     b.disabled = true; b.textContent = 'Loading into Chiron…';
     try {
       const r = await fetch('/load', {
@@ -309,7 +400,7 @@ function offerLoad(target, cohort) {
       b.disabled = false; b.textContent = 'Use as my current query';
       target.appendChild(el('div', 'err', 'Could not load into Chiron: ' + err.message));
     }
-  };
+  }
 }
 
 function render(target, markdown) {
@@ -378,6 +469,9 @@ function render(target, markdown) {
     });
   });
 }
+
+// Restore the thread last, once render() and offerLoad() are defined.
+replay();
 </script>
 </body>
 </html>
