@@ -19,7 +19,23 @@ answer "open this in Chiron"; without it the rest still works.
 
 Usable on its own at <http://localhost:8900>, with `?dataset=<id>` to preselect.
 
-## 2. Add the tab to the Chiron UI
+## 2a. No React UI to hand? Use the bundled one
+
+The React UI is a separate repository and is **not** vendored here. If you do not have a
+checkout of it, you still get a complete working system from this repo:
+
+```bash
+.venv/bin/python scripts/serve_chiron.py   # Chiron (Django UI) at :8001, demo / demo
+.venv/bin/python -m chiron_mcp.webapp      # Ask Chiron at :8900
+```
+
+That gives you Chiron's own server-rendered pages (`/workspace`, `/reports`) plus the
+chat page side by side. Set `CHIRON_MCP_UI_URL=http://localhost:8001` so hand-off links
+point at it.
+
+The steps below are only needed to embed the chat as a tab inside the React UI.
+
+## 2b. Add the tab to the React Chiron UI
 
 The UI has an extension point for exactly this: `src/overrideConfig.tsx` feeds
 `routes.datasetMore` and `header.nav` through `deepMerge`, so no UI source is forked.

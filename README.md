@@ -49,6 +49,25 @@ Real results, out of the box: obesity 64, hypertension 57, depression 35, asthma
 To work against a real deployment instead, set `CHIRON_MCP_METADATA_DB` and
 `CHIRON_MCP_WAREHOUSE_URL` and skip the bootstrap.
 
+### Also included: a running Chiron, and a chat page
+
+```bash
+.venv/bin/python scripts/serve_chiron.py    # Chiron itself at :8001, log in demo / demo
+.venv/bin/python -m chiron_mcp.webapp       # "Ask Chiron" chat at :8900
+```
+
+`serve_chiron.py` runs the bundled Chiron against the demo databases, so you get the
+real web app (login, workspace, filters, reports) without any external deployment.
+
+`chiron_mcp.webapp` is a chat page that answers questions using the MCP tools. It runs
+Claude Code headless, so it uses your existing Claude subscription and needs no API key.
+It renders markdown tables and charts, and turns "open this in Chiron" into a link.
+
+**What is not in this repo:** the React UI (`is4r-chiron-ui`) is a separate project, so
+the screenshot-perfect "Ask" tab inside that UI needs your own checkout of it plus
+`docs/overrideConfig.example.tsx`. See [docs/chiron-ui-integration.md](docs/chiron-ui-integration.md).
+Everything else above works from this repo alone.
+
 ## Table of contents
 
 - [Quickstart](#quickstart-self-contained-no-chiron-deployment-needed)

@@ -36,6 +36,12 @@ if CONFIG.warehouse_url:
 # Never leak tracebacks through tool output.
 DEBUG = False
 
+# DEBUG=False makes Django require this. Local hosts only: scripts/serve_chiron.py
+# runs a development server for the bundled demo, not a public deployment.
+ALLOWED_HOSTS = list(dict.fromkeys(
+    list(globals().get("ALLOWED_HOSTS", [])) + ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]
+))
+
 # QueryTool/StatTool compile SQL with literal_binds and hand the string to
 # helpers.print_query_info, which would put filter values (i.e. PHI) into logs.
 CHIRON_GET_QUERY_PERFORMANCE = False
