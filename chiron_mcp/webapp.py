@@ -100,8 +100,62 @@ def mcp_config_path() -> Path:
     return path
 
 
+# Tools whose cohort_def input is the query that produced a figure the user sees.
+_RESULT_TOOLS = {
+    "chiron_count_cohort", "chiron_run_table", "chiron_crosstab", "chiron_export_table",
+    "chiron_open_in_ui",
+}
+
+
+class _CohortTracker:
+    """Watch the tool traffic and remember the cohort behind the answer.
+
+    The model holds the working cohort_def and passes it to every tool, so the last
+    definition it counted, tabulated or handed off is the one the answer is about.  A
+    successful chiron_edit_cohort also yields one in its *result*, which matters when
+    the model builds a filter and answers from the edit alone.
+    """
+
+    def __init__(self):
+        self.state: dict | None = None
+        self._names: dict[str, str] = {}  # tool_use_id -> tool name
+
+    def tool_use(self, block: dict) -> None:
+        name = block.get("name", "").replace("mcp__chiron__", "")
+        args = block.get("input") or {}
+        self._names[block.get("id", "")] = name
+        if name in _RESULT_TOOLS and args.get("cohort_def"):
+            self.state = {
+                "dataset_id": args.get("dataset_id"),
+                "cohort_def": args["cohort_def"],
+                "columns": [c for c in (args.get("columns") or []) if isinstance(c, dict)],
+            }
+
+    def tool_result(self, block: dict) -> None:
+        if self._names.get(block.get("tool_use_id", "")) != "chiron_edit_cohort":
+            return
+        content = block.get("content")
+        if isinstance(content, list):
+            content = "".join(c.get("text", "") for c in content if isinstance(c, dict))
+        try:
+            data = json.loads(content or "")
+        except (TypeError, ValueError):
+            return
+        if isinstance(data, dict) and data.get("successful") and data.get("cohort_def"):
+            prev = self.state or {}
+            self.state = {
+                "dataset_id": prev.get("dataset_id"),
+                "cohort_def": data["cohort_def"],
+                "columns": prev.get("columns", []),
+            }
+
+
 def ask_stream(question: str, dataset: str | None):
-    """Run Claude headless and yield (event, payload) tuples as it works."""
+    """Run Claude headless and yield (event, payload) tuples as it works.
+
+    Events: step, thinking, cohort (the cohort_def behind the answer, once, just
+    before the answer), answer, error.
+    """
     claude = shutil.which("claude") or os.path.expanduser("~/.local/bin/claude")
     if not Path(claude).exists():
         yield "error", "Claude Code CLI not found. Install it, or put `claude` on PATH."
@@ -120,6 +174,7 @@ def ask_stream(question: str, dataset: str | None):
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         stdin=subprocess.DEVNULL, text=True, bufsize=1,
     )
+    tracker = _CohortTracker()
     try:
         for line in proc.stdout:
             line = line.strip()
@@ -139,13 +194,20 @@ def ask_stream(question: str, dataset: str | None):
                         # (ToolSearch and friends) are noise to a researcher.
                         if not raw.startswith("mcp__chiron__"):
                             continue
+                        tracker.tool_use(block)
                         yield "step", raw.replace("mcp__chiron__chiron_", "")
                     elif block.get("type") == "text" and block.get("text", "").strip():
                         yield "thinking", block["text"][:300]
+            elif kind == "user":
+                for block in ev.get("message", {}).get("content", []) or []:
+                    if isinstance(block, dict) and block.get("type") == "tool_result":
+                        tracker.tool_result(block)
             elif kind == "result":
                 if ev.get("is_error"):
                     yield "error", ev.get("result") or "Claude returned an error."
                 else:
+                    if tracker.state and tracker.state.get("dataset_id"):
+                        yield "cohort", tracker.state
                     yield "answer", ev.get("result", "")
         proc.wait(timeout=10)
         if proc.returncode not in (0, None):
@@ -155,6 +217,43 @@ def ask_stream(question: str, dataset: str | None):
     finally:
         if proc.poll() is None:
             proc.kill()
+
+
+def session_username(cookie_header: str | None) -> str | None:
+    """The Django user behind a browser's Chiron session cookie, if any.
+
+    Chiron and this server are reached on the same host (the UI proxies one and
+    iframes the other), and cookies ignore the port, so the browser sends Chiron's
+    `sessionid` here too.  Resolving it lets "use this as my query" land in the
+    workspace of the person who clicked rather than in CHIRON_MCP_USERNAME's.
+    """
+    if not cookie_header:
+        return None
+    from http.cookies import SimpleCookie
+
+    jar = SimpleCookie()
+    try:
+        jar.load(cookie_header)
+    except Exception:  # noqa: BLE001
+        return None
+    if "sessionid" not in jar:
+        return None
+    try:
+        from chiron_mcp import server as S  # noqa: F401  (boots Django)
+        from django.contrib.auth import get_user_model
+        from django.contrib.sessions.models import Session
+        from django.utils import timezone
+
+        sess = Session.objects.filter(
+            session_key=jar["sessionid"].value, expire_date__gt=timezone.now()
+        ).first()
+        if not sess:
+            return None
+        uid = sess.get_decoded().get("_auth_user_id")
+        user = get_user_model().objects.filter(pk=uid, is_active=True).first()
+        return user.username if user else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -185,6 +284,12 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/ask":
             return self._ask(parse_qs(url.query))
 
+        self.send_error(404)
+
+    def do_POST(self):
+        url = urlparse(self.path)
+        if url.path == "/load":
+            return self._load()
         self.send_error(404)
 
     def _file(self, path: Path, ctype: str):
@@ -218,9 +323,40 @@ class Handler(BaseHTTPRequestHandler):
                 for d in info.get("datasets", [])
                 if d.get("accessible")
             ]
-            return self._json({"datasets": rows, "identity": info.get("identity")})
+            return self._json({
+                "datasets": rows,
+                "identity": info.get("identity"),
+                "browser_user": session_username(self.headers.get("Cookie")),
+            })
         except Exception as exc:  # noqa: BLE001
             return self._json({"datasets": [], "error": str(exc)})
+
+    def _load(self):
+        """Replace the browser user's live Chiron query with a cohort from an answer.
+
+        Body: {"dataset_id", "cohort_def", "columns"?}.  Writes to the workspace of the
+        Chiron user behind the request's session cookie, falling back to
+        CHIRON_MCP_USERNAME when there is none.  Same guards as chiron_open_in_ui:
+        CHIRON_MCP_ALLOW_SAVE must be on, and an errored definition is refused.
+        """
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, TypeError):
+            return self._json({"error": "Body must be JSON."})
+        dataset_id = body.get("dataset_id")
+        cohort_def = body.get("cohort_def")
+        if not dataset_id or not isinstance(cohort_def, list) or not cohort_def:
+            return self._json({"error": "dataset_id and a non-empty cohort_def are required."})
+
+        from chiron_mcp import server as S
+
+        who = session_username(self.headers.get("Cookie"))
+        result = S.open_in_ui(
+            dataset_id, cohort_def, body.get("columns") or [], mode="workspace", username=who
+        )
+        result["browser_user"] = who
+        return self._json(result)
 
     def _ask(self, params):
         question = (params.get("q") or [""])[0].strip()
