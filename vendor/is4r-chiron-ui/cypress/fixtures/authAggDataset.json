@@ -1,0 +1,12 @@
+{
+  "id": 1,
+  "name": "Chiron performance tests",
+  "unique_id": "performance_tests",
+  "description": "",
+  "lastImport": "07/01/2024",
+  "subjectCount": "40,000",
+  "accessLevel": "agg",
+  "accessLevelLabel": "agg - aggregate",
+  "canViewWorkspace": true,
+  "canViewSubjectDetails": true
+}

@@ -1,0 +1,72 @@
+{
+  "warnings": [],
+  "errors": [],
+  "record_count": 40000,
+  "subject_count": 40000,
+  "paginator": {
+    "first_index": 1,
+    "last_index": 25,
+    "current_page": 1,
+    "previous_page": null,
+    "next_page": 2,
+    "last_page": 1600,
+    "total_records": 40000
+  },
+  "extended_table_def": {
+    "fields": [
+      {
+        "entry_id": "cxZpaW0BrAFa",
+        "concept_id": "patient_id",
+        "concept_name": "Patient ID",
+        "collection": {
+          "collection_id": "subject",
+          "event_date_field": null,
+          "event_end_date_field": null
+        },
+        "categories": [],
+        "label": "Patient ID",
+        "can_delete": true,
+        "can_sort": false,
+        "has_errors": false,
+        "aggregate": false,
+        "alias": null,
+        "categorize": false
+      }
+    ],
+    "sort": [
+      {
+        "entry_id": "cxZpaW0BrAFa",
+        "direction": -1,
+        "label": "Patient ID"
+      }
+    ],
+    "table_type": "subject"
+  },
+  "data": [
+    ["99999730127"],
+    ["99996567926"],
+    ["99995721275"],
+    ["99995056100"],
+    ["99991724090"],
+    ["99991117351"],
+    ["99988468503"],
+    ["99985897215"],
+    ["99983274046"],
+    ["99979101090"],
+    ["99974584564"],
+    ["99974444757"],
+    ["99971397718"],
+    ["99970292098"],
+    ["99966314285"],
+    ["99965698463"],
+    ["99964413334"],
+    ["99963651883"],
+    ["99961396345"],
+    ["99960472479"],
+    ["99958925682"],
+    ["99951745702"],
+    ["99951017263"],
+    ["99950149519"],
+    ["99949326322"]
+  ]
+}

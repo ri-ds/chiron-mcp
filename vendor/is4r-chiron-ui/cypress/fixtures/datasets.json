@@ -1,0 +1,18 @@
+{
+  "datasets": [
+    {
+      "id": 1,
+      "name": "Chiron performance tests",
+      "unique_id": "performance_tests",
+      "description": "",
+      "siteTitle": null
+    },
+    {
+      "id": 2,
+      "name": "Demographics",
+      "unique_id": "demographics",
+      "description": "Just the Demographics information",
+      "siteTitle": null
+    }
+  ]
+}

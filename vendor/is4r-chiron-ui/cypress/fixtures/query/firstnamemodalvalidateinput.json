@@ -1,0 +1,9 @@
+{
+  "transformation_successful": false,
+  "transformation_errors": [],
+  "transformation_warnings": [
+    "Entry Invalid! not found",
+    "Entry LastBad not found"
+  ],
+  "cohort_def": []
+}

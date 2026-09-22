@@ -1,0 +1,49 @@
+{
+  "transformation_successful": true,
+  "cohort_def": [
+    {
+      "entry_type": "criteria_set",
+      "entry_id": "aYqMWzPpDX6U",
+      "collection_id": "subject",
+      "list": [
+        {
+          "entry_id": "56r5mnQfI5IS",
+          "concept_id": "gender",
+          "categories": ["M"],
+          "exclude_selected": false
+        }
+      ]
+    }
+  ],
+  "entry_id": "56r5mnQfI5IS",
+  "extended_cohort_def": [
+    {
+      "entry_type": "criteria_set",
+      "entry_id": "aYqMWzPpDX6U",
+      "collection_id": "subject",
+      "alias": "",
+      "label": "Subject Criteria",
+      "is_root_collection": true,
+      "collection_name": "Subject",
+      "subcol_count_restriction": {},
+      "has_event_field": false,
+      "entries": [
+        {
+          "entry_id": "56r5mnQfI5IS",
+          "concept_id": "gender",
+          "prefilter_value": null,
+          "label": "Gender = \"M\"",
+          "abbreviated_label": "Gender = \"M\"",
+          "exclude_selected": false,
+          "values": ["M"]
+        }
+      ]
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "describe": "Subject Criteria<br>- Gender = \"M\"<br>",
+  "snapshot_id": 105,
+  "previous_snapshot_id": 104,
+  "next_snapshot_id": null
+}

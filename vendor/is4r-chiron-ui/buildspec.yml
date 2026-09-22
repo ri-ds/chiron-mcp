@@ -1,0 +1,16 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - corepack use pnpm@latest-8
+      - ./node_modules/.bin/pnpm install
+  build:
+    commands:
+      - ./node_modules/.bin/pnpm run build
+
+artifacts:
+  base-directory: dist
+  files:
+    - "**/*"

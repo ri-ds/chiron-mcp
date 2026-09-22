@@ -1,0 +1,50 @@
+{
+  "warnings": [],
+  "errors": [],
+  "record_count": 1,
+  "subject_count": 40000,
+  "paginator": {
+    "first_index": 1,
+    "last_index": 1,
+    "current_page": 1,
+    "previous_page": null,
+    "next_page": null,
+    "last_page": 1,
+    "total_records": 1
+  },
+  "extended_table_def": {
+    "fields": [
+      {
+        "entry_id": "lgnTEXi3fskh",
+        "concept_id": "patient_id",
+        "concept_name": "Patient ID",
+        "collection": {
+          "collection_id": "subject",
+          "event_date_field": null,
+          "event_end_date_field": null
+        },
+        "categories": [],
+        "label": "Patient ID (count all)",
+        "can_delete": true,
+        "can_sort": false,
+        "has_errors": false,
+        "aggregate": true,
+        "alias": null,
+        "categorize": false,
+        "aggregation_method": "count_all",
+        "aggregation_settings": {},
+        "aggregation_criteria_set": null,
+        "aggregation_criteria_set_name": null
+      }
+    ],
+    "sort": [
+      {
+        "entry_id": "lgnTEXi3fskh",
+        "direction": 1,
+        "label": "Patient ID"
+      }
+    ],
+    "table_type": "subject"
+  },
+  "data": [[40000]]
+}

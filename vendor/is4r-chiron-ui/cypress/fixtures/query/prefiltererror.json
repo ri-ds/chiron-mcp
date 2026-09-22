@@ -1,0 +1,33 @@
+{
+    "permanent_id": "prefilter_number_category",
+    "concept_type": "category",
+    "name": "Number Type",
+    "get_name_plural": "Number Types",
+    "description": "",
+    "collection": "prefilters",
+    "collection_name": "Prefilters",
+    "collection_name_plural": "Prefilterss",
+    "source": 13,
+    "concept_for_prefilter": null,
+    "prefilter_mode": "required",
+    "category_hierarchy": [
+        {
+            "id": 11,
+            "name": "Prefilter Concepts",
+            "parent_id": null,
+            "get_level": 0
+        }
+    ],
+    "order": 6.0,
+    "published": true,
+    "include_in_cohort_def": true,
+    "include_in_table_def": true,
+    "include_in_analysis_def": true,
+    "has_phi": false,
+    "pk": 115,
+    "statistics": {
+        "error": "Please select a prefilter value"
+    },
+    "prefilter_value": null
+}
+

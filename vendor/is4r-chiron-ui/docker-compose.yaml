@@ -1,0 +1,12 @@
+version: "3"
+services:
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_MUI_KEY
+    image: hub.research.cchmc.org/chiron/ui:${BUILD_NUMBER}
+    ports:
+      - 13000:8000
+    restart: always

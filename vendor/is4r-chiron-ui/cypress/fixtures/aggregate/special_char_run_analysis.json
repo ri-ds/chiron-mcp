@@ -1,0 +1,42 @@
+{
+  "dataset": {
+    "AL Deficiency (Argininosuccinic Aciduria, ASA)": {
+      "subject count": 158
+    },
+    "ARG Deficiency (Hyperargininemia)": {
+      "subject count": 36
+    },
+    "AS Deficiency (Citrullinemia)": {
+      "subject count": 140
+    },
+    "CITR Deficiency (Citrullinemia type II)": {
+      "subject count": 7
+    },
+    "CPS I Deficiency": {
+      "subject count": 33
+    },
+    "HHH syndrome or ORNT Deficiency": {
+      "subject count": 15
+    },
+    "NAGS Deficiency": {
+      "subject count": 8
+    },
+    "OTC Deficiency": {
+      "subject count": 540
+    },
+    "UCD Highly Likely/Diagnosis Pending": {
+      "subject count": 8
+    }
+  },
+  "cohort_def": [],
+  "analysis_def": {
+    "rows": [],
+    "cols": [
+      {
+        "entry_id": "ULdoutMDJD30",
+        "concept_id": "ucd_fkaqgmbbgs"
+      }
+    ]
+  },
+  "pivot_table_html": "<table border=\"1\" class=\"dataframe table table-bordered table-sm\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th>UCD Diagnosis</th>\n      <th>AL Deficiency (Argininosuccinic Aciduria, ASA)</th>\n      <th>ARG Deficiency (Hyperargininemia)</th>\n      <th>AS Deficiency (Citrullinemia)</th>\n      <th>CITR Deficiency (Citrullinemia type II)</th>\n      <th>CPS I Deficiency</th>\n      <th>HHH syndrome or ORNT Deficiency</th>\n      <th>NAGS Deficiency</th>\n      <th>OTC Deficiency</th>\n      <th>UCD Highly Likely/Diagnosis Pending</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>subject count</th>\n      <td>158</td>\n      <td>36</td>\n      <td>140</td>\n      <td>7</td>\n      <td>33</td>\n      <td>15</td>\n      <td>8</td>\n      <td>540</td>\n      <td>8</td>\n    </tr>\n  </tbody>\n</table>"
+}

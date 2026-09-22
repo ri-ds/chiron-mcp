@@ -1,0 +1,47 @@
+{
+  "transformation_successful": true,
+  "analysis_def": {
+    "rows": [
+      {
+        "entry_id": "TdRClkNLJ7LK",
+        "concept_id": "birthdate"
+      },
+      {
+        "entry_id": "rWoQW7pFsw0z",
+        "concept_id": "deathdate"
+      }
+    ],
+    "cols": [
+      {
+        "entry_id": "HhMWtIMPeCwj",
+        "concept_id": "gender"
+      }
+    ]
+  },
+  "extended_analysis_def": {
+    "rows": [
+      {
+        "entry_id": "TdRClkNLJ7LK",
+        "concept_id": "birthdate",
+        "label": "Birthdate"
+      },
+      {
+        "entry_id": "rWoQW7pFsw0z",
+        "concept_id": "deathdate",
+        "label": "Death Date"
+      }
+    ],
+    "cols": [
+      {
+        "entry_id": "HhMWtIMPeCwj",
+        "concept_id": "gender",
+        "label": "Gender"
+      }
+    ]
+  },
+  "warnings": [],
+  "errors": [],
+  "snapshot_id": 689,
+  "previous_snapshot_id": 688,
+  "next_snapshot_id": null
+}

@@ -1,0 +1,34 @@
+{
+  "permanent_id": "gender",
+  "concept_type": "category",
+  "name": "Gender",
+  "get_name_plural": "Genders",
+  "description": "",
+  "collection": "subject",
+  "collection_name": "subject",
+  "collection_name_plural": "subjects",
+  "source": 1,
+  "concept_for_prefilter": null,
+  "prefilter_mode": "required",
+  "category_hierarchy": [
+    {
+      "id": 1,
+      "name": "Demographics",
+      "parent_id": null,
+      "get_level": 0
+    }
+  ],
+  "order": 3.0,
+  "published": true,
+  "include_in_cohort_def": true,
+  "include_in_table_def": true,
+  "include_in_analysis_def": true,
+  "has_phi": false,
+  "cohort_def_options": {
+    "all_values": ["M", "F"],
+    "selected_values": ["M"],
+    "exclude_selected": false,
+    "entry_id": "56r5mnQfI5IS"
+  },
+  "prefilter_value": ""
+}

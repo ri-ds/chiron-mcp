@@ -1,0 +1,35 @@
+{
+  "permanent_id": "healthcare_expenses",
+  "concept_type": "number",
+  "name": "Healthcare Expenses",
+  "get_name_plural": "Healthcare Expensess",
+  "description": "",
+  "collection": "subject",
+  "collection_name": "subject",
+  "collection_name_plural": "subjects",
+  "source": 1,
+  "concept_for_prefilter": null,
+  "prefilter_mode": "required",
+  "category_hierarchy": [
+    {
+      "id": 1,
+      "name": "Demographics",
+      "parent_id": null,
+      "get_level": 0
+    }
+  ],
+  "order": 9.0,
+  "published": true,
+  "include_in_cohort_def": true,
+  "include_in_table_def": true,
+  "include_in_analysis_def": true,
+  "has_phi": false,
+  "cohort_def_options": {
+    "exclude_selected": false,
+    "include_null_and_missing": false,
+    "existing_min": null,
+    "existing_max": null,
+    "entry_id": "undefined"
+  },
+  "prefilter_value": ""
+}

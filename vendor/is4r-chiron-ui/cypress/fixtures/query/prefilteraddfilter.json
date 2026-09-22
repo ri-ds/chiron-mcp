@@ -1,0 +1,52 @@
+{
+    "transformation_successful": true,
+    "cohort_def": [
+        {
+            "entry_type": "criteria_set",
+            "entry_id": "Epg8XPeTuDU2",
+            "collection_id": "prefilters",
+            "list": [
+                {
+                    "min": null,
+                    "max": 100.0,
+                    "entry_id": "xMeR3VQAqsAc",
+                    "concept_id": "prefilter_number",
+                    "prefilter_value": "mg/ml",
+                    "include_null_and_missing": false,
+                    "exclude_selected": false
+                }
+            ]
+        }
+    ],
+    "entry_id": "xMeR3VQAqsAc",
+    "extended_cohort_def": [
+        {
+            "entry_type": "criteria_set",
+            "entry_id": "Epg8XPeTuDU2",
+            "collection_id": "prefilters",
+            "alias": "",
+            "label": "Subject has at least 1 <strong>Prefilters</strong> where:",
+            "collection_name": "Prefilters",
+            "subcol_count_restriction": {},
+            "has_event_field": false,
+            "entries": [
+                {
+                    "entry_id": "xMeR3VQAqsAc",
+                    "concept_id": "prefilter_number",
+                    "prefilter_value": "mg/ml",
+                    "label": "<em>(mg/ml)</em> Number <= 100.0",
+                    "abbreviated_label": "<em>(mg/ml)</em> Number <= 100.0",
+                    "exclude_selected": false,
+                    "values": null
+                }
+            ],
+            "criteria_set_name": "Prefilters 1"
+        }
+    ],
+    "warnings": [],
+    "errors": [],
+    "describe": "Subject has at least 1 <strong>Prefilters</strong> where:<br>- <em>(mg/ml)</em> Number <= 100.0<br>",
+    "snapshot_id": 32,
+    "previous_snapshot_id": 31,
+    "next_snapshot_id": null
+}

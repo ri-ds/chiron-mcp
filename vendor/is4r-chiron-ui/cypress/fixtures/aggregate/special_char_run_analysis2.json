@@ -1,0 +1,595 @@
+{
+  "dataset": {
+    "('AB', 'Female')": {
+      "subject count": 2
+    },
+    "('AB', 'Male')": {
+      "subject count": 1
+    },
+    "('ACT', 'Female')": {
+      "subject count": 1
+    },
+    "('AK', 'Female')": {
+      "subject count": 1
+    },
+    "('AK', 'Male')": {
+      "subject count": 1
+    },
+    "('AL', 'Female')": {
+      "subject count": 6
+    },
+    "('AL', 'Male')": {
+      "subject count": 3
+    },
+    "('AR', 'Female')": {
+      "subject count": 3
+    },
+    "('AR', 'Male')": {
+      "subject count": 2
+    },
+    "('AZ', 'Female')": {
+      "subject count": 1
+    },
+    "('Alabama', 'Female')": {
+      "subject count": 4
+    },
+    "('Alabama', 'Male')": {
+      "subject count": 1
+    },
+    "('Alberta', 'Female')": {
+      "subject count": 12
+    },
+    "('Alberta', 'Male')": {
+      "subject count": 3
+    },
+    "('Arkansas', 'Female')": {
+      "subject count": 2
+    },
+    "('Arkansas', 'Male')": {
+      "subject count": 1
+    },
+    "('Berlin', 'Male')": {
+      "subject count": 1
+    },
+    "('CA', 'Female')": {
+      "subject count": 12
+    },
+    "('CA', 'Male')": {
+      "subject count": 2
+    },
+    "('CO', 'Female')": {
+      "subject count": 13
+    },
+    "('CO', 'Male')": {
+      "subject count": 1
+    },
+    "('CT', 'Female')": {
+      "subject count": 2
+    },
+    "('CT', 'Male')": {
+      "subject count": 1
+    },
+    "('California', 'Female')": {
+      "subject count": 1
+    },
+    "('California', 'Male')": {
+      "subject count": 2
+    },
+    "('Colorado', 'Female')": {
+      "subject count": 2
+    },
+    "('Cundinamarca', 'Male')": {
+      "subject count": 1
+    },
+    "('DC', 'Male')": {
+      "subject count": 1
+    },
+    "('DE', 'Male')": {
+      "subject count": 1
+    },
+    "('Delaware', 'Male')": {
+      "subject count": 1
+    },
+    "('District Cundinamarca', 'Male')": {
+      "subject count": 1
+    },
+    "('District of Columbia', 'Female')": {
+      "subject count": 4
+    },
+    "('Durango', 'Male')": {
+      "subject count": 1
+    },
+    "('Essex', 'Female')": {
+      "subject count": 1
+    },
+    "('FL', 'Female')": {
+      "subject count": 9
+    },
+    "('FL', 'Male')": {
+      "subject count": 3
+    },
+    "('Florida', 'Female')": {
+      "subject count": 8
+    },
+    "('Florida', 'Male')": {
+      "subject count": 3
+    },
+    "('GA', 'Female')": {
+      "subject count": 38
+    },
+    "('GA', 'Male')": {
+      "subject count": 25
+    },
+    "('Hamburg', 'Female')": {
+      "subject count": 1
+    },
+    "('Hamburg', 'Male')": {
+      "subject count": 1
+    },
+    "('IA', 'Female')": {
+      "subject count": 9
+    },
+    "('IA', 'Male')": {
+      "subject count": 2
+    },
+    "('ID', 'Female')": {
+      "subject count": 1
+    },
+    "('IL', 'Female')": {
+      "subject count": 18
+    },
+    "('IL', 'Male')": {
+      "subject count": 16
+    },
+    "('IN', 'Female')": {
+      "subject count": 9
+    },
+    "('Idaho', 'Male')": {
+      "subject count": 1
+    },
+    "('Illinois', 'Female')": {
+      "subject count": 16
+    },
+    "('Illinois', 'Male')": {
+      "subject count": 6
+    },
+    "('Indiana', 'Female')": {
+      "subject count": 5
+    },
+    "('Indiana', 'Male')": {
+      "subject count": 4
+    },
+    "('Iowa', 'Female')": {
+      "subject count": 3
+    },
+    "('Iowa', 'Male')": {
+      "subject count": 2
+    },
+    "('Johannesburg', 'Male')": {
+      "subject count": 1
+    },
+    "('KS', 'Female')": {
+      "subject count": 1
+    },
+    "('KS', 'Male')": {
+      "subject count": 1
+    },
+    "('KY', 'Female')": {
+      "subject count": 6
+    },
+    "('Kansas', 'Male')": {
+      "subject count": 1
+    },
+    "('Kentucky', 'Female')": {
+      "subject count": 2
+    },
+    "(\"L'Aquila\", 'Female')": {
+      "subject count": 1
+    },
+    "('LA', 'Female')": {
+      "subject count": 2
+    },
+    "('LA', 'Male')": {
+      "subject count": 3
+    },
+    "('Lagos', 'Male')": {
+      "subject count": 1
+    },
+    "('MA', 'Female')": {
+      "subject count": 15
+    },
+    "('MA', 'Male')": {
+      "subject count": 7
+    },
+    "('MD', 'Female')": {
+      "subject count": 8
+    },
+    "('MD', 'Male')": {
+      "subject count": 4
+    },
+    "('MI', 'Female')": {
+      "subject count": 4
+    },
+    "('MI', 'Male')": {
+      "subject count": 8
+    },
+    "('MICHIGAN', 'Female')": {
+      "subject count": 1
+    },
+    "('MN', 'Female')": {
+      "subject count": 4
+    },
+    "('MN', 'Male')": {
+      "subject count": 2
+    },
+    "('MO', 'Female')": {
+      "subject count": 14
+    },
+    "('MO', 'Male')": {
+      "subject count": 8
+    },
+    "('MS', 'Female')": {
+      "subject count": 13
+    },
+    "('MS', 'Male')": {
+      "subject count": 8
+    },
+    "('MT', 'Female')": {
+      "subject count": 3
+    },
+    "('MT', 'Male')": {
+      "subject count": 1
+    },
+    "('MVP', 'Female')": {
+      "subject count": 1
+    },
+    "('Maine', 'Male')": {
+      "subject count": 1
+    },
+    "('Manitoba', 'Female')": {
+      "subject count": 1
+    },
+    "('Maryland', 'Female')": {
+      "subject count": 6
+    },
+    "('Maryland', 'Male')": {
+      "subject count": 3
+    },
+    "('Michigan', 'Female')": {
+      "subject count": 1
+    },
+    "('Michigan', 'Male')": {
+      "subject count": 1
+    },
+    "('Minnesota', 'Female')": {
+      "subject count": 3
+    },
+    "('Minnesota', 'Male')": {
+      "subject count": 1
+    },
+    "('Mississippi', 'Female')": {
+      "subject count": 4
+    },
+    "('Missouri', 'Female')": {
+      "subject count": 1
+    },
+    "('Missouri', 'Male')": {
+      "subject count": 2
+    },
+    "('Morelos', 'Female')": {
+      "subject count": 1
+    },
+    "('N/A', 'Female')": {
+      "subject count": 2
+    },
+    "('NC', 'Female')": {
+      "subject count": 8
+    },
+    "('NC', 'Male')": {
+      "subject count": 1
+    },
+    "('ND', 'Female')": {
+      "subject count": 1
+    },
+    "('NE', 'Female')": {
+      "subject count": 3
+    },
+    "('NE', 'Male')": {
+      "subject count": 2
+    },
+    "('NH', 'Female')": {
+      "subject count": 1
+    },
+    "('NH', 'Male')": {
+      "subject count": 1
+    },
+    "('NJ', 'Female')": {
+      "subject count": 5
+    },
+    "('NJ', 'Male')": {
+      "subject count": 2
+    },
+    "('NM', 'Female')": {
+      "subject count": 1
+    },
+    "('NM', 'Male')": {
+      "subject count": 3
+    },
+    "('NRW', 'Male')": {
+      "subject count": 1
+    },
+    "('NSW', 'Female')": {
+      "subject count": 1
+    },
+    "('NV', 'Male')": {
+      "subject count": 1
+    },
+    "('NY', 'Female')": {
+      "subject count": 27
+    },
+    "('NY', 'Male')": {
+      "subject count": 17
+    },
+    "('Nebraska', 'Female')": {
+      "subject count": 1
+    },
+    "('Nevada', 'Female')": {
+      "subject count": 1
+    },
+    "('New Brunswick', 'Male')": {
+      "subject count": 2
+    },
+    "('New Hampshire', 'Female')": {
+      "subject count": 1
+    },
+    "('New Jersey', 'Female')": {
+      "subject count": 4
+    },
+    "('New Jersey', 'Male')": {
+      "subject count": 1
+    },
+    "('New Mexico', 'Female')": {
+      "subject count": 1
+    },
+    "('New Mexico', 'Male')": {
+      "subject count": 1
+    },
+    "('New South Wales', 'Female')": {
+      "subject count": 4
+    },
+    "('New South Wales', 'Male')": {
+      "subject count": 1
+    },
+    "('New York', 'Female')": {
+      "subject count": 13
+    },
+    "('New York', 'Male')": {
+      "subject count": 2
+    },
+    "('New south wales', 'Female')": {
+      "subject count": 1
+    },
+    "('Newfoundland', 'Female')": {
+      "subject count": 1
+    },
+    "('North Carolina', 'Female')": {
+      "subject count": 2
+    },
+    "('North Dakota', 'Female')": {
+      "subject count": 1
+    },
+    "('Northamptonshire', 'Female')": {
+      "subject count": 1
+    },
+    "('Northrein-Westphalia', 'Female')": {
+      "subject count": 1
+    },
+    "('NovaScitia', 'Female')": {
+      "subject count": 1
+    },
+    "('OH', 'Female')": {
+      "subject count": 16
+    },
+    "('OH', 'Male')": {
+      "subject count": 9
+    },
+    "('OHIO', 'Female')": {
+      "subject count": 2
+    },
+    "('OHIO', 'Male')": {
+      "subject count": 1
+    },
+    "('OK', 'Female')": {
+      "subject count": 3
+    },
+    "('OK', 'Male')": {
+      "subject count": 1
+    },
+    "('OR', 'Female')": {
+      "subject count": 1
+    },
+    "('Ohio', 'Female')": {
+      "subject count": 6
+    },
+    "('Ohio', 'Male')": {
+      "subject count": 2
+    },
+    "('Oklahoma', 'Female')": {
+      "subject count": 1
+    },
+    "('Oklahoma', 'Male')": {
+      "subject count": 1
+    },
+    "('Ontario', 'Female')": {
+      "subject count": 2
+    },
+    "('Ontario', 'Male')": {
+      "subject count": 1
+    },
+    "('PA', 'Female')": {
+      "subject count": 9
+    },
+    "('PA', 'Male')": {
+      "subject count": 5
+    },
+    "('Pennsylvania', 'Female')": {
+      "subject count": 12
+    },
+    "('Pennsylvania', 'Male')": {
+      "subject count": 2
+    },
+    "('Puerto Rico', 'Female')": {
+      "subject count": 2
+    },
+    "('Puerto Rico', 'Male')": {
+      "subject count": 1
+    },
+    "('Quebec', 'Female')": {
+      "subject count": 3
+    },
+    "('Quebec', 'Male')": {
+      "subject count": 1
+    },
+    "('SC', 'Female')": {
+      "subject count": 7
+    },
+    "('SC', 'Male')": {
+      "subject count": 1
+    },
+    "('SD', 'Female')": {
+      "subject count": 1
+    },
+    "('SD', 'Male')": {
+      "subject count": 2
+    },
+    "('SH', 'Female')": {
+      "subject count": 1
+    },
+    "('Saskatchewan', 'Male')": {
+      "subject count": 1
+    },
+    "('Schleswig Holstein', 'Female')": {
+      "subject count": 1
+    },
+    "('Schleswig-Holstein', 'Female')": {
+      "subject count": 2
+    },
+    "('South Carolina', 'Female')": {
+      "subject count": 2
+    },
+    "('South Carolina', 'Male')": {
+      "subject count": 1
+    },
+    "('South Dakota', 'Female')": {
+      "subject count": 2
+    },
+    "('TN', 'Female')": {
+      "subject count": 11
+    },
+    "('TN', 'Male')": {
+      "subject count": 5
+    },
+    "('TX', 'Female')": {
+      "subject count": 19
+    },
+    "('TX', 'Male')": {
+      "subject count": 6
+    },
+    "('Tenneessee', 'Female')": {
+      "subject count": 1
+    },
+    "('Tennessee', 'Female')": {
+      "subject count": 2
+    },
+    "('Texas', 'Female')": {
+      "subject count": 5
+    },
+    "('Texas', 'Male')": {
+      "subject count": 1
+    },
+    "('UK', 'Female')": {
+      "subject count": 1
+    },
+    "('United States', 'Female')": {
+      "subject count": 1
+    },
+    "('Utah', 'Female')": {
+      "subject count": 2
+    },
+    "('Utah', 'Male')": {
+      "subject count": 2
+    },
+    "('VA', 'Female')": {
+      "subject count": 5
+    },
+    "('VA', 'Male')": {
+      "subject count": 4
+    },
+    "('Virginia', 'Female')": {
+      "subject count": 5
+    },
+    "('Virginia', 'Male')": {
+      "subject count": 3
+    },
+    "('WA', 'Female')": {
+      "subject count": 3
+    },
+    "('WA', 'Male')": {
+      "subject count": 1
+    },
+    "('WI', 'Female')": {
+      "subject count": 1
+    },
+    "('WV', 'Female')": {
+      "subject count": 1
+    },
+    "('Washington', 'Female')": {
+      "subject count": 1
+    },
+    "('Washington', 'Male')": {
+      "subject count": 1
+    },
+    "('West Virginia', 'Female')": {
+      "subject count": 1
+    },
+    "('West Virginia', 'Male')": {
+      "subject count": 2
+    },
+    "('Wisconsin', 'Female')": {
+      "subject count": 4
+    },
+    "('Wisconsin', 'Male')": {
+      "subject count": 1
+    },
+    "('alabama', 'Male')": {
+      "subject count": 1
+    },
+    "('california', 'Female')": {
+      "subject count": 1
+    },
+    "('ohio', 'Female')": {
+      "subject count": 1
+    },
+    "('virginia', 'Female')": {
+      "subject count": 1
+    },
+    "('virginia', 'Male')": {
+      "subject count": 1
+    }
+  },
+  "cohort_def": [],
+  "analysis_def": {
+    "fields": [],
+    "cols": [
+      {
+        "entry_id": "8oXYf3DKKryw",
+        "concept_id": "52SateofBirth"
+      },
+      {
+        "entry_id": "rWlscYBhbBjV",
+        "concept_id": "1013Gender"
+      }
+    ]
+  },
+  "pivot_table_html": "<table border=\"1\" class=\"dataframe table table-bordered table-sm\">\n  <thead>\n    <tr>\n      <th>Sate of Birth</th>\n      <th colspan=\"2\" halign=\"left\">AB</th>\n      <th>ACT</th>\n      <th colspan=\"2\" halign=\"left\">AK</th>\n      <th colspan=\"2\" halign=\"left\">AL</th>\n      <th colspan=\"2\" halign=\"left\">AR</th>\n      <th>AZ</th>\n      <th colspan=\"2\" halign=\"left\">Alabama</th>\n      <th colspan=\"2\" halign=\"left\">Alberta</th>\n      <th colspan=\"2\" halign=\"left\">Arkansas</th>\n      <th>Berlin</th>\n      <th colspan=\"2\" halign=\"left\">CA</th>\n      <th colspan=\"2\" halign=\"left\">CO</th>\n      <th colspan=\"2\" halign=\"left\">CT</th>\n      <th colspan=\"2\" halign=\"left\">California</th>\n      <th>Colorado</th>\n      <th>Cundinamarca</th>\n      <th>DC</th>\n      <th>DE</th>\n      <th>Delaware</th>\n      <th>District Cundinamarca</th>\n      <th>District of Columbia</th>\n      <th>Durango</th>\n      <th>Essex</th>\n      <th colspan=\"2\" halign=\"left\">FL</th>\n      <th colspan=\"2\" halign=\"left\">Florida</th>\n      <th colspan=\"2\" halign=\"left\">GA</th>\n      <th colspan=\"2\" halign=\"left\">Hamburg</th>\n      <th colspan=\"2\" halign=\"left\">IA</th>\n      <th>ID</th>\n      <th colspan=\"2\" halign=\"left\">IL</th>\n      <th>IN</th>\n      <th>Idaho</th>\n      <th colspan=\"2\" halign=\"left\">Illinois</th>\n      <th colspan=\"2\" halign=\"left\">Indiana</th>\n      <th colspan=\"2\" halign=\"left\">Iowa</th>\n      <th>Johannesburg</th>\n      <th colspan=\"2\" halign=\"left\">KS</th>\n      <th>KY</th>\n      <th>Kansas</th>\n      <th>Kentucky</th>\n      <th>L'Aquila</th>\n      <th colspan=\"2\" halign=\"left\">LA</th>\n      <th>Lagos</th>\n      <th colspan=\"2\" halign=\"left\">MA</th>\n      <th colspan=\"2\" halign=\"left\">MD</th>\n      <th colspan=\"2\" halign=\"left\">MI</th>\n      <th>MICHIGAN</th>\n      <th colspan=\"2\" halign=\"left\">MN</th>\n      <th colspan=\"2\" halign=\"left\">MO</th>\n      <th colspan=\"2\" halign=\"left\">MS</th>\n      <th colspan=\"2\" halign=\"left\">MT</th>\n      <th>MVP</th>\n      <th>Maine</th>\n      <th>Manitoba</th>\n      <th colspan=\"2\" halign=\"left\">Maryland</th>\n      <th colspan=\"2\" halign=\"left\">Michigan</th>\n      <th colspan=\"2\" halign=\"left\">Minnesota</th>\n      <th>Mississippi</th>\n      <th colspan=\"2\" halign=\"left\">Missouri</th>\n      <th>Morelos</th>\n      <th>N/A</th>\n      <th colspan=\"2\" halign=\"left\">NC</th>\n      <th>ND</th>\n      <th colspan=\"2\" halign=\"left\">NE</th>\n      <th colspan=\"2\" halign=\"left\">NH</th>\n      <th colspan=\"2\" halign=\"left\">NJ</th>\n      <th colspan=\"2\" halign=\"left\">NM</th>\n      <th>NRW</th>\n      <th>NSW</th>\n      <th>NV</th>\n      <th colspan=\"2\" halign=\"left\">NY</th>\n      <th>Nebraska</th>\n      <th>Nevada</th>\n      <th>New Brunswick</th>\n      <th>New Hampshire</th>\n      <th colspan=\"2\" halign=\"left\">New Jersey</th>\n      <th colspan=\"2\" halign=\"left\">New Mexico</th>\n      <th colspan=\"2\" halign=\"left\">New South Wales</th>\n      <th colspan=\"2\" halign=\"left\">New York</th>\n      <th>New south wales</th>\n      <th>Newfoundland</th>\n      <th>North Carolina</th>\n      <th>North Dakota</th>\n      <th>Northamptonshire</th>\n      <th>Northrein-Westphalia</th>\n      <th>NovaScitia</th>\n      <th colspan=\"2\" halign=\"left\">OH</th>\n      <th colspan=\"2\" halign=\"left\">OHIO</th>\n      <th colspan=\"2\" halign=\"left\">OK</th>\n      <th>OR</th>\n      <th colspan=\"2\" halign=\"left\">Ohio</th>\n      <th colspan=\"2\" halign=\"left\">Oklahoma</th>\n      <th colspan=\"2\" halign=\"left\">Ontario</th>\n      <th colspan=\"2\" halign=\"left\">PA</th>\n      <th colspan=\"2\" halign=\"left\">Pennsylvania</th>\n      <th colspan=\"2\" halign=\"left\">Puerto Rico</th>\n      <th colspan=\"2\" halign=\"left\">Quebec</th>\n      <th colspan=\"2\" halign=\"left\">SC</th>\n      <th colspan=\"2\" halign=\"left\">SD</th>\n      <th>SH</th>\n      <th>Saskatchewan</th>\n      <th>Schleswig Holstein</th>\n      <th>Schleswig-Holstein</th>\n      <th colspan=\"2\" halign=\"left\">South Carolina</th>\n      <th>South Dakota</th>\n      <th colspan=\"2\" halign=\"left\">TN</th>\n      <th colspan=\"2\" halign=\"left\">TX</th>\n      <th>Tenneessee</th>\n      <th>Tennessee</th>\n      <th colspan=\"2\" halign=\"left\">Texas</th>\n      <th>UK</th>\n      <th>United States</th>\n      <th colspan=\"2\" halign=\"left\">Utah</th>\n      <th colspan=\"2\" halign=\"left\">VA</th>\n      <th colspan=\"2\" halign=\"left\">Virginia</th>\n      <th colspan=\"2\" halign=\"left\">WA</th>\n      <th>WI</th>\n      <th>WV</th>\n      <th colspan=\"2\" halign=\"left\">Washington</th>\n      <th colspan=\"2\" halign=\"left\">West Virginia</th>\n      <th colspan=\"2\" halign=\"left\">Wisconsin</th>\n      <th>alabama</th>\n      <th>california</th>\n      <th>ohio</th>\n      <th colspan=\"2\" halign=\"left\">virginia</th>\n    </tr>\n    <tr>\n      <th>Gender</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Male</th>\n      <th>Male</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Female</th>\n      <th>Male</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>subject count</th>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>6</td>\n      <td>3</td>\n      <td>3</td>\n      <td>2</td>\n      <td>1</td>\n      <td>4</td>\n      <td>1</td>\n      <td>12</td>\n      <td>3</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>12</td>\n      <td>2</td>\n      <td>13</td>\n      <td>1</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>2</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>4</td>\n      <td>1</td>\n      <td>1</td>\n      <td>9</td>\n      <td>3</td>\n      <td>8</td>\n      <td>3</td>\n      <td>38</td>\n      <td>25</td>\n      <td>1</td>\n      <td>1</td>\n      <td>9</td>\n      <td>2</td>\n      <td>1</td>\n      <td>18</td>\n      <td>16</td>\n      <td>9</td>\n      <td>1</td>\n      <td>16</td>\n      <td>6</td>\n      <td>5</td>\n      <td>4</td>\n      <td>3</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>6</td>\n      <td>1</td>\n      <td>2</td>\n      <td>1</td>\n      <td>2</td>\n      <td>3</td>\n      <td>1</td>\n      <td>15</td>\n      <td>7</td>\n      <td>8</td>\n      <td>4</td>\n      <td>4</td>\n      <td>8</td>\n      <td>1</td>\n      <td>4</td>\n      <td>2</td>\n      <td>14</td>\n      <td>8</td>\n      <td>13</td>\n      <td>8</td>\n      <td>3</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>6</td>\n      <td>3</td>\n      <td>1</td>\n      <td>1</td>\n      <td>3</td>\n      <td>1</td>\n      <td>4</td>\n      <td>1</td>\n      <td>2</td>\n      <td>1</td>\n      <td>2</td>\n      <td>8</td>\n      <td>1</td>\n      <td>1</td>\n      <td>3</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>5</td>\n      <td>2</td>\n      <td>1</td>\n      <td>3</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>27</td>\n      <td>17</td>\n      <td>1</td>\n      <td>1</td>\n      <td>2</td>\n      <td>1</td>\n      <td>4</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>4</td>\n      <td>1</td>\n      <td>13</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>16</td>\n      <td>9</td>\n      <td>2</td>\n      <td>1</td>\n      <td>3</td>\n      <td>1</td>\n      <td>1</td>\n      <td>6</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>2</td>\n      <td>1</td>\n      <td>9</td>\n      <td>5</td>\n      <td>12</td>\n      <td>2</td>\n      <td>2</td>\n      <td>1</td>\n      <td>3</td>\n      <td>1</td>\n      <td>7</td>\n      <td>1</td>\n      <td>1</td>\n      <td>2</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>2</td>\n      <td>2</td>\n      <td>1</td>\n      <td>2</td>\n      <td>11</td>\n      <td>5</td>\n      <td>19</td>\n      <td>6</td>\n      <td>1</td>\n      <td>2</td>\n      <td>5</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>2</td>\n      <td>2</td>\n      <td>5</td>\n      <td>4</td>\n      <td>5</td>\n      <td>3</td>\n      <td>3</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>2</td>\n      <td>4</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n      <td>1</td>\n    </tr>\n  </tbody>\n</table>"
+}

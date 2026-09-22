@@ -1,0 +1,51 @@
+[
+  {
+    "permanent_id": "admission",
+    "name": "admission",
+    "get_name_plural": "admissions",
+    "is_root_collection": false,
+    "has_event": true
+  },
+  {
+    "permanent_id": "biospecimen",
+    "name": "biospecimen",
+    "get_name_plural": "biospecimens",
+    "is_root_collection": false,
+    "has_event": true
+  },
+  {
+    "permanent_id": "diagnosis",
+    "name": "diagnosis",
+    "get_name_plural": "diagnoses",
+    "is_root_collection": false,
+    "has_event": true
+  },
+  {
+    "permanent_id": "encounter",
+    "name": "encounter",
+    "get_name_plural": "encounters",
+    "is_root_collection": false,
+    "has_event": true
+  },
+  {
+    "permanent_id": "medication",
+    "name": "medication",
+    "get_name_plural": "medications",
+    "is_root_collection": false,
+    "has_event": true
+  },
+  {
+    "permanent_id": "procedure",
+    "name": "procedure",
+    "get_name_plural": "procedures",
+    "is_root_collection": false,
+    "has_event": true
+  },
+  {
+    "permanent_id": "subject",
+    "name": "subject",
+    "get_name_plural": "subjects",
+    "is_root_collection": true,
+    "has_event": false
+  }
+]

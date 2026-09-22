@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "name": "Chiron performance tests",
+  "unique_id": "performance_tests",
+  "description": "",
+  "lastImport": "07/17/2024",
+  "subjectCount": "40,000",
+  "accessLevel": "phi",
+  "accessLevelLabel": "phi - view all subject details including PHI",
+  "canViewWorkspace": true,
+  "canViewSubjectDetails": true,
+  "logoUrl": null,
+  "chironUserId": 2
+}

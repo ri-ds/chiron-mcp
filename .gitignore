@@ -5,3 +5,5 @@ __pycache__/
 *.sqlite3
 *.sqlite3.bak-*
 demo/
+vendor/is4r-chiron-ui/node_modules/
+vendor/is4r-chiron-ui/dist/

@@ -1,0 +1,26 @@
+{
+  "analysis_def": {
+    "rows": [],
+    "cols": [
+      {
+        "entry_id": "k3YqOw6733Mb",
+        "concept_id": "gender"
+      }
+    ]
+  },
+  "extended_analysis_def": {
+    "rows": [],
+    "cols": [
+      {
+        "entry_id": "k3YqOw6733Mb",
+        "concept_id": "gender",
+        "label": "Gender"
+      }
+    ]
+  },
+  "warnings": [],
+  "errors": [],
+  "snapshot_id": 612,
+  "previous_snapshot_id": 611,
+  "next_snapshot_id": null
+}

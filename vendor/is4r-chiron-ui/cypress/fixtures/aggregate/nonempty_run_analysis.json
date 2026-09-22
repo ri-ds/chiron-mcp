@@ -1,0 +1,25 @@
+{
+  "dataset": {
+    "columns": ["F", "M"],
+    "index": ["subject count"],
+    "data": [[13375, 13308]]
+  },
+  "cohort_def": [
+    {
+      "entry_type": "criteria_set",
+      "entry_id": "NUVmIZ3z2AFu",
+      "collection_id": "subject",
+      "list": []
+    }
+  ],
+  "analysis_def": {
+    "rows": [],
+    "cols": [
+      {
+        "entry_id": "U2KLGuNkrpSb",
+        "concept_id": "gender"
+      }
+    ]
+  },
+  "pivot_table_html": "<table border=\"1\" class=\"dataframe table table-bordered table-sm\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th>Gender</th>\n      <th>F</th>\n      <th>M</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>subject count</th>\n      <td>13375</td>\n      <td>13308</td>\n    </tr>\n  </tbody>\n</table>"
+}

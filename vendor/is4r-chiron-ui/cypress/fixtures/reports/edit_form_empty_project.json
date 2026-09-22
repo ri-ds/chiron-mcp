@@ -1,0 +1,73 @@
+{
+  "status": "incomplete",
+  "title": "Edit Report",
+  "errors": [""],
+  "data": {
+    "fForm": {
+      "shared_options": [
+        {
+          "username": "admin",
+          "user_id": 1,
+          "checked": false
+        }
+      ],
+      "project_selection": [
+        {
+          "label": "--- create new ---",
+          "value": -1
+        },
+        {
+          "label": "\"",
+          "value": 11
+        },
+        {
+          "label": ";",
+          "value": 12
+        },
+        {
+          "label": "evffdv",
+          "value": 10
+        },
+        {
+          "label": "ezra project name",
+          "value": 8
+        },
+        {
+          "label": "Group A - single subcollection with many records",
+          "value": 1
+        },
+        {
+          "label": "Group B - multiple unrelated subcollections",
+          "value": 2
+        },
+        {
+          "label": "Group C - multiple related subcollections",
+          "value": 3
+        },
+        {
+          "label": "Group D - multiple subcollections related by event query",
+          "value": 4
+        },
+        {
+          "label": "kfdvnckjshfv",
+          "value": 9
+        },
+        {
+          "label": "troubleshooting",
+          "value": 5
+        }
+      ]
+    },
+    "oReport": {
+      "name": "new report 3",
+      "creator": "Ezra Edgerton",
+      "created": "2024-09-05T09:54:45.673903",
+      "description": "",
+      "id": 41,
+      "project": "None",
+      "project_id": null,
+      "public": true
+    },
+    "overwrite_query_def_with_active": false
+  }
+}

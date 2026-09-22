@@ -1,0 +1,60 @@
+{
+    "permanent_id": "prefilter_number",
+    "concept_type": "number",
+    "name": "Number",
+    "get_name_plural": "Numbers",
+    "description": "",
+    "collection": "prefilters",
+    "collection_name": "Prefilters",
+    "collection_name_plural": "Prefilterss",
+    "source": 13,
+    "concept_for_prefilter": {
+        "id": 115,
+        "permanent_id": "prefilter_number_category",
+        "name": "Number Type",
+        "name_plural": null,
+        "description": "",
+        "order": 6.0,
+        "published": true,
+        "include_in_cohort_def": true,
+        "include_in_table_def": true,
+        "include_in_analysis_def": true,
+        "has_phi": false,
+        "cohort_def_options": {
+            "all_values": [
+                "mg/ml",
+                "units",
+                "g",
+                "mg/dl"
+            ],
+            "selected_values": [],
+            "exclude_selected": false,
+            "entry_id": "xMeR3VQAqsAc"
+        }
+    },
+    "prefilter_mode": "required",
+    "category_hierarchy": [
+        {
+            "id": 11,
+            "name": "Prefilter Concepts",
+            "parent_id": null,
+            "get_level": 0
+        }
+    ],
+    "order": 5.0,
+    "published": true,
+    "include_in_cohort_def": true,
+    "include_in_table_def": true,
+    "include_in_analysis_def": true,
+    "has_phi": false,
+    "pk": 112,
+    "cohort_def_options": {
+        "exclude_selected": false,
+        "include_null_and_missing": false,
+        "existing_min": null,
+        "existing_max": 100.0,
+        "entry_id": "xMeR3VQAqsAc"
+    },
+    "prefilter_value": "mg/ml"
+}
+

@@ -1,0 +1,33 @@
+{
+  "permanent_id": "first_name",
+  "concept_type": "text",
+  "name": "First Name",
+  "get_name_plural": "First Names",
+  "description": "",
+  "collection": "subject",
+  "collection_name": "subject",
+  "collection_name_plural": "subjects",
+  "source": 1,
+  "concept_for_prefilter": null,
+  "prefilter_mode": "required",
+  "category_hierarchy": [
+    {
+      "id": 1,
+      "name": "Demographics",
+      "parent_id": null,
+      "get_level": 0
+    }
+  ],
+  "order": 1.0,
+  "published": true,
+  "include_in_cohort_def": true,
+  "include_in_table_def": true,
+  "include_in_analysis_def": true,
+  "has_phi": false,
+  "cohort_def_options": {
+    "include_null_and_missing": false,
+    "exclude_selected": false,
+    "entry_id": "undefined"
+  },
+  "prefilter_value": ""
+}

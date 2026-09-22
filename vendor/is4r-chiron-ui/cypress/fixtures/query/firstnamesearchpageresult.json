@@ -1,0 +1,48 @@
+{
+  "count": 10,
+  "paginated_results": [
+    {
+      "unique_values": "Abigail"
+    },
+    {
+      "unique_values": "Elizabeth"
+    },
+    {
+      "unique_values": "Gabriel"
+    },
+    {
+      "unique_values": "Gabriela"
+    },
+    {
+      "unique_values": "Gabriella"
+    },
+    {
+      "unique_values": "Gabrielle"
+    },
+    {
+      "unique_values": "Isabel"
+    },
+    {
+      "unique_values": "Isabella"
+    },
+    {
+      "unique_values": "Sabrina"
+    },
+    {
+      "unique_values": "Tabitha"
+    }
+  ],
+  "count_subjects_with_missing_values": 0,
+  "count_missing_values": 0,
+  "paginator": {
+    "first_index": 1,
+    "last_index": 10,
+    "current_page": 1,
+    "previous_page": null,
+    "next_page": null,
+    "last_page": 1,
+    "total_records": 10
+  },
+  "is_callback": true,
+  "permanent_id": "first_name"
+}

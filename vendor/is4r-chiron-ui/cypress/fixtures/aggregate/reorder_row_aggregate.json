@@ -1,0 +1,55 @@
+{
+  "analysis_def": {
+    "rows": [
+      {
+        "entry_id": "rWoQW7pFsw0z",
+        "concept_id": "deathdate"
+      },
+      {
+        "entry_id": "TdRClkNLJ7LK",
+        "concept_id": "birthdate"
+      }
+    ],
+    "cols": [
+      {
+        "entry_id": "BQj2KppOgMMv",
+        "concept_id": "admission_facility"
+      },
+      {
+        "entry_id": "HhMWtIMPeCwj",
+        "concept_id": "gender"
+      }
+    ]
+  },
+  "extended_analysis_def": {
+    "rows": [
+      {
+        "entry_id": "rWoQW7pFsw0z",
+        "concept_id": "deathdate",
+        "label": "Death Date"
+      },
+      {
+        "entry_id": "TdRClkNLJ7LK",
+        "concept_id": "birthdate",
+        "label": "Birthdate"
+      }
+    ],
+    "cols": [
+      {
+        "entry_id": "BQj2KppOgMMv",
+        "concept_id": "admission_facility",
+        "label": "Facility"
+      },
+      {
+        "entry_id": "HhMWtIMPeCwj",
+        "concept_id": "gender",
+        "label": "Gender"
+      }
+    ]
+  },
+  "warnings": [],
+  "errors": [],
+  "snapshot_id": 692,
+  "previous_snapshot_id": 691,
+  "next_snapshot_id": null
+}

@@ -1,0 +1,78 @@
+{
+  "transformation_successful": true,
+  "table_def": {
+    "fields": [
+      {
+        "entry_id": "PpdFNbA73YkI",
+        "concept_id": "patient_id",
+        "aggregate": false,
+        "aggregation_method": null
+      },
+      {
+        "entry_id": "kpDqAFcMbYEs",
+        "concept_id": "first_name",
+        "aggregate": false,
+        "aggregation_method": null
+      }
+    ],
+    "sort": [
+      {
+        "entry_id": "PpdFNbA73YkI",
+        "direction": 1
+      }
+    ]
+  },
+  "extended_table_def": {
+    "fields": [
+      {
+        "entry_id": "PpdFNbA73YkI",
+        "concept_id": "patient_id",
+        "concept_name": "Patient ID",
+        "collection": {
+          "collection_id": "subject",
+          "event_date_field": null,
+          "event_end_date_field": null
+        },
+        "categories": [],
+        "label": "Patient ID",
+        "can_delete": true,
+        "can_sort": false,
+        "has_errors": false,
+        "aggregate": false,
+        "alias": null,
+        "categorize": false
+      },
+      {
+        "entry_id": "kpDqAFcMbYEs",
+        "concept_id": "first_name",
+        "concept_name": "First Name",
+        "collection": {
+          "collection_id": "subject",
+          "event_date_field": null,
+          "event_end_date_field": null
+        },
+        "categories": ["Demographics"],
+        "label": "First Name",
+        "can_delete": true,
+        "can_sort": false,
+        "has_errors": false,
+        "aggregate": false,
+        "alias": null,
+        "categorize": false
+      }
+    ],
+    "sort": [
+      {
+        "entry_id": "PpdFNbA73YkI",
+        "direction": 1,
+        "label": "Patient ID"
+      }
+    ],
+    "table_type": "subject"
+  },
+  "warnings": [],
+  "errors": [],
+  "snapshot_id": 313,
+  "previous_snapshot_id": 312,
+  "next_snapshot_id": null
+}

@@ -1,0 +1,77 @@
+{
+  "current_page": "reports",
+  "qProject": [
+    {
+      "label": "\"",
+      "pk": 11,
+      "state": "",
+      "count": 0
+    },
+    {
+      "label": ";",
+      "pk": 12,
+      "state": "",
+      "count": 1
+    },
+    {
+      "label": "evffdv",
+      "pk": 10,
+      "state": "",
+      "count": 0
+    },
+    {
+      "label": "ezra project name",
+      "pk": 8,
+      "state": "",
+      "count": 9
+    },
+    {
+      "label": "Group A - single subcollection with many records",
+      "pk": 1,
+      "state": "",
+      "count": 9
+    },
+    {
+      "label": "Group B - multiple unrelated subcollections",
+      "pk": 2,
+      "state": "",
+      "count": 4
+    },
+    {
+      "label": "Group C - multiple related subcollections",
+      "pk": 3,
+      "state": "",
+      "count": 5
+    },
+    {
+      "label": "Group D - multiple subcollections related by event query",
+      "pk": 4,
+      "state": "",
+      "count": 3
+    },
+    {
+      "label": "kfdvnckjshfv",
+      "pk": 9,
+      "state": "",
+      "count": 1
+    },
+    {
+      "label": "troubleshooting",
+      "pk": 5,
+      "state": "",
+      "count": 1
+    }
+  ],
+  "custom_report_categories": [
+    {
+      "label": "All Reports",
+      "state": "all",
+      "count": 35
+    },
+    {
+      "label": "My Reports",
+      "state": "mine",
+      "count": 14
+    }
+  ]
+}

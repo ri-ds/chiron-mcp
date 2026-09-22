@@ -1,0 +1,18 @@
+{
+  "count": "26574",
+  "cohort_def": [
+    {
+      "entry_type": "criteria_set",
+      "entry_id": "aYqMWzPpDX6U",
+      "collection_id": "subject",
+      "list": [
+        {
+          "entry_id": "epSVcbJqfIEB",
+          "concept_id": "gender",
+          "categories": ["M"],
+          "exclude_selected": true
+        }
+      ]
+    }
+  ]
+}

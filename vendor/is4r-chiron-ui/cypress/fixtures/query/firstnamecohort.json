@@ -1,0 +1,48 @@
+{
+  "count": 690,
+  "paginated_results": [
+    {
+      "unique_values": "Aaron"
+    },
+    {
+      "unique_values": "Abigail"
+    },
+    {
+      "unique_values": "Adam"
+    },
+    {
+      "unique_values": "Adrian"
+    },
+    {
+      "unique_values": "Adriana"
+    },
+    {
+      "unique_values": "Adrienne"
+    },
+    {
+      "unique_values": "Aimee"
+    },
+    {
+      "unique_values": "Alan"
+    },
+    {
+      "unique_values": "Albert"
+    },
+    {
+      "unique_values": "Alec"
+    }
+  ],
+  "count_subjects_with_missing_values": 0,
+  "count_missing_values": 0,
+  "paginator": {
+    "first_index": 1,
+    "last_index": 10,
+    "current_page": 1,
+    "previous_page": null,
+    "next_page": 2,
+    "last_page": 69,
+    "total_records": 690
+  },
+  "is_callback": true,
+  "permanent_id": "first_name"
+}

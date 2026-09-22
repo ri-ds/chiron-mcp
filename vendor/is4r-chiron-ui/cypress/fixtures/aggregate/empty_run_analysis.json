@@ -1,0 +1,29 @@
+{
+  "dataset": null,
+  "cohort_def": [
+    {
+      "entry_type": "criteria_set",
+      "entry_id": "FbUGbvbzaNua",
+      "collection_id": "subject",
+      "list": [
+        {
+          "entry_id": "yFsVTIJuJYQz",
+          "concept_id": "gender",
+          "categories": ["M"],
+          "exclude_selected": false
+        },
+        {
+          "entry_id": "v3MYhvFhe5Py",
+          "concept_id": "marital_status",
+          "categories": [false],
+          "exclude_selected": false
+        }
+      ]
+    }
+  ],
+  "analysis_def": {
+    "rows": [],
+    "cols": []
+  },
+  "pivot_table_html": ""
+}

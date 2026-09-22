@@ -1,0 +1,19 @@
+{
+  "count_subjects_with_missing_values": 13228,
+  "count_missing_values": 13228,
+  "values": [
+    {
+      "category": "M",
+      "count": 13426,
+      "uniquePatientCount": 13426
+    },
+    {
+      "category": "F",
+      "count": 13346,
+      "uniquePatientCount": 13346
+    }
+  ],
+  "max_count": 13426,
+  "is_callback": true,
+  "permanent_id": "gender"
+}

@@ -1,0 +1,51 @@
+{
+  "permanent_id": "prefilter_number",
+  "concept_type": "number",
+  "name": "Prefilter Number",
+  "get_name_plural": "",
+  "description": "",
+  "collection": "encounters",
+  "collection_name": "encounters",
+  "collection_name_plural": "encounterss",
+  "source": 78,
+  "concept_for_prefilter": {
+    "id": 1245,
+    "permanent_id": "prefilter_number_category",
+    "name": "Prefilter Category",
+    "name_plural": null,
+    "description": null,
+    "order": 30.0,
+    "published": true,
+    "include_in_cohort_def": true,
+    "include_in_table_def": true,
+    "include_in_analysis_def": true,
+    "has_phi": false,
+    "cohort_def_options": {
+      "include_null_and_missing": false,
+      "exclude_selected": false,
+      "entry_id": "undefined"
+    }
+  },
+  "prefilter_mode": "required",
+  "category_hierarchy": [
+    {
+      "id": 84,
+      "name": "encounters",
+      "parent_id": null,
+      "get_level": 0
+    }
+  ],
+  "order": 25.0,
+  "published": true,
+  "include_in_cohort_def": true,
+  "include_in_table_def": true,
+  "include_in_analysis_def": true,
+  "has_phi": false,
+  "pk": 1244,
+  "cohort_def_options": {
+    "include_null_and_missing": false,
+    "exclude_selected": false,
+    "entry_id": "undefined"
+  },
+  "prefilter_value": ""
+}

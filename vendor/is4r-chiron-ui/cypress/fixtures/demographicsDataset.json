@@ -1,0 +1,12 @@
+{
+  "id": 2,
+  "name": "Demographics",
+  "unique_id": "demographics",
+  "description": "Just the Demographics information",
+  "lastImport": "04/16/2024",
+  "subjectCount": "40,000",
+  "accessLevel": "deid",
+  "accessLevelLabel": "deid - view subject details excluding PHI",
+  "canViewWorkspace": true,
+  "canViewSubjectDetails": true
+}

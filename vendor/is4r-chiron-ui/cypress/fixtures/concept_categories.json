@@ -1,0 +1,69 @@
+{
+  "category_id": "top",
+  "categories": [
+    {
+      "id": 1,
+      "name": "Demographics",
+      "parent_id": null,
+      "get_level": 0
+    },
+    {
+      "id": 2,
+      "name": "Medications",
+      "parent_id": null,
+      "get_level": 0
+    },
+    {
+      "id": 3,
+      "name": "Encounters",
+      "parent_id": null,
+      "get_level": 0
+    },
+    {
+      "id": 4,
+      "name": "Diagnoses",
+      "parent_id": null,
+      "get_level": 0
+    },
+    {
+      "id": 5,
+      "name": "Procedures",
+      "parent_id": null,
+      "get_level": 0
+    },
+    {
+      "id": 6,
+      "name": "Biospecimen",
+      "parent_id": null,
+      "get_level": 0
+    },
+    {
+      "id": 7,
+      "name": "Admissions",
+      "parent_id": null,
+      "get_level": 0
+    }
+  ],
+  "concepts": [
+    {
+      "permanent_id": "patient_id",
+      "concept_type": "text",
+      "name": "Patient ID",
+      "get_name_plural": "Patient IDs",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [],
+      "order": 1.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    }
+  ]
+}

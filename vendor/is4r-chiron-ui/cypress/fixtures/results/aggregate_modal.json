@@ -1,0 +1,146 @@
+{
+  "permanent_id": "patient_id",
+  "concept_type": "text",
+  "name": "Patient ID",
+  "get_name_plural": "Patient IDs",
+  "description": "",
+  "collection": "subject",
+  "collection_name": "subject",
+  "collection_name_plural": "subjects",
+  "source": 1,
+  "concept_for_prefilter": null,
+  "prefilter_mode": "required",
+  "category_hierarchy": [],
+  "order": 1.0,
+  "published": true,
+  "include_in_cohort_def": true,
+  "include_in_table_def": true,
+  "include_in_analysis_def": true,
+  "has_phi": false,
+  "table_def_options": {
+    "aggregation_options": [
+      {
+        "id": "list_distinct",
+        "group": "list",
+        "label": "list distinct",
+        "selected": false,
+        "inputs": []
+      },
+      {
+        "id": "count_distinct",
+        "group": "aggregate",
+        "label": "count distinct",
+        "selected": false,
+        "inputs": []
+      },
+      {
+        "id": "list_all",
+        "group": "list",
+        "label": "list all",
+        "selected": false,
+        "inputs": [
+          {
+            "id": "list_all_include_nulls",
+            "label": "include null/missing values",
+            "type": "select",
+            "selected": "no",
+            "options": [
+              ["no", "no"],
+              ["yes", "yes"]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "count_all",
+        "group": "aggregate",
+        "label": "count all",
+        "selected": false,
+        "inputs": []
+      },
+      {
+        "id": "most_frequent",
+        "group": "aggregate",
+        "label": "most frequent value",
+        "selected": false,
+        "inputs": [
+          {
+            "id": "most_frequent_ordinal_position",
+            "label": "select specific ordinal position",
+            "type": "select",
+            "selected": 1,
+            "options": [
+              [1, "most frequent value (default)"],
+              [2, "2nd most frequent value"],
+              [3, "3rd most frequent value"],
+              [4, "4th most frequent value"],
+              [5, "5th most frequent value"],
+              [6, "6th most frequent value"],
+              [7, "7th most frequent value"],
+              [8, "8th most frequent value"],
+              [9, "9th most frequent value"],
+              [10, "10th most frequent value"],
+              [11, "11th most frequent value"],
+              [12, "12th most frequent value"],
+              [13, "13th most frequent value"],
+              [14, "14th most frequent value"],
+              [15, "15th most frequent value"],
+              [16, "16th most frequent value"],
+              [17, "17th most frequent value"],
+              [18, "18th most frequent value"],
+              [19, "19th most frequent value"],
+              [20, "20th most frequent value"]
+            ]
+          },
+          {
+            "id": "most_frequent_return_value",
+            "label": "return value",
+            "type": "select",
+            "selected": "value",
+            "options": [
+              ["value", "Value"],
+              ["count", "Count (how many times does value occur)"],
+              ["value_and_count", "Count + Value"]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "has_value_text",
+        "group": "aggregate",
+        "label": "has value",
+        "selected": false,
+        "inputs": [
+          {
+            "id": "values_text",
+            "label": "value(s)",
+            "type": "ajax_multiselect",
+            "selected": [],
+            "options_callback": "/api/concepts/patient_id/cohort_def_callback/?show_all_data=true&records_per_page=200&json_flavor=select2&search="
+          },
+          {
+            "id": "return_value_text",
+            "label": "return value",
+            "type": "select",
+            "selected": "boolean",
+            "options": [
+              ["boolean", "True/False"],
+              ["count", "Count (how many times does value occur)"],
+              ["earliest_date", "Date of first occurrence of value"],
+              ["latest_date", "Date of most recent occurrence of value"],
+              ["all_dates", "All dates where value occurred"],
+              ["earliest_value", "First occurrence of value"],
+              ["latest_value", "Most recent occurrence of value"],
+              ["all_values", "All occurrences of value"]
+            ]
+          }
+        ]
+      }
+    ],
+    "entry_id": "tROG0ldisKkv",
+    "criteria_set_options": {},
+    "selected_aggregation_criteria_set": null,
+    "entry_alias": null
+  },
+  "prefilter_value": null
+}

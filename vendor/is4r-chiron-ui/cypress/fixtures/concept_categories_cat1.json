@@ -1,0 +1,384 @@
+{
+  "category_id": 1,
+  "categories": [],
+  "concepts": [
+    {
+      "permanent_id": "first_name",
+      "concept_type": "text",
+      "name": "First Name",
+      "get_name_plural": "First Names",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 1.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "last_name",
+      "concept_type": "text",
+      "name": "Last Name",
+      "get_name_plural": "Last Names",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 2.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "gender",
+      "concept_type": "category",
+      "name": "Gender",
+      "get_name_plural": "Genders",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 3.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "marital_status",
+      "concept_type": "boolean",
+      "name": "Marital Status",
+      "get_name_plural": "Marital Statuss",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 4.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "birthdate",
+      "concept_type": "date",
+      "name": "Birthdate",
+      "get_name_plural": "Birthdates",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 5.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "deathdate",
+      "concept_type": "date",
+      "name": "Death Date",
+      "get_name_plural": "Death Dates",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 6.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "healthcare_coverage",
+      "concept_type": "number",
+      "name": "Healthcare Coverage",
+      "get_name_plural": "Healthcare Coverages",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 8.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "healthcare_expenses",
+      "concept_type": "number",
+      "name": "Healthcare Expenses",
+      "get_name_plural": "Healthcare Expensess",
+      "description": "",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 9.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "age_at_consent_days",
+      "concept_type": "age",
+      "name": "Age at Consent (Days)",
+      "get_name_plural": "Ages",
+      "description": "age at consent in days",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 100.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "age_at_consent_years",
+      "concept_type": "age",
+      "name": "Age at Consent (Years)",
+      "get_name_plural": "Ages (years)",
+      "description": "age at consent in years",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 100.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "ebi_display",
+      "concept_type": "ontology",
+      "name": "ebi display",
+      "get_name_plural": "ebi displays",
+      "description": "test display name",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 100.0,
+      "published": true,
+      "include_in_cohort_def": false,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "bio_display",
+      "concept_type": "ontology",
+      "name": "Bio Display",
+      "get_name_plural": "Bio Displays",
+      "description": "desc",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 100.0,
+      "published": true,
+      "include_in_cohort_def": false,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "bio_iri",
+      "concept_type": "ontology",
+      "name": "Bio IRI",
+      "get_name_plural": "Bio IRIs",
+      "description": "IRI bio",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 100.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    },
+    {
+      "permanent_id": "ebi_iri",
+      "concept_type": "ontology",
+      "name": "ebi iri",
+      "get_name_plural": "ebi iris",
+      "description": "ebi iris desc",
+      "collection": "subject",
+      "collection_name": "subject",
+      "collection_name_plural": "subjects",
+      "source": 1,
+      "concept_for_prefilter": null,
+      "prefilter_mode": "required",
+      "category_hierarchy": [
+        {
+          "id": 1,
+          "name": "Demographics",
+          "parent_id": null,
+          "get_level": 0
+        }
+      ],
+      "order": 100.0,
+      "published": true,
+      "include_in_cohort_def": true,
+      "include_in_table_def": true,
+      "include_in_analysis_def": true,
+      "has_phi": false
+    }
+  ]
+}
