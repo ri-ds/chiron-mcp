@@ -45,6 +45,10 @@ export const overrideConfig = {
     datasetMore: [{ path: "ask", element: <AskRoute /> }],
   },
   header: {
+    // Chiron's default is "/login/", which Django does not serve; the real form is
+    // at /accounts/login/. Without this, the LOGIN button goes nowhere and every API
+    // call 403s, which the UI reports as "Could not load the page".
+    loginLink: "/accounts/login/",
     nav: [
       { label: "Dataset Home", link: "/dataset", icon: <HomeIcon /> },
       { label: "Query", link: "/query", icon: <SearchIcon /> },

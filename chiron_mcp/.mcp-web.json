@@ -6,7 +6,7 @@
         "CHIRON_MCP_CHIRON_SRC": "/Users/pot95a/2026/new_chiron/chiron-mcp/vendor/is4r-chiron",
         "CHIRON_MCP_USERNAME": "demouser",
         "CHIRON_MCP_MAX_ACCESS_LEVEL": "deid",
-        "CHIRON_MCP_UI_URL": "http://localhost:3000",
+        "CHIRON_MCP_UI_URL": "http://localhost:5173",
         "CHIRON_MCP_METADATA_DB": "/Users/pot95a/2026/chiron-dashboard/deploy/chiron_metadata.sqlite3",
         "CHIRON_MCP_WAREHOUSE_URL": "postgresql://postgres:postgres@localhost:5432/chiron",
         "CHIRON_MCP_ALLOW_SAVE": "1"

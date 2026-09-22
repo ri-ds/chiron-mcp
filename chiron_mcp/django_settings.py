@@ -42,6 +42,22 @@ ALLOWED_HOSTS = list(dict.fromkeys(
     list(globals().get("ALLOWED_HOSTS", [])) + ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]
 ))
 
+# The UI dev server runs on a different origin (5173) from Chiron (8001) and proxies
+# to it. A browser sends Origin: http://localhost:5173 on the login POST, and Django
+# rejects it unless the origin is listed here. Without this, logging in through the UI
+# fails with "CSRF verification failed" while the same request via curl succeeds,
+# because curl sends no Origin header.
+_ui_origins = [
+    "http://localhost:5173", "http://127.0.0.1:5173",
+    "http://localhost:3000", "http://127.0.0.1:3000",
+    "http://localhost:8001", "http://127.0.0.1:8001",
+]
+if CONFIG.ui_url and CONFIG.ui_url not in _ui_origins:
+    _ui_origins.append(CONFIG.ui_url)
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(
+    list(globals().get("CSRF_TRUSTED_ORIGINS", [])) + _ui_origins
+))
+
 # QueryTool/StatTool compile SQL with literal_binds and hand the string to
 # helpers.print_query_info, which would put filter values (i.e. PHI) into logs.
 CHIRON_GET_QUERY_PERFORMANCE = False
