@@ -767,6 +767,37 @@ def chiron_open_in_ui(
     return open_in_ui(dataset_id, cohort_def, columns, name, mode, description)
 
 
+def _columns_or_default(ident, cohort_def: list, columns: list[dict] | None) -> list[dict]:
+    """Columns for a hand-off, never empty.
+
+    A report or workspace with no columns opens in Chiron as "No columns selected -
+    please set a default concept for this dataset", which looks like a broken report.
+    Chiron's own default (DefaultTableDefConcept) is unset on many datasets, so fall
+    back to the concepts the cohort actually filters on: if you asked about asthma, the
+    condition description is the column you want to see.
+    """
+    if columns:
+        return columns
+
+    from chiron.query_definition.table_def_functions import get_default_field_list
+
+    cu = identity.checked_chironuser(ident)
+    try:
+        if get_default_field_list(cu):
+            return []  # Chiron has defaults for this dataset; let it use them
+    except Exception:  # noqa: BLE001
+        pass
+
+    seen, derived = set(), []
+    for criteria_set in cohort_def or []:
+        for entry in criteria_set.get("list", []) or []:
+            cid = entry.get("concept_id")
+            if cid and cid not in seen:
+                seen.add(cid)
+                derived.append({"concept_id": cid})
+    return derived
+
+
 def open_in_ui(
     dataset_id: str,
     cohort_def: list,
@@ -807,7 +838,9 @@ def open_in_ui(
         # Never hand over a definition that does not survive validation: an errored one is
         # reduced to empty, which in Chiron means every subject in the dataset.
         cohort = _validated_cohort(ident, cohort_def)
-        table_def = _table_def_from_columns(ident, cohort.cohort_def, columns or [])
+        table_def = _table_def_from_columns(
+            ident, cohort.cohort_def, _columns_or_default(ident, cohort.cohort_def, columns)
+        )
 
         base = f"{CONFIG.ui_url}/{ident.dataset_id}"
         subject_count = None

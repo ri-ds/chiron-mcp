@@ -28,7 +28,10 @@ function AskRoute() {
       src={`${ASK_URL}/?dataset=${encodeURIComponent(dataset_id ?? "")}`}
       style={{
         width: "100%",
-        height: "calc(100vh - 160px)",
+        // Chiron's header is 64px, its footer 40px, and the route container adds an
+        // 8px bottom margin. Subtracting all three lands the composer just above the
+        // footer with no page scrollbar; the old 160px left a visible gap.
+        height: "calc(100vh - 112px)",
         minHeight: 480,
         border: 0,
         display: "block",

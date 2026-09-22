@@ -40,7 +40,6 @@ replay();
     margin: 0; font-size: 1.15rem; font-weight: 500; color: var(--purple-900);
   }
   header .spacer { flex: 1; }
-  .dsname { font-size: 14px; color: var(--grey-800); font-weight: 500; }
   button.clear {
     font-family: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
     background: none; border: 1px solid var(--grey-300); border-radius: 4px;
@@ -49,8 +48,9 @@ replay();
   button.clear:hover { border-color: var(--teal-700); color: var(--teal-900); }
   .who { font-size: 12px; color: var(--grey-600); }
 
-  main { flex: 1; overflow-y: auto; padding: 22px 20px 8px; }
-  .thread { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+  main { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 20px 4px; }
+  .thread { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px;
+           padding-bottom: 4px; }
 
   .msg { display: flex; flex-direction: column; gap: 8px; }
   .msg.user .bubble {
@@ -143,10 +143,10 @@ replay();
   .sugg:hover { border-color: var(--teal-700); color: var(--teal-900); background: var(--teal-50); }
 
   footer {
-    flex: none; padding: 12px 20px 16px; border-top: 1px solid var(--grey-300);
+    flex: none; padding: 10px 20px 12px; border-top: 1px solid var(--grey-300);
     background: var(--grey-50);
   }
-  .composer { max-width: 900px; margin: 10px auto 0; display: flex; gap: 10px; }
+  .composer { max-width: 900px; margin: 8px auto 0; display: flex; gap: 10px; }
   textarea {
     flex: 1; font-family: inherit; font-size: 15px; padding: 11px 14px;
     border: 1px solid var(--grey-300); border-radius: 4px; resize: none;
@@ -167,7 +167,6 @@ replay();
 
 <header>
   <h1>Ask Chiron</h1>
-  <span class="dsname" id="dsname"></span>
   <span class="spacer"></span>
   <button class="clear" id="clear" type="button" hidden>Clear chat</button>
   <span class="who" id="who"></span>
@@ -195,7 +194,6 @@ const thread = document.getElementById('thread');
 const empty  = document.getElementById('empty');
 const qBox   = document.getElementById('q');
 const sendBtn= document.getElementById('send');
-const dsName = document.getElementById('dsname');
 const clearBtn = document.getElementById('clear');
 const who    = document.getElementById('who');
 const suggs  = document.getElementById('suggestions');
@@ -220,13 +218,11 @@ SUGGESTIONS.forEach(s => {
 const DATASET = new URLSearchParams(location.search).get('dataset') || '';
 
 fetch('/datasets').then(r => r.json()).then(d => {
-  const match = (d.datasets || []).find(x => x.id === DATASET);
-  dsName.textContent = match ? match.name : DATASET;
   if (d.identity) who.textContent = 'as ' + d.identity;
   if (d.browser_user && d.browser_user !== d.identity) {
     who.textContent += ' · your workspace: ' + d.browser_user;
   }
-}).catch(() => { dsName.textContent = DATASET; });
+}).catch(() => {});
 
 // --- history -----------------------------------------------------------------
 // Following a link into Chiron navigates the whole UI, and coming back reloads this
@@ -353,7 +349,7 @@ function ask() {
 function offerLoad(target, cohort) {
   let box = target.querySelector('.chiron-links');
   if (!box) { box = el('div', 'chiron-links'); target.appendChild(box); }
-  const b = el('button', 'chiron-link load', 'Use as my current query');
+  const b = el('button', 'chiron-link load', 'Query');
   b.type = 'button';
   box.appendChild(b);
   const note = el('div', 'load-note',
@@ -397,7 +393,7 @@ function offerLoad(target, cohort) {
       // filter builder reloads the new workspace.
       setTimeout(() => { (window.top || window).location.href = dest; }, 600);
     } catch (err) {
-      b.disabled = false; b.textContent = 'Use as my current query';
+      b.disabled = false; b.textContent = 'Query';
       target.appendChild(el('div', 'err', 'Could not load into Chiron: ' + err.message));
     }
   }
