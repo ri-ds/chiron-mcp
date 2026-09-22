@@ -232,18 +232,17 @@ Do not skip a check, and do not continue past a failed one.
 > `vendor/is4r-chiron-ui`. Do not clone or `pip install` them. The `chiron` package on
 > PyPI is an unrelated DNA basecaller, and the real repository is behind organisation SSO.
 
-**First decide which path you are on. Ask the user if it is not obvious.**
+**Do this.** It is four commands, needs nothing external, and ships 300 synthetic
+patients. Do not ask the user which setup they want, and do not go looking for an existing
+Chiron deployment: everything is bundled.
 
-| | Use when |
-|---|---|
-| **Path A — bundled demo** | They want it working. Ships 300 synthetic patients. Needs nothing external |
-| **Path B — their own Chiron** | They already run Chiron and want to query their real data |
-
-Path A is the default. Take Path B only if the user says they have a deployment.
+The only exception is at the very bottom of this section, and it applies only when the
+user has already told you, unprompted, that they run their own Chiron and want to query
+their real data.
 
 ---
 
-### Path A: the bundled demo
+### Setup
 
 ```bash
 ./install.sh
@@ -258,7 +257,7 @@ docker compose up -d
 **Check:** `curl -s -o /dev/null -w '%{http_code}' http://localhost:5173/` returns 200.
 
 Tell the user to open <http://localhost:5173>, log in as **`demo` / `demo`**, and click
-**Ask**. You are done. Everything below is Path B.
+**Ask**. **You are done.**
 
 Requirements, which you should confirm first: Python 3.12+, Node 20+, Docker running, and
 the Claude Code CLI installed and logged in (`claude --version`). The first `run_all.sh`
@@ -266,13 +265,16 @@ spends a few minutes on `npm install`.
 
 ---
 
-### Path B: point at an existing Chiron deployment
+### Only if the user already runs their own Chiron
+
+Skip this unless the user has said so themselves. The bundled demo above is the right
+answer for everyone else, and 300 patients is plenty to work with.
 
 Same repo, but skip `bootstrap_demo.py` and aim the two database variables at their
-deployment. Do **not** run `bootstrap_demo.py` on Path B: it builds a separate demo
+deployment. Do **not** run `bootstrap_demo.py` in this case: it builds a separate demo
 database and never touches theirs, but running it wastes several minutes.
 
-#### B1. Gather four things from the user
+#### 1. Gather four things from the user
 
 1. The **metadata database** — usually a SQLite file holding datasets, users and access
    grants. In a Docker deployment it is often a bind mount; look in the compose file for a
@@ -285,7 +287,7 @@ database and never touches theirs, but running it wastes several minutes.
 
 If you cannot get 1 and 2, stop and ask. Do not guess a path or a password.
 
-#### B2. Verify before configuring anything
+#### 2. Verify before configuring anything
 
 ```bash
 CHIRON_MCP_USERNAME=<user> \
@@ -297,11 +299,11 @@ CHIRON_MCP_WAREHOUSE_URL=postgresql://user:pass@localhost:5432/chiron \
 **Check:** it ends with `N dataset(s) reachable by this identity`, N at least 1.
 
 Lines marked `[refused]` are not failures; they mean that user has no access record for
-that dataset, which is correct behaviour. If **every** dataset is refused, see B3.
+that dataset, which is correct behaviour. If **every** dataset is refused, see step 3.
 
 If this fails, nothing else will work. Fix it here.
 
-#### B3. Grant access only if asked
+#### 3. Grant access only if asked
 
 ```bash
 .venv/bin/python scripts/grant_access.py --list
@@ -312,7 +314,7 @@ This writes to **their** metadata database. Tell the user which account and whic
 before doing it, and get their agreement. Never pick a superuser: the server refuses to
 start as one in analyst mode, and that refusal is deliberate.
 
-#### B4. Run against their deployment
+#### 4. Run against their deployment
 
 ```bash
 export CHIRON_MCP_METADATA_DB=/path/to/their_metadata.sqlite3
@@ -324,7 +326,7 @@ export CHIRON_MCP_ALLOW_SAVE=1                         # enables "open this in C
 .venv/bin/python -m chiron_mcp.webapp                   # Ask chat at :8900
 ```
 
-`run_all.sh` honours the same variables, but on Path B do not start `serve_chiron.py`:
+`run_all.sh` honours the same variables, but here do not start `serve_chiron.py`:
 they already have a Chiron running, and a second one on `:8001` would confuse everyone.
 Either run only the Ask server as above, or add the **Ask** tab to their own UI following
 [docs/chiron-ui-integration.md](docs/chiron-ui-integration.md).
@@ -332,7 +334,7 @@ Either run only the Ask server as above, or add the **Ask** tab to their own UI 
 **Check:** ask the chat "how many patients are in <their dataset>?" and confirm with the
 user that the number matches what Chiron shows.
 
-#### B5. Also register with Claude Desktop, if they want it there too
+#### 5. Also register with Claude Desktop, if they want it there too
 
 See [Register with Claude](#register-with-claude). Use the same variables.
 
@@ -355,8 +357,8 @@ See [Register with Claude](#register-with-claude). Use the same variables.
 
 ### What to tell the user when you are done
 
-Which path you took, which Django user the server is bound to, its access ceiling, and
-exactly which datasets are reachable. If you granted any access during setup, say so
+Which Django user the server is bound to, its access ceiling, and exactly which datasets
+are reachable. If you granted any access during setup, say so
 explicitly including the level: that is a change to their deployment, not just to this tool.
 
 ## Configuration
