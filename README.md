@@ -81,7 +81,7 @@ at your own Chiron. See [Configuration](#configuration).
 
 ## Table of contents
 
-- [Quickstart](#quickstart-self-contained-no-chiron-deployment-needed)
+- [Quickstart](#quickstart)
 - [What Chiron is](#what-chiron-is)
 - [What this server does](#what-this-server-does)
 - [Why it runs in-process](#why-it-runs-in-process-and-not-over-chirons-rest-api)
@@ -225,153 +225,118 @@ The server **never** creates access records. A Django user needs a `ChironUser` 
 
 ## Setup guide for an AI agent
 
-This section is written for an AI assistant setting this up on someone's machine. Follow it in
-order. Every step has a check. Do not skip a check, and do not continue past a failed one.
+Written for an AI assistant setting this up on someone's machine. Every step has a check.
+Do not skip a check, and do not continue past a failed one.
 
-### Before you start, establish these four facts
+> **Chiron and its UI are already vendored** at `vendor/is4r-chiron` and
+> `vendor/is4r-chiron-ui`. Do not clone or `pip install` them. The `chiron` package on
+> PyPI is an unrelated DNA basecaller, and the real repository is behind organisation SSO.
 
-> **Chiron is already vendored at `vendor/is4r-chiron`.** Do not try to clone or
-> `pip install` it. The `chiron` package on PyPI is an unrelated DNA basecaller, and the
-> real repository is behind organisation SSO.
+**First decide which path you are on. Ask the user if it is not obvious.**
 
-**If the user just wants it working, follow [Quickstart](#quickstart-self-contained-no-chiron-deployment-needed):
-`./install.sh`, `docker compose up -d`, `scripts/bootstrap_demo.py`. That needs nothing
-external and prints the config block. The steps below are for pointing at an existing
-deployment instead.**
+| | Use when |
+|---|---|
+| **Path A — bundled demo** | They want it working. Ships 300 synthetic patients. Needs nothing external |
+| **Path B — their own Chiron** | They already run Chiron and want to query their real data |
 
-Confirm each of these before running anything, asking the user where you cannot determine it
-yourself:
+Path A is the default. Take Path B only if the user says they have a deployment.
 
-1. **Python 3.12 or newer** is available.
-2. **A Chiron checkout** exists on this machine (a directory containing a `chiron/` package).
-   Ask the user for the path if you cannot find one.
-3. **A Chiron metadata database** exists (usually a SQLite file). This holds datasets, users and
-   access grants.
-4. **A Chiron warehouse** is reachable (a Postgres database holding the subject data).
+---
 
-If any of 2 to 4 is missing, stop and tell the user. This server cannot create them. Setting up a
-Chiron deployment is a separate task, and installing this repo alone will not produce a working
-tool.
-
-### Step 1: install
+### Path A: the bundled demo
 
 ```bash
-git clone https://github.com/rohzzn/chiron-mcp.git
-cd chiron-mcp
 ./install.sh
+docker compose up -d
+.venv/bin/python scripts/bootstrap_demo.py
+./scripts/run_all.sh
 ```
 
-If `install.sh` reports that it cannot find Chiron, rerun it with the path:
+**Check:** `bootstrap_demo.py` ends with `Demo ready. 4 dataset(s) queryable.` and lists
+`synthea-small: 300 subjects`. Then `run_all.sh` prints three URLs and stays running.
 
-```bash
-CHIRON_MCP_CHIRON_SRC=/path/to/is4r-chiron ./install.sh
-```
+**Check:** `curl -s -o /dev/null -w '%{http_code}' http://localhost:5173/` returns 200.
 
-**Check:** `.venv/bin/python -c "import mcp, django; print(django.__version__)"` prints a version.
+Tell the user to open <http://localhost:5173>, log in as **`demo` / `demo`**, and click
+**Ask**. You are done. Everything below is Path B.
 
-### Step 2: find out which Django user to bind to
+Requirements, which you should confirm first: Python 3.12+, Node 20+, Docker running, and
+the Claude Code CLI installed and logged in (`claude --version`). The first `run_all.sh`
+spends a few minutes on `npm install`.
 
-The server acts as exactly one Django user and never creates access for itself. List what exists:
+---
 
-```bash
-CHIRON_MCP_USERNAME=any .venv/bin/python scripts/grant_access.py --list
-```
+### Path B: point at an existing Chiron deployment
 
-This prints every existing `ChironUser` row as `user / dataset / level`. Choose a non-superuser
-at `deid` level if one exists. If none does, ask the user which account to use and whether to
-grant it access. Do not pick a superuser: the server refuses to start as one in analyst mode,
-and that refusal is deliberate.
+Same repo, but skip `bootstrap_demo.py` and aim the two database variables at their
+deployment. Do **not** run `bootstrap_demo.py` on Path B: it builds a separate demo
+database and never touches theirs, but running it wastes several minutes.
 
-**Check:** you can name one Django user and at least one dataset it already has a row for.
+#### B1. Gather four things from the user
 
-### Step 3: verify the deployment resolves
+1. The **metadata database** — usually a SQLite file holding datasets, users and access
+   grants. In a Docker deployment it is often a bind mount; look in the compose file for a
+   path mapped to `db.sqlite3`.
+2. The **warehouse connection string** — `postgresql://user:pass@host:port/dbname`. Also in
+   the compose file, as `CHIRON_SQL_ALCHEMY_CONNECTION_STRING`. If Chiron runs in Docker it
+   may say `host.docker.internal`; from outside the container that is `localhost`.
+3. The **Django username** the server should act as.
+4. The **URL of their Chiron UI**, for hand-off links.
 
-This is the single most important step. It exercises everything except the MCP protocol itself.
+If you cannot get 1 and 2, stop and ask. Do not guess a path or a password.
 
-```bash
-CHIRON_MCP_USERNAME=<user> .venv/bin/python scripts/harness.py
-```
-
-Add the database paths if the host project's own settings do not already point at the deployment
-you want:
+#### B2. Verify before configuring anything
 
 ```bash
 CHIRON_MCP_USERNAME=<user> \
-CHIRON_MCP_METADATA_DB=/path/to/chiron_metadata.sqlite3 \
-CHIRON_MCP_WAREHOUSE_URL=postgresql://user:pass@host:5432/chiron \
+CHIRON_MCP_METADATA_DB=/path/to/their_metadata.sqlite3 \
+CHIRON_MCP_WAREHOUSE_URL=postgresql://user:pass@localhost:5432/chiron \
 .venv/bin/python scripts/harness.py
 ```
 
-**Check:** the output ends with `N dataset(s) reachable by this identity` where N is at least 1.
+**Check:** it ends with `N dataset(s) reachable by this identity`, N at least 1.
 
-Lines marked `[refused]` are not failures. A refusal means that user has no access record for
-that dataset, which is correct behaviour. If **every** dataset is refused, grant one:
+Lines marked `[refused]` are not failures; they mean that user has no access record for
+that dataset, which is correct behaviour. If **every** dataset is refused, see B3.
+
+If this fails, nothing else will work. Fix it here.
+
+#### B3. Grant access only if asked
 
 ```bash
+.venv/bin/python scripts/grant_access.py --list
 .venv/bin/python scripts/grant_access.py --user <user> --datasets <dataset> --level deid
 ```
 
-Treat granting access as a change that needs the user's agreement, because it alters the
-deployment's metadata database. Say which user and which dataset before doing it.
+This writes to **their** metadata database. Tell the user which account and which dataset
+before doing it, and get their agreement. Never pick a superuser: the server refuses to
+start as one in analyst mode, and that refusal is deliberate.
 
-### Step 4: confirm the warehouse actually answers
-
-The harness proves metadata resolves. This proves the warehouse does too:
-
-```bash
-CHIRON_MCP_USERNAME=<user> .venv/bin/python -c "
-import sys; sys.path.insert(0, '.')
-from chiron_mcp import server as S
-print(S.chiron_count_cohort('<dataset>', []))"
-```
-
-**Check:** a subject count comes back, not an `error` key. An empty `cohort_def` means every
-subject, so this is the dataset's total.
-
-### Step 5: register with Claude
-
-Locate the config file:
-
-| Client | Path |
-|---|---|
-| Claude Desktop, macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Claude Desktop, Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
-| Claude Code | `.mcp.json` in the project, or the user config |
-
-Add the `chiron` entry from `claude_mcp_config.example.json`, merging it into any existing
-`mcpServers` object rather than replacing the file. Back the file up first.
-
-Three rules that prevent almost every reported failure:
-
-- **Use absolute paths everywhere.** The `command`, the `cwd`, and every path in `env`. A relative
-  path fails silently because the client does not launch from your shell's directory.
-- **Point `command` at `.venv/bin/python`**, not a system `python`. The dependencies are in the
-  venv.
-- **Set the database variables explicitly** if the host project's settings do not already point at
-  the right deployment. Otherwise the server will start successfully against the wrong database
-  and the mistake will look like missing data rather than a config error.
-
-**Check:** restart the client, then confirm sixteen `chiron_*` tools are listed. If you cannot see
-the client's tool list, run the protocol test instead, which uses the real MCP transport:
+#### B4. Run against their deployment
 
 ```bash
-.venv/bin/python -m tests.protocol
+export CHIRON_MCP_METADATA_DB=/path/to/their_metadata.sqlite3
+export CHIRON_MCP_WAREHOUSE_URL=postgresql://user:pass@localhost:5432/chiron
+export CHIRON_MCP_USERNAME=<user>
+export CHIRON_MCP_UI_URL=http://their-chiron-ui        # for hand-off links
+export CHIRON_MCP_ALLOW_SAVE=1                         # enables "open this in Chiron"
+
+.venv/bin/python -m chiron_mcp.webapp                   # Ask chat at :8900
 ```
 
-It should print `16 tools registered` followed by a live tool call result.
+`run_all.sh` honours the same variables, but on Path B do not start `serve_chiron.py`:
+they already have a Chiron running, and a second one on `:8001` would confuse everyone.
+Either run only the Ask server as above, or add the **Ask** tab to their own UI following
+[docs/chiron-ui-integration.md](docs/chiron-ui-integration.md).
 
-### Step 6: confirm the safety gates are active
+**Check:** ask the chat "how many patients are in <their dataset>?" and confirm with the
+user that the number matches what Chiron shows.
 
-Do not skip this. The server re-implements three permission checks that Chiron normally enforces
-only in its web layer, and they are what keeps it from handing out data Chiron itself would
-refuse.
+#### B5. Also register with Claude Desktop, if they want it there too
 
-```bash
-CHIRON_MCP_USERNAME=<deid-user> .venv/bin/python tests/safety.py
-```
+See [Register with Claude](#register-with-claude). Use the same variables.
 
-**Check:** every line reads `PASS`. If an aggregate-level account exists, run it as that user too
-and confirm the row-level tools are refused.
+---
 
 ### If something goes wrong
 
@@ -382,17 +347,17 @@ and confirm the row-level tools are refused.
 | `has no ChironUser on dataset` | Working as designed | Grant it with `scripts/grant_access.py`, with the user's agreement |
 | `is a superuser. Refusing to start` | Working as designed | Use a dedicated service account |
 | `cannot see subject-level data` | The account is `agg` | Correct behaviour. Use `chiron_crosstab` or `chiron_concept_values` |
+| `npm install` fails on peer deps | The UI pins eslint 9, a plugin wants 8 | `run_all.sh` already passes `--legacy-peer-deps`; use that flag if installing by hand |
+| `You must set settings.ALLOWED_HOSTS` | Running Django with `DEBUG=False` | Already handled in `chiron_mcp/django_settings.py`; make sure you launch through `scripts/serve_chiron.py` |
 | Tools missing after restart | Config not loaded | Check the JSON parses, paths are absolute, and you edited the right file |
-| `Server disconnected` in the client | The client did not honour `cwd`, so `-m chiron_mcp.server` could not import | Set `command` to `.venv/bin/chiron-mcp` and drop `args` and `cwd` entirely |
-| Server starts but datasets look empty | Pointing at the wrong metadata database | Set `CHIRON_MCP_METADATA_DB` explicitly |
-| `ModuleNotFoundError: mcp.server.fastmcp` | `mcp` 1.x code against 2.x | This project targets `mcp>=2.0.0`, which renamed `FastMCP` to `MCPServer` |
-| `pip install chiron` seemed to work but nothing imports | **Wrong package.** `chiron` on PyPI is an unrelated nanopore DNA basecaller | Chiron is not on PyPI. Install from the `is4r-chiron` source checkout, or set `CHIRON_MCP_CHIRON_SRC` |
+| `Server disconnected` in the client | The client did not honour `cwd` | Set `command` to `.venv/bin/chiron-mcp` and drop `args` and `cwd` entirely |
+| `pip install chiron` "worked" but nothing imports | Wrong package | Chiron is vendored here and is not on PyPI |
 
 ### What to tell the user when you are done
 
-Report which Django user the server is bound to, its access ceiling, and exactly which datasets
-are reachable. If you granted any access during setup, say so explicitly, including the level.
-That grant is a change to their deployment, not just to this tool.
+Which path you took, which Django user the server is bound to, its access ceiling, and
+exactly which datasets are reachable. If you granted any access during setup, say so
+explicitly including the level: that is a change to their deployment, not just to this tool.
 
 ## Configuration
 
