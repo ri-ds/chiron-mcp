@@ -17,7 +17,7 @@ fi
 
 export CHIRON_MCP_METADATA_DB="${CHIRON_MCP_METADATA_DB:-$ROOT/demo/chiron_demo.sqlite3}"
 export CHIRON_MCP_WAREHOUSE_URL="${CHIRON_MCP_WAREHOUSE_URL:-postgresql://chiron:chiron@localhost:55432/chiron}"
-export CHIRON_MCP_USERNAME="${CHIRON_MCP_USERNAME:-demo}"
+export CHIRON_MCP_USERNAME="${CHIRON_MCP_USERNAME:-demouser}"
 export CHIRON_MCP_ALLOW_SAVE="${CHIRON_MCP_ALLOW_SAVE:-1}"
 export CHIRON_MCP_UI_URL="${CHIRON_MCP_UI_URL:-http://localhost:5173}"
 
@@ -48,7 +48,7 @@ pids+=($!)
 
 sleep 6
 echo
-echo "Ready. Open http://localhost:5173 and log in as  demo / demo"
+echo "Ready. Open http://localhost:5173 and click a login button (no password needed)"
 echo "The 'Ask' tab is in the header, next to Aggregate."
 echo "Logs: /tmp/chiron-demo.log /tmp/chiron-ask.log /tmp/chiron-ui.log"
 echo "Ctrl-C to stop."

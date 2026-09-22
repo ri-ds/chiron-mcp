@@ -20,7 +20,7 @@ os.environ.setdefault("CHIRON_MCP_METADATA_DB", str(HERE / "demo" / "chiron_demo
 os.environ.setdefault(
     "CHIRON_MCP_WAREHOUSE_URL", "postgresql://chiron:chiron@localhost:55432/chiron"
 )
-os.environ.setdefault("CHIRON_MCP_USERNAME", "demo")
+os.environ.setdefault("CHIRON_MCP_USERNAME", "demouser")
 
 from chiron_mcp.bootstrap import ensure_django  # noqa: E402
 from chiron_mcp.config import CONFIG  # noqa: E402
@@ -36,7 +36,7 @@ ensure_django()
 
 from django.core.management import call_command  # noqa: E402
 
-print(f"Chiron at http://localhost:{PORT}   (log in as demo / demo)")
+print(f"Chiron at http://localhost:{PORT}   (log in as demouser (one click on the login page))")
 print(f"  metadata : {CONFIG.metadata_db}")
 os.chdir(CONFIG.project_dir)
 call_command("runserver", f"0.0.0.0:{PORT}", use_reloader=False)

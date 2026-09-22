@@ -32,7 +32,8 @@ docker compose up -d                          # Postgres warehouse
 ./scripts/run_all.sh                          # starts all three servers
 ```
 
-Then open **<http://localhost:5173>** and log in as **`demo` / `demo`**.
+Then open **<http://localhost:5173>** and click **"Login as standard user with deidentified
+data access"**. The demo login page is one click; there is no password to type.
 
 The first `run_all.sh` installs the UI's npm dependencies, which takes a few minutes.
 After that it starts in seconds.
@@ -71,8 +72,9 @@ encounters, observations, medications and procedures:
 
 Real figures out of the box: obesity 64, hypertension 57, depression 35, asthma 20.
 
-Three demo accounts, all with password `demo`: **`demo`** (de-identified),
-**`demo_agg`** (aggregate only, refused row-level data), **`demo_admin`** (PHI, staff).
+Three demo accounts, each a button on the login page (password `demo1234` if you ever
+need it): **`demouser`** (de-identified, what the chat is bound to), **`agguser`**
+(aggregate only, refused row-level data), **`admin`** (PHI, staff).
 
 ### Pointing at a real deployment
 
@@ -256,8 +258,8 @@ docker compose up -d
 
 **Check:** `curl -s -o /dev/null -w '%{http_code}' http://localhost:5173/` returns 200.
 
-Tell the user to open <http://localhost:5173>, log in as **`demo` / `demo`**, and click
-**Ask**. **You are done.**
+Tell the user to open <http://localhost:5173>, click the **"deidentified data access"**
+login button, and then **Ask**. **You are done.**
 
 Requirements, which you should confirm first: Python 3.12+, Node 20+, Docker running, and
 the Claude Code CLI installed and logged in (`claude --version`). The first `run_all.sh`

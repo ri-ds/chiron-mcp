@@ -26,10 +26,16 @@ DEMO_WAREHOUSE = os.environ.get(
 )
 
 # Accounts created for the demo, one per access level.
+#
+# The names and password are not arbitrary: Chiron's bundled login page has one-click
+# buttons that post exactly these credentials
+# (test_project/main/templates/registration/login.html), so matching them means the
+# demo needs no typing at all. Change these and those buttons stop working.
+DEMO_PASSWORD = "demo1234"
 DEMO_USERS = [
-    ("demo", "deid", False),
-    ("demo_agg", "agg", False),
-    ("demo_admin", "phi", True),
+    ("demouser", "deid", False),   # "standard user with deidentified data access"
+    ("agguser", "agg", False),     # "standard user with aggregated data access"
+    ("admin", "phi", True),        # "administrator with full access"
 ]
 
 
@@ -43,7 +49,7 @@ def main() -> int:
     # Point this process at the demo databases before Django starts.
     os.environ["CHIRON_MCP_METADATA_DB"] = str(DEMO_DB)
     os.environ["CHIRON_MCP_WAREHOUSE_URL"] = DEMO_WAREHOUSE
-    os.environ.setdefault("CHIRON_MCP_USERNAME", "demo")
+    os.environ.setdefault("CHIRON_MCP_USERNAME", "demouser")
 
     from chiron_mcp.bootstrap import ensure_django
     from chiron_mcp.config import CONFIG
@@ -102,7 +108,7 @@ def main() -> int:
             username=username, defaults={"is_staff": is_staff}
         )
         user.is_staff = is_staff
-        user.set_password("demo")
+        user.set_password(DEMO_PASSWORD)
         user.save()
         for oDataset in models.Dataset.objects.all():
             cu, _ = models.ChironUser.objects.get_or_create(user=user, dataset=oDataset)
@@ -146,7 +152,7 @@ Add this to your Claude config, then restart the client:
       "env": {{
         "CHIRON_MCP_METADATA_DB": "{DEMO_DB}",
         "CHIRON_MCP_WAREHOUSE_URL": "{DEMO_WAREHOUSE}",
-        "CHIRON_MCP_USERNAME": "demo",
+        "CHIRON_MCP_USERNAME": "demouser",
         "CHIRON_MCP_MAX_ACCESS_LEVEL": "deid"
       }}
     }}
