@@ -1,0 +1,59 @@
+# Putting "Ask" inside the Chiron UI
+
+`chiron_mcp.webapp` serves a chat page that answers questions using the Chiron MCP
+tools. It runs Claude Code headless (`claude -p`), so it uses the operator's existing
+Claude subscription and needs no API key.
+
+## 1. Run the server
+
+```bash
+CHIRON_MCP_USERNAME=<user> \
+CHIRON_MCP_METADATA_DB=/path/to/chiron_metadata.sqlite3 \
+CHIRON_MCP_WAREHOUSE_URL=postgresql://user:pass@localhost:5432/chiron \
+CHIRON_MCP_ALLOW_SAVE=1 \
+.venv/bin/python -m chiron_mcp.webapp
+```
+
+It listens on 8900 (`CHIRON_MCP_WEB_PORT`). `CHIRON_MCP_ALLOW_SAVE=1` is what lets it
+answer "open this in Chiron"; without it the rest still works.
+
+Usable on its own at <http://localhost:8900>, with `?dataset=<id>` to preselect.
+
+## 2. Add the tab to the Chiron UI
+
+The UI has an extension point for exactly this: `src/overrideConfig.tsx` feeds
+`routes.datasetMore` and `header.nav` through `deepMerge`, so no UI source is forked.
+Copy `docs/overrideConfig.example.tsx` over `src/overrideConfig.tsx` in your
+`is4r-chiron-ui` checkout, then rebuild or run `npm run dev`.
+
+It adds a route at `/<dataset>/ask` and an **Ask** item in the header nav. The page is
+embedded as an iframe, so all markdown, table and chart rendering stays in the Ask
+server and the override stays a few lines.
+
+Two gotchas worth knowing:
+
+- `deepMerge` replaces arrays wholesale (`isObject` in `lib/utils.ts` excludes arrays),
+  so the nav must be **restated in full**, not appended to. Drop an item and it
+  disappears from the header.
+- The iframe points at `ASK_URL`, hardcoded to `http://localhost:8900` in the example.
+  Change it for a deployment, and make sure that host is reachable from the browser,
+  not just from the server.
+
+## What it can do
+
+- Answers with real figures, since every number comes from a tool call
+- Markdown tables
+- Charts, via a fenced ```chart block the page renders with Chart.js
+- Links into Chiron, rendered as buttons, from `chiron_open_in_ui`
+- Live progress: each Chiron tool call appears as a chip while it works
+
+A question takes roughly 25 to 60 seconds, because the model makes several tool calls.
+
+## Limits
+
+- **One identity.** The server acts as `CHIRON_MCP_USERNAME` for everyone who opens the
+  page. It is fine for a single analyst or a trusted team on a private network; it is
+  not multi-user. There is no login, and a workspace hand-off lands in that one user's
+  workspace.
+- **Bind it to localhost** or put it behind your own auth before exposing it.
+- It inherits the operator's Claude usage limits.

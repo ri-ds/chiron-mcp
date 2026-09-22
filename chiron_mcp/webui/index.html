@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask Chiron</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --teal-900: #004d40; --teal-700: #00796b; --teal-50: #e0f2f1;
+    --purple-900: #4a148c;
+    --grey-50: #fafafa; --grey-100: #f5f5f5; --grey-300: #e0e0e0;
+    --grey-600: #757575; --grey-800: #424242;
+    --ink: #212121; --bg: #ffffff;
+    --danger: #b3261e; --danger-bg: #fdecea;
+    --font: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font); font-size: 15px; line-height: 1.6;
+    display: flex; flex-direction: column;
+  }
+
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 10px 20px; background: var(--grey-100);
+    border-bottom: 1px solid var(--grey-300); flex: none;
+  }
+  header h1 {
+    margin: 0; font-size: 1.15rem; font-weight: 500; color: var(--purple-900);
+  }
+  header .spacer { flex: 1; }
+  select {
+    font-family: inherit; font-size: 14px; padding: 6px 10px;
+    border: 1px solid var(--grey-300); border-radius: 4px; background: #fff;
+    color: var(--grey-800);
+  }
+  .who { font-size: 12px; color: var(--grey-600); }
+
+  main { flex: 1; overflow-y: auto; padding: 22px 20px 8px; }
+  .thread { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+
+  .msg { display: flex; flex-direction: column; gap: 8px; }
+  .msg.user .bubble {
+    align-self: flex-end; background: var(--teal-700); color: #fff;
+    padding: 9px 14px; border-radius: 16px 16px 2px 16px; max-width: 80%;
+  }
+  .msg.user { align-items: flex-end; }
+  .msg.bot .bubble { max-width: 100%; }
+
+  .steps { display: flex; flex-wrap: wrap; gap: 6px; }
+  .step {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .02em;
+    background: var(--teal-50); color: var(--teal-900);
+    padding: 3px 9px; border-radius: 11px; white-space: nowrap;
+  }
+  .step.working::after { content: " …"; }
+
+  .bubble h1, .bubble h2, .bubble h3 { font-size: 1.05rem; margin: 18px 0 6px; font-weight: 500; }
+  .bubble p { margin: 0 0 10px; }
+  .bubble ul, .bubble ol { margin: 0 0 10px; padding-left: 22px; }
+  .bubble li { margin-bottom: 4px; }
+  .bubble strong { font-weight: 600; }
+  .bubble code {
+    font-family: var(--mono); font-size: .87em;
+    background: var(--grey-100); padding: 1px 5px; border-radius: 3px;
+  }
+  .bubble pre {
+    background: var(--grey-50); border: 1px solid var(--grey-300);
+    padding: 12px 14px; border-radius: 4px; overflow-x: auto;
+  }
+  .bubble pre code { background: none; padding: 0; }
+
+  .table-wrap { overflow-x: auto; margin: 0 0 12px; }
+  .bubble table { border-collapse: collapse; font-size: 14px; min-width: 320px; }
+  .bubble th {
+    text-align: left; background: var(--teal-700); color: #fff;
+    font-weight: 500; padding: 7px 14px; white-space: nowrap;
+  }
+  .bubble td {
+    padding: 7px 14px; border-bottom: 1px solid var(--grey-300);
+    font-variant-numeric: tabular-nums;
+  }
+  .bubble tbody tr:nth-child(even) { background: var(--grey-50); }
+
+  .chart-box {
+    border: 1px solid var(--grey-300); border-radius: 4px;
+    padding: 12px; margin: 0 0 12px; background: #fff; height: 300px;
+  }
+
+  .chiron-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+  .chiron-link {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--teal-700); color: #fff; text-decoration: none;
+    padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: 500;
+  }
+  .chiron-link:hover { background: var(--teal-900); }
+  .chiron-link::before { content: "↗"; font-size: 15px; }
+
+  .err {
+    background: var(--danger-bg); color: var(--danger);
+    border-left: 3px solid var(--danger); padding: 10px 14px; border-radius: 3px;
+    font-size: 14px;
+  }
+
+  .suggestions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 900px; margin: 0 auto 4px; }
+  .sugg {
+    font-size: 13px; background: #fff; border: 1px solid var(--grey-300);
+    color: var(--grey-800); padding: 6px 12px; border-radius: 15px; cursor: pointer;
+    font-family: inherit;
+  }
+  .sugg:hover { border-color: var(--teal-700); color: var(--teal-900); background: var(--teal-50); }
+
+  footer {
+    flex: none; padding: 12px 20px 16px; border-top: 1px solid var(--grey-300);
+    background: var(--grey-50);
+  }
+  .composer { max-width: 900px; margin: 10px auto 0; display: flex; gap: 10px; }
+  textarea {
+    flex: 1; font-family: inherit; font-size: 15px; padding: 11px 14px;
+    border: 1px solid var(--grey-300); border-radius: 4px; resize: none;
+    min-height: 46px; max-height: 160px; background: #fff; color: var(--ink);
+  }
+  textarea:focus { outline: 2px solid var(--teal-700); outline-offset: -1px; }
+  button.send {
+    font-family: inherit; font-size: 15px; font-weight: 500; padding: 0 22px;
+    background: var(--teal-700); color: #fff; border: 0; border-radius: 4px; cursor: pointer;
+  }
+  button.send:disabled { background: var(--grey-300); color: var(--grey-600); cursor: default; }
+
+  .empty { color: var(--grey-600); text-align: center; padding: 40px 20px; }
+  .empty h2 { font-weight: 400; font-size: 1.2rem; color: var(--grey-800); margin: 0 0 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ask Chiron</h1>
+  <select id="dataset" aria-label="Dataset"></select>
+  <span class="spacer"></span>
+  <span class="who" id="who"></span>
+</header>
+
+<main>
+  <div class="thread" id="thread">
+    <div class="empty" id="empty">
+      <h2>Ask a question about this dataset</h2>
+      <p>Answers come from Chiron itself, with the real numbers.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="suggestions" id="suggestions"></div>
+  <div class="composer">
+    <textarea id="q" rows="1" placeholder="How many patients have asthma?"></textarea>
+    <button class="send" id="send">Ask</button>
+  </div>
+</footer>
+
+<script>
+const thread = document.getElementById('thread');
+const empty  = document.getElementById('empty');
+const qBox   = document.getElementById('q');
+const sendBtn= document.getElementById('send');
+const dsSel  = document.getElementById('dataset');
+const who    = document.getElementById('who');
+const suggs  = document.getElementById('suggestions');
+
+const SUGGESTIONS = [
+  "What are the most common conditions?",
+  "How many patients have asthma?",
+  "Show the top 10 medications as a chart",
+  "Build an asthma cohort and open it in Chiron",
+  "What can I filter on?",
+];
+
+SUGGESTIONS.forEach(s => {
+  const b = document.createElement('button');
+  b.className = 'sugg'; b.textContent = s; b.type = 'button';
+  b.onclick = () => { qBox.value = s; ask(); };
+  suggs.appendChild(b);
+});
+
+fetch('/datasets').then(r => r.json()).then(d => {
+  (d.datasets || []).forEach(x => {
+    const o = document.createElement('option');
+    o.value = x.id; o.textContent = x.name;
+    dsSel.appendChild(o);
+  });
+  const params = new URLSearchParams(location.search);
+  if (params.get('dataset')) dsSel.value = params.get('dataset');
+  if (d.identity) who.textContent = 'as ' + d.identity;
+}).catch(() => {});
+
+qBox.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+});
+qBox.addEventListener('input', () => {
+  qBox.style.height = 'auto';
+  qBox.style.height = Math.min(qBox.scrollHeight, 160) + 'px';
+});
+sendBtn.onclick = ask;
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+function scroll() { document.querySelector('main').scrollTop = 1e9; }
+
+let busy = false;
+
+function ask() {
+  const q = qBox.value.trim();
+  if (!q || busy) return;
+  busy = true; sendBtn.disabled = true;
+  empty.style.display = 'none';
+  qBox.value = ''; qBox.style.height = 'auto';
+
+  const userMsg = el('div', 'msg user');
+  userMsg.appendChild(el('div', 'bubble', q));
+  thread.appendChild(userMsg);
+
+  const botMsg  = el('div', 'msg bot');
+  const steps   = el('div', 'steps');
+  const bubble  = el('div', 'bubble');
+  botMsg.append(steps, bubble);
+  thread.appendChild(botMsg);
+  scroll();
+
+  const working = el('span', 'step working', 'thinking');
+  steps.appendChild(working);
+
+  const url = '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(dsSel.value || '');
+  const src = new EventSource(url);
+
+  src.addEventListener('step', e => {
+    working.remove();
+    steps.appendChild(el('span', 'step', JSON.parse(e.data)));
+    steps.appendChild(working);
+    scroll();
+  });
+  src.addEventListener('answer', e => {
+    working.remove();
+    render(bubble, JSON.parse(e.data));
+    scroll();
+  });
+  src.addEventListener('error', e => {
+    working.remove();
+    let m = 'Something went wrong.';
+    try { m = JSON.parse(e.data); } catch (_) {}
+    bubble.appendChild(el('div', 'err', m));
+    scroll();
+  });
+  src.addEventListener('done', () => { src.close(); finish(); });
+  src.onerror = () => { src.close(); working.remove(); finish(); };
+
+  function finish() { busy = false; sendBtn.disabled = false; qBox.focus(); }
+}
+
+function render(target, markdown) {
+  // Pull out ```chart blocks before markdown parsing, and render them with Chart.js.
+  const charts = [];
+  const text = markdown.replace(/```chart\s*([\s\S]*?)```/g, (_, body) => {
+    try { charts.push(JSON.parse(body)); return `\n<!--CHART${charts.length - 1}-->\n`; }
+    catch (_) { return ''; }
+  });
+
+  target.innerHTML = marked.parse(text, { breaks: true });
+
+  // Tables get their own scroll container so a wide one never widens the page.
+  target.querySelectorAll('table').forEach(t => {
+    const wrap = el('div', 'table-wrap');
+    t.parentNode.insertBefore(wrap, t);
+    wrap.appendChild(t);
+  });
+
+  // Links into Chiron become buttons rather than plain links.
+  const links = [];
+  target.querySelectorAll('a').forEach(a => {
+    if (/\/(query|results|reports)(\/|$)/.test(a.getAttribute('href') || '')) links.push(a);
+  });
+  if (links.length) {
+    const box = el('div', 'chiron-links');
+    links.forEach(a => {
+      const b = el('a', 'chiron-link', a.textContent.trim() || 'Open in Chiron');
+      b.href = a.getAttribute('href'); b.target = '_top';
+      box.appendChild(b);
+      a.replaceWith(el('span'));
+    });
+    target.appendChild(box);
+  }
+
+  // Swap chart placeholders for canvases.
+  charts.forEach((spec, i) => {
+    const marker = [...target.childNodes].find(
+      n => n.nodeType === 8 && n.nodeValue.trim() === 'CHART' + i
+    );
+    const box = el('div', 'chart-box');
+    const canvas = document.createElement('canvas');
+    box.appendChild(canvas);
+    (marker || target).parentNode === target && marker ? marker.replaceWith(box) : target.appendChild(box);
+    const rows = spec.data || [];
+    new Chart(canvas, {
+      type: spec.type || 'bar',
+      data: {
+        labels: rows.map(r => r.x),
+        datasets: [{
+          label: spec.label || '',
+          data: rows.map(r => r.y),
+          backgroundColor: spec.type === 'doughnut'
+            ? ['#00796b','#26a69a','#4db6ac','#80cbc4','#b2dfdb','#4a148c','#7b1fa2','#ab47bc']
+            : '#00796b',
+          borderColor: '#00796b',
+          borderWidth: spec.type === 'line' ? 2 : 0,
+          tension: 0.25,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: spec.type === 'doughnut' || !!spec.label } },
+        scales: spec.type === 'doughnut' ? {} : { y: { beginAtZero: true } },
+      },
+    });
+  });
+}
+</script>
+</body>
+</html>
