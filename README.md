@@ -29,7 +29,7 @@ page, and the Chiron UI with an **Ask** tab. Nothing external is required beyond
 Python 3.12+, Node 20+, and the [Claude Code CLI](https://claude.com/claude-code) logged in.
 
 ```bash
-git clone https://github.com/rohzzn/chiron-mcp.git
+git clone https://github.com/ri-ds/chiron-mcp.git
 cd chiron-mcp
 ./install.sh                                  # python venv + dependencies
 docker compose up -d                          # Postgres warehouse
@@ -178,7 +178,7 @@ Requires Python 3.12+, a Chiron checkout, and network access to a Chiron metadat
 warehouse.
 
 ```bash
-git clone https://github.com/rohzzn/chiron-mcp.git
+git clone https://github.com/ri-ds/chiron-mcp.git
 cd chiron-mcp
 ./install.sh
 ```
