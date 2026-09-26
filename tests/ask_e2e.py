@@ -98,7 +98,26 @@ def truths() -> dict[str, dict[str, int]]:
     htn_x = cond("DESC = 'Essential hypertension'")
     female = subj("gender", "upper(VAL) = 'F'")
     female_x = subj("gender", "VAL = 'F'")
+    races = ["white", "black", "other", "asian", "native"]
+    grid = {
+        (g, race): count_of(asthma, subj("gender", f"upper(VAL) = '{g}'"),
+                            subj("race", f"lower(VAL) = '{race}'"))
+        for g in ("F", "M") for race in races
+    }
+    def med(where: str) -> str:
+        return (
+            f'select m._subject_id from medication m join "lkp_{P}medication__description" l '
+            f"on l._collection_id = m._id where {where}"
+        ).replace("DESC", f'l."{P}medication__description"')
+
+    albuterol = med("lower(DESC) like 'albuterol%'")
     return {
+        "_grid": grid,
+        # "now show their medications": right if scoped to the asthma cohort, and the
+        # whole-dataset figure is what an answer that forgot "their" would give
+        "asthma_albuterol": {"right": count_of(asthma, albuterol)},
+        "asthma_lisinopril": {"right": count_of(asthma, med("lower(DESC) like 'lisinopril%'"))},
+        "albuterol_all": {"right": count_of(albuterol)},
         "total": {"right": sql("select count(*) from subject")},
         "asthma": {"right": count_of(asthma), "exact": count_of(asthma_x)},
         "female": {"right": count_of(female), "exact": count_of(female_x)},
@@ -115,6 +134,9 @@ def truths() -> dict[str, dict[str, int]]:
         },
         "born_before_1950": {"right": count_of(subj("birthdate", "VAL < '1950-01-01'"))},
         "t2dm": {"right": count_of(cond("lower(DESC) like 'type 2 diabetes%'"))},
+        # the top conditions, every variant merged, truncations ("Asthm") included
+        "obesity": {"right": count_of(cond("lower(DESC) like 'body mass index 30%'"))},
+        "mdd": {"right": count_of(cond("lower(DESC) like 'major depressive disorde%'"))},
         "copd": {"right": count_of(cond("lower(DESC) like 'chronic obstructive%'"))},
         # the negation trap: exclude_selected on a multi-value field gives the "exact" one
         "no_htn": {
@@ -122,6 +144,10 @@ def truths() -> dict[str, dict[str, int]]:
             "exact": count_of(cond("lower(DESC) not like 'essential hypertensi%'")),
         },
         "income_30k_60k": {"right": count_of(subj("income", "VAL between 30000 and 60000"))},
+        "asthma_female_income_50k": {
+            "right": count_of(asthma, female, subj("income", "VAL > 50000"))},
+        "male": {"right": count_of(subj("gender", "upper(VAL) = 'M'"))},
+        "asthma_male": {"right": count_of(asthma, subj("gender", "upper(VAL) = 'M'"))},
         "deceased": {"right": count_of(subj("deathdate", "VAL is not null"))},
         "emergency": {"right": count_of(
             f'select e._subject_id from encounter e join "lkp_{P}encounter__encounterclass" l '
@@ -131,6 +157,9 @@ def truths() -> dict[str, dict[str, int]]:
 
 
 # --- sessions ---------------------------------------------------------------------
+
+SESSIONS: dict[str, str] = {}
+
 
 def mint_session(username: str) -> str:
     """A real Django session for `username`, created the way Django's login does."""
@@ -161,6 +190,11 @@ class Case:
     must_mention: list[str] = field(default_factory=list)
     dataset: str = DS
     also: list[str] = field(default_factory=list)   # further facts the answer must state
+    cells: list[int] = field(default_factory=list)  # breakdown figures that must appear
+    turns: list["Case"] = field(default_factory=list)  # follow-ups, same conversation
+    pattern: str | None = None     # regex the answer must match (case-insensitive)
+    absent: list[str] = field(default_factory=list)  # facts that must NOT be stated
+    partial_rows: list[list[int]] = field(default_factory=list)  # one table row each
 
 
 @dataclass
@@ -171,17 +205,29 @@ class Result:
     answer: str = ""
     steps: list[str] = field(default_factory=list)
     seconds: float = 0.0
+    prefix: str = ""
+    created: list[int] = field(default_factory=list)  # report ids to clean up
 
     def fail(self, msg: str) -> None:
         self.ok = False
-        self.notes.append("FAIL " + msg)
+        self.notes.append("FAIL " + self.prefix + msg)
 
     def warn(self, msg: str) -> None:
-        self.notes.append("warn " + msg)
+        self.notes.append("warn " + self.prefix + msg)
+
+    def ok_note(self, msg: str) -> None:
+        self.notes.append("ok " + self.prefix + msg)
 
 
-def ask(q: str, cookie: str, dataset: str = DS) -> dict:
-    url = f"{ASK}/ask?" + urllib.parse.urlencode({"q": q, "dataset": dataset})
+# Every conversation a run starts, so its transcript can be deleted at the end.
+STARTED: set[tuple[str, str]] = set()
+
+
+def ask(q: str, cookie: str, dataset: str = DS, thread: str | None = None) -> dict:
+    params = {"q": q, "dataset": dataset}
+    if thread:
+        params["thread"] = thread
+    url = f"{ASK}/ask?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"Cookie": f"sessionid={cookie}"})
     events: dict = {"step": [], "thinking": []}
     event = None
@@ -198,6 +244,8 @@ def ask(q: str, cookie: str, dataset: str = DS) -> dict:
                     events[event] = data
                 if event == "done":
                     break
+    if isinstance(events.get("thread"), str):
+        STARTED.add((events["thread"], cookie))
     return events
 
 
@@ -235,7 +283,7 @@ def chiron_says(r, case, cookie, stated, truth, how) -> None:
     if got != want:
         r.fail(f"after {how}, Chiron shows {got} subjects, answer says {want}")
     else:
-        r.notes.append(f"ok {how} -> Chiron shows {got}")
+        r.ok_note(f"{how} -> Chiron shows {got}")
 
 
 NUM = re.compile(r"(?<![\w.])\d{1,3}(?:,\d{3})+(?![\d.])|(?<![\w.,])\d+(?![\d.,]\d)")
@@ -245,7 +293,8 @@ CLUTTER = [
 ]
 REFUSAL = re.compile(
     r"(no access|not have access|doesn.t have access|don.t have access|cannot see|"
-    r"can.t see|not permitted|refus|aggregate|no chironuser|not available|isn.t available)",
+    r"can.t see|not permitted|refus|aggregate|no chironuser|not available|isn.t available|"
+    r"cannot access|can.t access|no permission|not authori)",
     re.I,
 )
 
@@ -280,22 +329,44 @@ def run(case: Case, cookie: str, truth: dict) -> Result:
 def _run(case: Case, cookie: str, truth: dict) -> Result:
     r = Result(case)
     t0 = time.time()
-    try:
-        ev = ask(case.q, cookie, case.dataset)
-    except Exception as exc:  # noqa: BLE001
-        r.fail(f"/ask raised {exc}")
-        return r
+    if case.kind == "report_flow":
+        report_flow(r, case, cookie, truth)
+    elif case.kind == "hijack":
+        hijack(r, case, cookie, truth)
+    elif case.kind == "delete_refused":
+        delete_refused(r, case, cookie)
+    else:
+        thread = None
+        for i, turn in enumerate([case] + case.turns):
+            r.prefix = f"[turn {i + 1}] " if case.turns else ""
+            try:
+                ev = ask(turn.q, cookie, case.dataset, thread)
+            except Exception as exc:  # noqa: BLE001
+                r.fail(f"/ask raised {exc}")
+                break
+            if thread and ev.get("thread") != thread:
+                r.fail("a follow-up started a new conversation instead of continuing")
+            thread = ev.get("thread")
+            check(r, turn, ev, cookie, truth, case.dataset)
+            if not r.ok:
+                break
     r.seconds = time.time() - t0
-    r.steps = ev.get("step", [])
+    return r
+
+
+def check(r: Result, case: Case, ev: dict, cookie: str, truth: dict, dataset: str) -> None:
+    """Every check on one answer; used for single questions and each follow-up."""
+    case = Case(**{**case.__dict__, "dataset": dataset})
+    r.steps += ev.get("step", [])
     answer = ev.get("answer") or ""
     r.answer = answer
 
     if "error" in ev:
         r.fail(f"error event: {str(ev['error'])[:160]}")
-        return r
+        return
     if not answer.strip():
         r.fail("empty answer")
-        return r
+        return
 
     if re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", answer) or "[redacted]" in answer:
         r.fail("answer mentions an email address")
@@ -310,6 +381,8 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
     for word in case.must_mention:
         if word.lower() not in low:
             r.fail(f"answer never mentions {word!r}")
+    if case.pattern and not re.search(case.pattern, answer, re.I | re.S):
+        r.fail(f"answer does not match {case.pattern!r}")
 
     found = numbers(answer)
     cohort = ev.get("cohort")
@@ -323,7 +396,7 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
             r.fail("refusal still offered a Query button")
         if link:
             r.fail("refusal still offered a link")
-        return r
+        return
 
     # --- the stated figure
     stated = None
@@ -344,9 +417,12 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
     for key in case.also:
         if truth[key]["right"] not in found:
             r.fail(f"answer is missing {key} = {truth[key]['right']} (has {sorted(found)[:6]})")
+    for key in case.absent:
+        if truth[key]["right"] in found:
+            r.fail(f"answer states {key} = {truth[key]['right']}, which it should not")
 
     # --- the Query button must reproduce the stated figure inside Chiron
-    if case.kind == "count" and case.truth:
+    if case.kind in ("count", "breakdown") and case.truth:
         if not cohort:
             r.fail("no Query button offered for a cohort question")
         else:
@@ -378,6 +454,7 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
             if not m:
                 r.fail(f"report link has no id: {link['url']}")
             else:
+                r.created.append(int(m.group(1)))
                 prev = get_json(
                     f"{API}/api/v2/{case.dataset}/report_tools/{m.group(1)}/preview/"
                     "?page=1&records_per_page=5",
@@ -395,8 +472,8 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
                 if want is not None and subj_n != want:
                     r.fail(f"report {m.group(1)} shows {subj_n} subjects, answer says {want}")
                 elif subj_n is not None:
-                    r.notes.append(f"ok report {m.group(1)} -> {subj_n} subjects, "
-                                   f"{len(fields)} column(s)")
+                    r.ok_note(f"report {m.group(1)} -> {subj_n} subjects, "
+                              f"{len(fields)} column(s)")
 
     if case.kind == "chart":
         blocks = re.findall(r"```chart\s*([\s\S]*?)```", answer)
@@ -413,18 +490,183 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
             except Exception as exc:  # noqa: BLE001
                 r.fail(f"chart JSON invalid: {exc}")
 
-    if case.kind == "table" and not re.search(r"^\s*\|.*\|\s*$", answer, re.M):
+    if case.kind in ("table", "breakdown") and not re.search(r"^\s*\|.*\|\s*$", answer, re.M):
         r.fail("no markdown table")
+    missing = [n for n in case.cells if n not in found]
+    if missing:
+        r.fail(f"breakdown is missing {missing} (answer has {sorted(found)[:12]})")
+    elif case.cells:
+        r.ok_note(f"breakdown has all {len(case.cells)} expected figures")
+    # A chart of one row of a two-way table, unlabelled, reads as the whole cohort.
+    for body in re.findall(r"```chart\s*([\s\S]*?)```", answer):
+        try:
+            spec = json.loads(body)
+        except ValueError:
+            r.fail("chart JSON invalid")
+            continue
+        ys = [pt.get("y") for pt in spec.get("data") or []]
+        if "series" not in spec and ys in case.partial_rows:
+            r.fail(f"chart shows one row of the table ({ys}) as if it were the whole")
+    if case.kind == "masked":
+        if "<5" not in answer.replace(" ", ""):
+            r.fail("aggregate-only breakdown shows no masked (<5) counts")
+        if cohort:
+            r.fail("aggregate-only account was offered a Query button")
 
-    dupes = {s: r.steps.count(s) for s in set(r.steps) if r.steps.count(s) > 2}
+    mine = ev.get("step", [])  # this answer only; a conversation repeats tools per turn
+    dupes = {s: mine.count(s) for s in set(mine) if mine.count(s) > 2}
     if dupes:
         r.warn(f"repeated tool calls {dupes}")
-    return r
+
+
+def report_flow(r: Result, case: Case, cookie: str, truth: dict) -> None:
+    """Create, rename, refilter and delete one report in one conversation, checking
+    Chiron's own API after every step rather than trusting the answer."""
+    first, second = "E2E flow report", "E2E flow renamed"
+    everyone, women = truth["asthma"]["right"], truth["female_asthma"]["right"]
+    state = {"thread": None}
+
+    def turn(label: str, q: str) -> dict:
+        r.prefix = f"[{label}] "
+        ev = ask(q, cookie, case.dataset, state["thread"])
+        if state["thread"] and ev.get("thread") != state["thread"]:
+            r.fail("started a new conversation instead of continuing")
+        state["thread"] = ev.get("thread")
+        r.steps += ev.get("step", [])
+        r.answer = ev.get("answer") or ""
+        if "error" in ev:
+            r.fail(f"error event: {str(ev['error'])[:140]}")
+        return ev
+
+    def meta(rid: str) -> dict:
+        return get_json(f"{API}/api/v2/{case.dataset}/reports/get_report/?report_id={rid}",
+                        cookie)["oReport"]
+
+    def subjects(rid: str) -> int | None:
+        return get_json(f"{API}/api/v2/{case.dataset}/report_tools/{rid}/preview/"
+                        "?page=1&records_per_page=5", cookie).get("subject_count")
+
+    ev = turn("save", f"Save an asthma cohort as a report named '{first}'")
+    m = re.search(r"/reports/(\d+)", (ev.get("link") or {}).get("url", ""))
+    if not m:
+        r.fail(f"no Report link (link: {ev.get('link')})")
+        return
+    rid = m.group(1)
+    r.created.append(int(rid))
+    got = meta(rid)["name"]
+    if got != first:
+        r.fail(f"report is named {got!r}, asked for {first!r}")
+    n = subjects(rid)
+    if n != everyone:
+        r.fail(f"report {rid} has {n} subjects, expected {everyone}")
+    else:
+        r.ok_note(f"report {rid} saved, {n} subjects")
+
+    ev = turn("rename", f"Rename that report to '{second}'")
+    got = meta(rid)["name"]
+    if got != second:
+        r.fail(f"after rename Chiron shows {got!r}")
+    else:
+        r.ok_note(f"Chiron shows the new name {got!r}")
+    if (ev.get("link") or {}).get("url", "").rstrip("/").split("/")[-1] != rid:
+        r.fail(f"rename did not offer a Report button for report {rid}")
+
+    turn("refilter", "Change that report to include only women")
+    n = subjects(rid)
+    if n != women:
+        r.fail(f"after refiltering Chiron's report has {n} subjects, expected {women}")
+    else:
+        r.ok_note(f"Chiron's report now has {n} subjects")
+
+    ev = turn("delete", "Delete that report")
+    try:
+        meta(rid)
+        r.fail(f"report {rid} still exists after deletion")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            r.ok_note(f"report {rid} is gone (404)")
+        else:
+            r.fail(f"unexpected HTTP {exc.code} checking the deleted report")
+    if ev.get("link"):
+        r.fail("the deletion answer still offers a link to the deleted report")
+    if ev.get("deleted") != int(rid):
+        r.fail(f"the page was not told to retire buttons for report {rid} "
+               f"(deleted event: {ev.get('deleted')})")
+
+
+def hijack(r: Result, case: Case, cookie: str, truth: dict) -> None:
+    """Another user presenting someone's conversation id must not get its context."""
+    r.prefix = "[owner] "
+    ev = ask("How many patients have asthma?", SESSIONS["demouser"], case.dataset)
+    owned = ev.get("thread")
+    r.prefix = "[intruder] "
+    ev2 = ask("How many of them are women?", SESSIONS["admin"], case.dataset, owned)
+    r.answer = ev2.get("answer") or ""
+    if ev2.get("thread") == owned:
+        r.fail("an intruder continued someone else's conversation")
+    if truth["female_asthma"]["right"] in numbers(r.answer):
+        r.fail("the intruder's answer used the owner's asthma cohort")
+    else:
+        r.ok_note("intruder got a fresh conversation with no prior cohort")
+
+
+SHARED_REPORT = "Team asthma cohort (shared)"
+
+
+def shared_report_id() -> int | None:
+    """The public report admin owns; demouser can open it but must not change it."""
+    from chiron.models import UserCreatedContent
+
+    row = UserCreatedContent.objects.filter(
+        name=SHARED_REPORT, creator__user__username="admin").first()
+    return row.pk if row else None
+
+
+def delete_refused(r: Result, case: Case, cookie: str) -> None:
+    """Asking to delete a report someone else made must leave it in place."""
+    rid = shared_report_id()
+    if rid is None:
+        r.fail(f"setup: no public report {SHARED_REPORT!r} owned by admin")
+        return
+    ev = ask(f"Delete the report called '{SHARED_REPORT}'", cookie, case.dataset)
+    r.steps += ev.get("step", [])
+    r.answer = ev.get("answer") or ""
+    try:
+        get_json(f"{API}/api/v2/{case.dataset}/reports/get_report/?report_id={rid}", cookie)
+        r.ok_note(f"report {rid} still exists")
+    except urllib.error.HTTPError as exc:
+        r.fail(f"report {rid} was deleted by someone who did not create it (HTTP {exc.code})")
+    if not re.search(r"(only (its|the) (creator|owner|person)|didn.t create|did not create|"
+                     r"isn.t yours|not yours|created by|can.t delete|cannot delete|"
+                     r"not (allowed|permitted|able))", r.answer, re.I):
+        r.fail("answer does not say the report cannot be deleted by this user")
+    if ev.get("link"):
+        r.warn("refusal offered a link")
+
+
+def cleanup(results: list[Result]) -> None:
+    """Delete the reports this run created, so repeated runs leave Chiron tidy."""
+    from chiron.models import UserCreatedContent
+
+    ids = [i for r in results for i in r.created]
+    if ids:
+        n, _ = UserCreatedContent.objects.filter(
+            pk__in=ids, creator__user__username__in=["demouser", "admin"]).delete()
+        print(f"cleaned up {len(ids)} report(s) created by this run")
+    # Transcripts hold tool results, i.e. patient rows: forget them now, not in 12 hours.
+    forgotten = 0
+    for tid, cookie in STARTED:
+        try:
+            forgotten += bool(post_json(f"{ASK}/forget", {"thread": tid}, cookie).get("forgotten"))
+        except Exception:  # noqa: BLE001
+            pass
+    print(f"forgot {forgotten}/{len(STARTED)} conversation(s) and their transcripts")
 
 
 CASES = [
     # --- every starter question the page suggests; a suggestion must never fail
-    Case("s_chart", "Which 5 conditions affect the most patients? Chart it", "chart"),
+    Case("s_chart", "Which 5 conditions affect the most patients? Chart it", "chart",
+         also=["obesity", "htn", "mdd", "asthma", "t2dm"]),
     Case("s_female_htn", "How many women have essential hypertension?", "count", "female_htn"),
     Case("s_asthma_income", "Asthma patients earning over $50,000", "count", "asthma_income_50k"),
     Case("s_born_1950", "How many patients were born before 1950?", "count", "born_before_1950"),
@@ -446,7 +688,38 @@ CASES = [
     Case("emergency", "How many patients have had an emergency encounter?", "count", "emergency"),
     Case("compare", "How many patients have asthma, and how many have COPD?", "plain",
          "asthma", also=["copd"]),
+    # --- follow-ups: one conversation, each turn builds on the last
+    Case("followup", "How many patients have asthma?", "count", "asthma", turns=[
+        Case("t2", "How many of them are women?", "count", "female_asthma"),
+        Case("t3", "And of those, how many earn over $50,000?", "count",
+             "asthma_female_income_50k"),
+    ]),
+    # the exact example from the request: "their" must mean the asthma cohort
+    Case("followup_meds", "How many patients have asthma?", "count", "asthma", turns=[
+        Case("t2", "Now show their medications", "plain",
+             also=["asthma_albuterol", "asthma_lisinopril"], absent=["albuterol_all"]),
+    ]),
+    # a follow-up answered from context with no tool call must keep its Query button
+    Case("rechart", "Break down asthma patients by gender", "breakdown", "asthma", turns=[
+        Case("t2", "Chart that, and state the total", "count", "asthma",
+             pattern=r"```chart"),
+    ]),
+    # --- breakdowns, checked cell by cell
+    Case("breakdown_1d", "Break down asthma patients by gender", "breakdown", "asthma"),
+    # one asthma patient has no recorded gender; the answer must say so or the table
+    # visibly fails to add up (rows 840, total 841)
+    Case("breakdown_2d", "Break down asthma patients by gender and race", "breakdown",
+         "asthma", pattern=r"\b(1|one)\b[^.|]*(no|without|missing|unknown|unrecorded)"
+                           r"[^.|]*gender"),
+    Case("breakdown_whole", "How many patients are there of each gender?", "breakdown",
+         also=["female", "male"]),
+    Case("agg_breakdown", "Break down subjects by encounter type", "masked",
+         user="agguser", dataset="dataset1_stored"),
+    # --- report lifecycle, verified against Chiron's API after each step
+    Case("report_flow", "", "report_flow"),
+    Case("delete_refused", "", "delete_refused"),
     # --- identity and permissions
+    Case("hijack", "", "hijack"),
     Case("no_access", "How many patients are in dataset2_stored?", "refuse"),
     Case("agg_user", "How many subjects are there?", "refuse", user="agguser",
          dataset="dataset1_stored"),
@@ -459,9 +732,20 @@ def main() -> int:
     cases = [c for c in CASES if not only or only in c.id]
     print(f"computing ground truth from {SCHEMA} ...")
     truth = truths()
+    grid = truth.pop("_grid")
     for k, v in truth.items():
-        print(f"  {k:18} {v}")
-    sessions = {u: mint_session(u) for u in {c.user for c in cases}}
+        print(f"  {k:24} {v}")
+    print(f"  {'asthma gender x race':24} {grid}")
+    sessions = {u: mint_session(u) for u in {c.user for c in cases} | {"admin", "demouser"}}
+    SESSIONS.update(sessions)
+    for c in cases:
+        if c.id == "breakdown_1d":
+            c.cells = [truth["female_asthma"]["right"], truth["asthma_male"]["right"]]
+        if c.id == "breakdown_2d":
+            c.cells = sorted({n for n in grid.values() if n})
+            c.partial_rows = [[grid[(g, race)] for race in
+                               ("white", "black", "other", "asian", "native")]
+                              for g in ("F", "M")]
 
     print(f"\nrunning {len(cases)} case(s) against {ASK} ...\n")
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -477,6 +761,7 @@ def main() -> int:
             print(f"        {n}")
         if not r.ok:
             print("        answer: " + r.answer.replace("\n", " ")[:260])
+    cleanup(results)
     print(f"\n{len(results) - failed}/{len(results)} passed")
     return 1 if failed else 0
 

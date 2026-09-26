@@ -108,6 +108,8 @@
   button.chiron-link.load::before { content: "⇄"; }
   button.chiron-link.load:hover { background: var(--teal-50); }
   button.chiron-link:disabled { opacity: .6; cursor: default; }
+  .chiron-link.gone { background: #eee; color: #777; cursor: default; }
+  .chiron-link.gone::before { content: "✕"; }
 
   .err {
     background: var(--danger-bg); color: var(--danger);
@@ -188,8 +190,9 @@ const STEP_LABELS = {
   describe_concept: 'Reading a variable', concept_values: 'Looking up values',
   edit_cohort: 'Building filters', event_rule_options: 'Checking date rules',
   count_cohort: 'Counting patients', run_table: 'Pulling rows', export_table: 'Exporting',
-  crosstab: 'Cross-tabulating', saved_reports: 'Reading reports',
+  crosstab: 'Cross-tabulating', breakdown: 'Breaking down', saved_reports: 'Reading reports',
   run_saved_report: 'Running a report', open_in_ui: 'Saving to Chiron',
+  update_report: 'Updating the report', delete_report: 'Deleting the report',
 };
 
 function el(tag, cls, text) {
@@ -199,6 +202,9 @@ function el(tag, cls, text) {
   return n;
 }
 function scroll() { document.querySelector('main').scrollTop = 1e9; }
+// Charts draw, and the starter questions load, after the text is in place, which makes
+// the page taller than when the first scroll ran; scroll again once they have.
+function settle() { scroll(); requestAnimationFrame(scroll); setTimeout(scroll, 350); }
 
 // --- who, and starter questions for this dataset ------------------------------
 fetch('/datasets?dataset=' + encodeURIComponent(DATASET)).then(r => r.json()).then(d => {
@@ -210,6 +216,7 @@ fetch('/datasets?dataset=' + encodeURIComponent(DATASET)).then(r => r.json()).th
     suggs.appendChild(b);
   });
   suggs.hidden = !(d.suggestions || []).length;
+  if (history.length) settle();  // the suggestions just shrank the chat area
 }).catch(() => { suggs.hidden = true; });
 
 // --- progress: one chip per kind of step, counted, not one per call -------------
@@ -239,9 +246,18 @@ function Progress(box) {
 // Following a link into Chiron navigates the whole UI and reloads this iframe, so the
 // thread has to outlive the page. Kept per dataset.
 const HKEY = 'chiron-ask:' + DATASET;
+const TKEY = HKEY + ':thread';
 const HMAX = 30;
 let history = [];
 try { history = JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (_) { history = []; }
+// The server's id for this conversation. Sent back with each question so follow-ups
+// ("how many of them are women?") continue from the cohorts already built.
+let threadId = null;
+try { threadId = localStorage.getItem(TKEY); } catch (_) {}
+function saveThread(id) {
+  threadId = id;
+  try { id ? localStorage.setItem(TKEY, id) : localStorage.removeItem(TKEY); } catch (_) {}
+}
 
 function saveHistory() {
   try { localStorage.setItem(HKEY, JSON.stringify(history.slice(-HMAX))); } catch (_) {}
@@ -262,11 +278,20 @@ function replay() {
     thread.append(u, b);
     showTurn(bubble, turn);
   });
-  if (history.length) { empty.style.display = 'none'; scroll(); }
+  if (history.length) { empty.style.display = 'none'; settle(); }
   clearBtn.hidden = history.length === 0;
 }
 
 clearBtn.onclick = () => {
+  // Also drop the conversation on the server, which deletes its transcript now rather
+  // than when it would expire.
+  if (threadId) {
+    fetch('/forget', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread: threadId }),
+    }).catch(() => {});
+  }
+  saveThread(null);
   history = [];
   saveHistory();
   thread.querySelectorAll('.msg').forEach(n => n.remove());
@@ -308,7 +333,10 @@ function ask() {
   history.push(turn);
 
   const src = new EventSource(
-    '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET));
+    '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET) +
+    (threadId ? '&thread=' + encodeURIComponent(threadId) : ''));
+
+  src.addEventListener('thread', e => { try { saveThread(JSON.parse(e.data)); } catch (_) {} });
 
   src.addEventListener('step', e => {
     thinking.remove();
@@ -316,13 +344,14 @@ function ask() {
     scroll();
   });
   src.addEventListener('link', e => { try { turn.link = JSON.parse(e.data); } catch (_) {} });
+  src.addEventListener('deleted', e => { try { retireReport(JSON.parse(e.data)); } catch (_) {} });
   src.addEventListener('cohort', e => { try { turn.cohort = JSON.parse(e.data); } catch (_) {} });
   src.addEventListener('answer', e => {
     turn.answer = JSON.parse(e.data);
     progress.done();          // the answer replaces the progress chips
     showTurn(bubble, turn);
     saveHistory();
-    scroll();
+    settle();
   });
   src.addEventListener('error', e => {
     // A named error from the server carries data; a bare connection error does not,
@@ -361,9 +390,26 @@ function linkBox(target) {
 function addLink(target, link) {
   const box = linkBox(target);
   if ([...box.querySelectorAll('a')].some(a => a.href === link.url)) return;
+  if (link.gone) {
+    box.appendChild(el('span', 'chiron-link gone', 'Report deleted'));
+    return;
+  }
   const a = el('a', 'chiron-link', link.label || 'Open');
   a.href = link.url; a.target = '_top';
   box.appendChild(a);
+}
+
+// A report deleted in a later answer must not stay clickable in earlier ones, here or
+// after a reload, so both the page and the saved history are updated.
+function retireReport(id) {
+  const re = new RegExp('/reports/' + Number(id) + '(/|$|\\?)');
+  history.forEach(t => { if (t.link && re.test(t.link.url)) t.link.gone = true; });
+  saveHistory();
+  thread.querySelectorAll('a.chiron-link').forEach(a => {
+    if (re.test(a.getAttribute('href') || '')) {
+      a.replaceWith(el('span', 'chiron-link gone', 'Report deleted'));
+    }
+  });
 }
 
 function offerLoad(target, cohort) {
@@ -428,26 +474,43 @@ function render(target, markdown) {
     const canvas = document.createElement('canvas');
     box.appendChild(canvas);
     if (marker) marker.replaceWith(box); else target.appendChild(box);
+    // Two forms: one series as data:[{x,y}], or several as x:[...] with
+    // series:[{label, y:[...]}] (a two-variable breakdown, one series per row), which
+    // gets a legend so no bar is ever unlabelled.
+    const multi = Array.isArray(spec.series) && Array.isArray(spec.x);
     const rows = spec.data || [];
-    new Chart(canvas, {
-      type: spec.type || 'bar',
-      data: {
-        labels: rows.map(r => r.x),
-        datasets: [{
+    const palette = ['#00796b', '#7b1fa2', '#f57c00', '#1976d2', '#c2185b', '#689f38',
+                     '#5d4037', '#455a64'];
+    const datasets = multi
+      ? spec.series.map((sr, k) => ({
+          label: sr.label || '',
+          data: sr.y || [],
+          backgroundColor: palette[k % palette.length],
+          borderColor: palette[k % palette.length],
+          borderWidth: spec.type === 'line' ? 2 : 0,
+          tension: 0.25,
+        }))
+      : [{
           label: spec.label || '',
           data: rows.map(r => r.y),
-          backgroundColor: spec.type === 'doughnut'
-            ? ['#00796b','#26a69a','#4db6ac','#80cbc4','#b2dfdb','#4a148c','#7b1fa2','#ab47bc']
-            : '#00796b',
+          backgroundColor: spec.type === 'doughnut' ? palette : '#00796b',
           borderColor: '#00796b',
           borderWidth: spec.type === 'line' ? 2 : 0,
           tension: 0.25,
-        }],
-      },
+        }];
+    new Chart(canvas, {
+      type: spec.type || 'bar',
+      data: { labels: multi ? spec.x : rows.map(r => r.x), datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: spec.type === 'doughnut' } },
-        scales: spec.type === 'doughnut' ? {} : { y: { beginAtZero: true } },
+        plugins: {
+          legend: { display: multi || spec.type === 'doughnut' },
+          title: { display: !!spec.title, text: spec.title || '' },
+        },
+        scales: spec.type === 'doughnut' ? {} : {
+          y: { beginAtZero: true,
+               title: { display: !!spec.label && !multi, text: spec.label || '' } },
+        },
       },
     });
   });

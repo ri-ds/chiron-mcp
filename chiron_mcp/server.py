@@ -645,17 +645,262 @@ def chiron_crosstab(
         return _err(exc)
 
 
+# --- breakdowns ---------------------------------------------------------------
+
+# Processors whose values are discrete enough to group by.
+_GROUPABLE = {
+    "CohortDefCategory": "selected_categories",
+    "CohortDefBoolean": "selected_categories",
+    "CohortDefText": "chiron_text_field_selection",
+    "CohortDefTextCustomSort": "chiron_text_field_selection",
+}
+
+
+def _add_filter(ident, cohort_def: list, oConcept, values: list[str], field: str) -> list:
+    """Return cohort_def AND (concept in values), built with Chiron's own transformation.
+
+    Both the input and the output are copied: Chiron's filter entries share one dict
+    across calls unless patched (see the note in chiron_edit_cohort).
+    """
+    from chiron.api.utils import cohort_def as cd_utils
+
+    transformation = {"type": "add_entry", "concept_id": oConcept.permanent_id}
+    if field == "selected_categories":
+        transformation["selected_categories"] = [str(v) for v in values]
+    else:
+        transformation["chiron_text_field_selection"] = "\n".join(str(v) for v in values)
+        transformation["ignore_warnings"] = True
+    result = cd_utils.transformation_function_lookup["add_entry"](
+        identity.checked_chironuser(ident), copy.deepcopy(cohort_def or []), transformation
+    )
+    if not result.get("transformation_successful"):
+        raise AccessError(
+            f"Could not filter on {oConcept.permanent_id}: "
+            f"{result.get('transformation_errors')}"
+        )
+    return copy.deepcopy(result["cohort_def"])
+
+
+def _count(ident, cohort_def: list) -> int:
+    from chiron.query_engine import get_querytool
+
+    cohort = _validated_cohort(ident, cohort_def)
+    return int(get_querytool(identity.checked_chironuser(ident), cohort.cohort_def)
+               .get_cohort_count())
+
+
+def _value_counts(ident, cohort_def: list, oConcept) -> dict:
+    """{raw value: distinct patients} for one variable within a cohort."""
+    from chiron.query_engine import get_stattool
+
+    rows = get_stattool(
+        chironuser=identity.checked_chironuser(ident),
+        cohort_def=copy.deepcopy(cohort_def or []),
+        concept=oConcept,
+    ).get_unique_values_with_counts(sort_by="count")
+    out = {}
+    for row in rows:
+        value = row.get("category")
+        if value is None or str(value).strip() == "":
+            continue
+        out[value] = int(row.get("uniquePatientCount") or 0)
+    return out
+
+
+def _groups(counts: dict, top: int) -> tuple[list[dict], int]:
+    """Merge spelling variants ("F", "f", "Asthm") and keep the largest groups.
+
+    Returns groups as {"label", "values", "approx"} where approx is the sum of the
+    variants' counts (exact when there is a single variant), plus how many groups were
+    left out.
+    """
+    merged: dict[str, dict] = {}
+    for value, n in counts.items():
+        key = str(value).strip().lower()
+        g = merged.setdefault(key, {"values": [], "approx": 0, "best": (-1, None)})
+        g["values"].append(value)
+        g["approx"] += n
+        if n > g["best"][0]:
+            g["best"] = (n, value)
+    # Fold truncations into the name they cut short ("asthm" into "asthma", "essential
+    # hypertensio" into "essential hypertension"), so a ranking agrees with a direct
+    # count. Conservative on purpose: the short form must cover at least 80% of the
+    # longer name, be 5+ characters, and match exactly one larger group.
+    for key in sorted(merged, key=len):
+        if key not in merged or len(key) < 5:
+            continue
+        hosts = [k for k in merged if k != key and k.startswith(key)
+                 and len(key) >= 0.8 * len(k) and merged[k]["approx"] > merged[key]["approx"]]
+        if len(hosts) == 1:
+            g, host = merged.pop(key), merged[hosts[0]]
+            host["values"] += g["values"]
+            host["approx"] += g["approx"]
+    ordered = sorted(merged.values(), key=lambda g: -g["approx"])
+    kept = [{"label": str(g["best"][1]), "values": g["values"], "approx": g["approx"]}
+            for g in ordered[:top]]
+    return kept, max(0, len(ordered) - top)
+
+
+def _group_count(ident, cohort_def, oConcept, field, group, counts) -> int:
+    """Exact distinct patients in cohort AND group.
+
+    A single-variant group reads straight from the value counts, which are already
+    distinct patients. A merged group runs a real count, because a patient recorded
+    under two variants ("Asthma" and "ASTHMA") would be counted twice by adding them up.
+    """
+    if len(group["values"]) == 1:
+        return counts.get(group["values"][0], 0)
+    return _count(ident, _add_filter(ident, cohort_def, oConcept, group["values"], field))
+
+
+def _no_value(ident, cohort_def, oConcept, field, counts, total) -> int | None:
+    """Patients in the cohort with no recorded value for the variable.
+
+    They fall in no group, which is why rows can add up to less than the cohort total
+    (synthea has 5 patients with no gender, one of whom has asthma). Skipped for
+    variables with very many distinct values, where the filter itself would be huge.
+    """
+    if not counts:
+        return total
+    if len(counts) > 500:
+        return None
+    return total - _count(ident, _add_filter(ident, cohort_def, oConcept, list(counts), field))
+
+
+@mcp.tool()
+def chiron_breakdown(
+    dataset_id: str,
+    cohort_def: list,
+    by: list[str],
+    top: int = 0,
+) -> dict:
+    """Break a cohort down by one or two variables: distinct patients in each group.
+
+    Use it for "split by", "broken down by", "by gender and race", "per ethnicity".
+    Works on every dataset, including ones where chiron_crosstab is unavailable.
+
+    `cohort_def` is the cohort to split ([] for the whole dataset). `by` is one or two
+    concept_ids of Category or Text variables, such as a gender, race or condition
+    description. Spelling variants of a value are merged into one group, labelled with
+    the most common spelling.
+
+    Every figure is distinct patients, computed with Chiron's own engine and the caller's
+    permissions. With a multi-value variable a patient can fall in several groups, and
+    patients with no recorded value fall in none, so groups need not add up to the total.
+    For aggregate-only accounts small counts are masked the way Chiron's analysis view
+    masks them.
+    """
+    from chiron import chiron_settings
+
+    try:
+        ident = identity.resolve(dataset_id)
+        identity.require_workspace(ident)
+        aggregate_only = ident.access_level not in ("phi", "deid")
+        if aggregate_only:
+            identity.require_analysis_view()
+        cu = identity.checked_chironuser(ident)
+
+        if not by or len(by) > 2:
+            raise AccessError("Pass one or two concept_ids in `by`.")
+        base = _validated_cohort(ident, cohort_def or []).cohort_def
+
+        dims = []
+        for concept_id in by:
+            oConcept = _concept(ident, concept_id)
+            can_use, reason = oConcept.user_can_use_concept_in_cohort_def(cu)
+            if not can_use:
+                raise AccessError(f"Not permitted to use {concept_id!r}: {reason}")
+            proc = oConcept.get_cohort_def_processor(cu)
+            field = _GROUPABLE.get(type(proc).__name__) if proc else None
+            if not field:
+                raise AccessError(
+                    f"{concept_id!r} is a {type(proc).__name__ if proc else 'unknown'} "
+                    "variable. Break down by a category such as gender or race; for a "
+                    "number or date, filter on ranges and count each one instead."
+                )
+            dims.append((oConcept, field))
+
+        limit = top or (10 if len(dims) == 1 else 6)
+        total = _count(ident, base)
+
+        (c1, f1) = dims[0]
+        counts1 = _value_counts(ident, base, c1)
+        groups1, omitted1 = _groups(counts1, limit)
+        row_totals = [_group_count(ident, base, c1, f1, g, counts1) for g in groups1]
+        no_value = {c1.name: _no_value(ident, base, c1, f1, counts1, total)}
+
+        out: dict[str, Any] = {
+            "dataset_id": dataset_id,
+            "cohort_total": total,
+            "by": [{"concept_id": c.permanent_id, "name": c.name} for c, _ in dims],
+            "rows": [g["label"] for g in groups1],
+            "row_totals": row_totals,
+            "merged_variants": {g["label"]: g["values"] for g in groups1
+                                if len(g["values"]) > 1},
+            "omitted_rows": omitted1,
+            "no_value": no_value,
+            "note": (
+                "Distinct patients. With a multi-value variable a patient can be in several "
+                "groups. no_value counts cohort patients with no recorded value for that "
+                "variable; they are in no group, so groups need not add up to cohort_total. "
+                "When a no_value count is above zero, say so in one short line."
+            ),
+        }
+
+        if len(dims) == 2:
+            (c2, f2) = dims[1]
+            counts2 = _value_counts(ident, base, c2)
+            groups2, omitted2 = _groups(counts2, limit)
+            no_value[c2.name] = _no_value(ident, base, c2, f2, counts2, total)
+            cells = []
+            for g1 in groups1:
+                sub = _add_filter(ident, base, c1, g1["values"], f1)
+                sub_counts = _value_counts(ident, sub, c2)
+                cells.append([_group_count(ident, sub, c2, f2, g2, sub_counts)
+                              for g2 in groups2])
+            out.update({
+                "cols": [g["label"] for g in groups2],
+                "col_totals": [_group_count(ident, base, c2, f2, g, counts2) for g in groups2],
+                "cells": cells,
+                "omitted_cols": omitted2,
+            })
+            for g in groups2:
+                if len(g["values"]) > 1:
+                    out["merged_variants"][g["label"]] = g["values"]
+
+        if aggregate_only:
+            limit_n = chiron_settings.CHIRON_AGG_SUBJECT_COUNT_MIN_LIMIT
+
+            def mask(n):
+                return f"<{limit_n}" if 1 <= n <= limit_n else n
+
+            out["row_totals"] = [mask(n) for n in out["row_totals"]]
+            if "cells" in out:
+                out["cells"] = [[mask(n) for n in row] for row in out["cells"]]
+                out["col_totals"] = [mask(n) for n in out["col_totals"]]
+            out["cohort_total"] = mask(out["cohort_total"])
+            out["no_value"] = {k: v if v is None else mask(v) for k, v in no_value.items()}
+            out["masked"] = f"counts of 1 to {limit_n} are shown as <{limit_n}"
+        return out
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
 # --- saved reports -----------------------------------------------------------
 
 
 @mcp.tool()
 def chiron_saved_reports(
-    dataset_id: str, report_id: int | None = None, search: str | None = None
+    dataset_id: str,
+    report_id: int | None = None,
+    search: str | None = None,
+    scope: str = "all",
 ) -> dict:
     """List saved reports, or fetch one report's stored cohort_def and table_def.
 
-    The best cold-start move: an existing report shows how colleagues express a
-    question in this dataset, and can be branched from.
+    `scope` "mine" lists only reports you created, which are the ones you can change
+    with chiron_update_report or delete with chiron_delete_report. Each report says
+    whether it is yours.
     """
     try:
         ident = identity.resolve(dataset_id)
@@ -666,12 +911,13 @@ def chiron_saved_reports(
             oReport = qs.filter(pk=report_id).first()
             if not oReport:
                 raise AccessError(f"No viewable report {report_id} on {dataset_id!r}.")
-            definition = oReport.get_def_value()
+            definition = oReport.get_definition() or {}
             return {
                 "report_id": oReport.pk,
                 "name": oReport.name,
                 "description": oReport.description,
                 "public": oReport.public,
+                "mine": oReport.creator_id == cu.pk,
                 "cohort_def": definition.get("cohort_def"),
                 "table_def": definition.get("table_def"),
             }
@@ -680,12 +926,16 @@ def chiron_saved_reports(
         for oReport in qs.order_by("-id"):
             if search and search.lower() not in (oReport.name or "").lower():
                 continue
+            mine = oReport.creator_id == cu.pk
+            if scope == "mine" and not mine:
+                continue
             out.append(
                 {
                     "report_id": oReport.pk,
                     "name": oReport.name,
                     "description": oReport.description,
                     "public": oReport.public,
+                    "mine": mine,
                 }
             )
         return {"dataset_id": dataset_id, "count": len(out), "reports": out}
@@ -742,6 +992,129 @@ def chiron_run_saved_report(
 
 
 # --- hand-off to the Chiron UI -----------------------------------------------
+
+
+def _own_report(ident, report_id: int):
+    """The report, if it exists on this dataset and the caller created it.
+
+    Mirrors Chiron's UserCreatedContentPermission: anyone who can view a report may read
+    it, only its creator may change or delete it.
+    """
+    from chiron import models
+
+    cu = identity.checked_chironuser(ident)
+    oReport = cu.get_viewable_reports().filter(pk=report_id).first()
+    if not oReport:
+        raise AccessError(f"No report {report_id} you can see on {ident.dataset_id!r}.")
+    if oReport.creator_id != cu.pk:
+        raise AccessError(
+            f"Report {report_id} ({oReport.name!r}) belongs to someone else; only its "
+            "creator can change or delete it."
+        )
+    return oReport
+
+
+@mcp.tool()
+def chiron_update_report(
+    dataset_id: str,
+    report_id: int,
+    name: str | None = None,
+    description: str | None = None,
+    cohort_def: list | None = None,
+    columns: list[dict] | None = None,
+    public: bool | None = None,
+) -> dict:
+    """Change a report you created: rename it, reword it, replace its filters or columns,
+    or make it public or private. Only the fields you pass change.
+
+    To change a report's filters, read its cohort_def with
+    chiron_saved_reports(report_id=...), modify it with chiron_edit_cohort, and pass the
+    result here. Only the report's creator can change it, as in Chiron.
+    Requires CHIRON_MCP_ALLOW_SAVE=1.
+    """
+    import json as _json
+
+    try:
+        if not CONFIG.allow_save:
+            raise AccessError("Writing to Chiron is disabled (CHIRON_MCP_ALLOW_SAVE).")
+        ident = identity.resolve(dataset_id)
+        identity.require_workspace(ident)
+        identity.require_subject_level(ident)
+        oReport = _own_report(ident, report_id)
+
+        definition = oReport.get_definition() or {}
+        cd = definition.get("cohort_def") or []
+        td = definition.get("table_def") or {}
+        changed = []
+
+        if name is not None:
+            clean = name.strip()
+            if not clean:
+                raise AccessError("A report name cannot be empty.")
+            oReport.name = clean[:255]
+            changed.append("name")
+        if description is not None:
+            oReport.description = description.strip()
+            changed.append("description")
+        if public is not None:
+            oReport.public = bool(public)
+            changed.append("public" if public else "private")
+        if cohort_def is not None:
+            # Same guard as every other write: never store a definition that fails
+            # validation, because an errored one collapses to "every patient".
+            cd = _validated_cohort(ident, cohort_def).cohort_def
+            changed.append("filters")
+        if columns is not None:
+            td = _table_def_from_columns(ident, cd, _columns_or_default(ident, cd, columns))
+            changed.append("columns")
+        elif cohort_def is not None and not (td.get("fields")):
+            td = _table_def_from_columns(ident, cd, _columns_or_default(ident, cd, None))
+
+        if not changed:
+            raise AccessError("Nothing to change: pass a name, description, filters, "
+                              "columns or public.")
+        oReport.definition = _json.dumps({**definition, "cohort_def": cd, "table_def": td})
+        oReport.save()
+
+        return {
+            "report_id": oReport.pk,
+            "name": oReport.name,
+            "public": oReport.public,
+            "changed": changed,
+            "subject_count": _count(ident, cd),
+            "mode": "report",
+            "url": f"{CONFIG.ui_url}/{ident.dataset_id}/reports/{oReport.pk}",
+            "describe": cohort_describe(ident, cd),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
+@mcp.tool()
+def chiron_delete_report(dataset_id: str, report_id: int, confirm_name: str) -> dict:
+    """Permanently delete a report you created. This cannot be undone.
+
+    Only call it when the user has explicitly asked to delete that report.
+    `confirm_name` must equal the report's current name exactly; it guards against
+    deleting the wrong report from a mistyped id. Only the creator can delete a report.
+    Requires CHIRON_MCP_ALLOW_SAVE=1.
+    """
+    try:
+        if not CONFIG.allow_save:
+            raise AccessError("Writing to Chiron is disabled (CHIRON_MCP_ALLOW_SAVE).")
+        ident = identity.resolve(dataset_id)
+        identity.require_workspace(ident)
+        oReport = _own_report(ident, report_id)
+        if (confirm_name or "").strip() != (oReport.name or "").strip():
+            raise AccessError(
+                f"confirm_name {confirm_name!r} does not match report {report_id}'s name "
+                f"{oReport.name!r}. Nothing was deleted."
+            )
+        name = oReport.name
+        oReport.delete()  # sharing and flags cascade
+        return {"deleted": True, "report_id": report_id, "name": name}
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
 
 
 @mcp.tool()

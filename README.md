@@ -11,8 +11,17 @@ writing SQL, and without bypassing Chiron's own access rules.
 "How many female patients have asthma?"         -> 445        [Query · 445]
 "How many patients do not have hypertension?"   -> 7,861      [Query · 7,861]
 "Asthma patients earning over $50,000"          -> 702        [Query · 702]
+"Break down asthma patients by gender and race" -> a 2x5 table and chart
 "Save a type 2 diabetes cohort as a report"     -> 686        [Report]
 "Which 5 conditions affect the most patients?"  -> a chart
+
+A conversation, each question building on the last:
+"How many patients have asthma?"                -> 841        [Query · 841]
+"How many of them are women?"                   -> 445        [Query · 445]
+"And of those, how many earn over $50,000?"     -> 370        [Query · 370]
+"Save that as a report called 'Asthma women'"   ->            [Report]
+"Rename it to 'Asthma, women, 50k+'"            ->            [Report]
+"Delete that report"                            -> gone
 ```
 
 Figures are from the 10,000-patient Synthea deployment and are checked against raw SQL by
@@ -47,7 +56,7 @@ After that it starts in seconds.
 
 | URL | What |
 |---|---|
-| **http://localhost:5173** | **Chiron UI with the Ask tab** — start here |
+| **http://localhost:5173** | **Chiron UI with the Ask tab**, start here |
 | http://localhost:8001 | Chiron itself (server-rendered pages, admin) |
 | http://localhost:8900 | The Ask chat page on its own |
 
@@ -56,11 +65,29 @@ answer with real figures, markdown tables, charts, and a button through to Chiro
 filter builder:
 
 > What are the most common conditions?
-> How many patients have asthma?
+> How many patients have asthma? *then* How many of them are women?
+> Break down asthma patients by gender and race
 > Show the top 10 medications as a chart
-> Build an asthma cohort and open it in Chiron
+> Save an asthma cohort as a report *then* Rename it *then* Delete it
 
-Questions take roughly 25 to 60 seconds, because the model makes several Chiron tool
+What the Ask tab does:
+
+- **Counts and cohorts**, with spelling variants merged ("Asthma", "ASTHMA", "Asthm") and
+  negation done right ("without hypertension" is 7,861, not the 4,758 a naive filter gives).
+- **Follow-up questions.** The chat is a conversation: "them", "those patients", "now only
+  women" refer to the previous answer's cohort. **Clear chat** starts a new one.
+- **Breakdowns** by one or two variables ("by gender", "by gender and race"): exact distinct
+  patients per group and per cell, as a table and chart, with patients who have no recorded
+  value called out so the table adds up.
+- **Reports**: save a cohort as a Chiron report, then rename it, change its filters or
+  columns, make it public or private, or delete it. Only the report's creator can change or
+  delete it, and deletion needs its exact name.
+- **Query · N** under any cohort answer: one click loads those filters into Chiron's query
+  builder, and N is Chiron's own count for them.
+- **Tables and charts** for rankings and comparisons. Two-variable breakdowns chart as
+  grouped bars with a legend, so no bar is ever an unlabelled slice of the table.
+
+Questions take roughly 10 to 40 seconds, because the model makes several Chiron tool
 calls. Each one shows as a chip while it works.
 
 ### The demo data
@@ -283,10 +310,10 @@ database and never touches theirs, but running it wastes several minutes.
 
 #### 1. Gather four things from the user
 
-1. The **metadata database** — usually a SQLite file holding datasets, users and access
+1. The **metadata database**: usually a SQLite file holding datasets, users and access
    grants. In a Docker deployment it is often a bind mount; look in the compose file for a
    path mapped to `db.sqlite3`.
-2. The **warehouse connection string** — `postgresql://user:pass@host:port/dbname`. Also in
+2. The **warehouse connection string**: `postgresql://user:pass@host:port/dbname`. Also in
    the compose file, as `CHIRON_SQL_ALCHEMY_CONNECTION_STRING`. If Chiron runs in Docker it
    may say `host.docker.internal`; from outside the container that is `localhost`.
 3. The **Django username** the server should act as.
@@ -385,6 +412,16 @@ Every setting is an environment variable. Defaults are the conservative end of e
 | `CHIRON_MCP_BASE_SETTINGS` | `project.settings` | Host project's settings module |
 | `CHIRON_MCP_METADATA_DB` | *(host project's)* | Metadata SQLite |
 | `CHIRON_MCP_WAREHOUSE_URL` | *(host project's)* | SQLAlchemy warehouse URL |
+| `CHIRON_MCP_UI_URL` | `http://localhost:3000` | Where Query and Report links point |
+
+The Ask server (`python -m chiron_mcp.webapp`) adds:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CHIRON_MCP_WEB_PORT` | `8900` | Port for the chat page |
+| `CHIRON_MCP_ALLOW_SUPERUSER` | off | Lets a *logged-in* superuser use Ask as themselves. The fallback identity can never be a superuser |
+| `CHIRON_MCP_THREAD_TTL_HOURS` | `12` | How long a conversation can be continued. After that its transcript is deleted |
+| `CHIRON_MCP_STATE_DIR` | `~/.cache/chiron-ask` | Conversation index and the neutral working directory Claude runs in |
 
 See `.env.example`. A superuser is refused in analyst mode; point it at a dedicated service user.
 
@@ -419,9 +456,19 @@ See `.env.example`. A superuser is refused in analyst mode; point it at a dedica
 |---|---|
 | `chiron_run_table` | One page of rows; columns are a plain list, no `table_def` authoring |
 | `chiron_export_table` | Complete result set, capped, with an acknowledged-count interlock |
-| `chiron_crosstab` | Break a cohort down by one or two variables |
-| `chiron_saved_reports` | Browse saved reports, or open one's stored definitions |
+| `chiron_breakdown` | Distinct patients per group of one or two Category variables, variants merged, as structured rows and cells. Small counts masked for `agg` |
+| `chiron_crosstab` | Chiron's own analysis-view pivot (preformatted text); `chiron_breakdown` is usually better |
+| `chiron_saved_reports` | Browse saved reports (`scope="mine"` for your own), or open one's stored definitions |
 | `chiron_run_saved_report` | Run a saved report by id |
+
+### Change saved reports
+
+Both require `CHIRON_MCP_ALLOW_SAVE=1`, and both act only on reports the identity created.
+
+| Tool | Purpose |
+|---|---|
+| `chiron_update_report` | Rename, re-describe, change filters or columns, or make public/private. Validates and recounts the new cohort |
+| `chiron_delete_report` | Permanently delete. `confirm_name` must equal the report's exact current name |
 
 ### Operations
 
@@ -574,6 +621,18 @@ a report opens with columns and the same subjects, that refusals leak nothing, a
 contains an email address or file path. Every starter question the page suggests is a case, so a
 suggestion cannot ship broken. It is written against the 10,000-patient Synthea dataset.
 
+It also runs whole conversations: three follow-ups that each narrow the last cohort (841, 445,
+370, each checked in Chiron); "now show their medications", which must give the asthma
+patients' figures (albuterol 587) and not the whole dataset's (696); a report saved, renamed,
+refiltered and deleted, with Chiron's API checked after every step; a refused attempt to delete
+someone else's report; and another user presenting someone's conversation id, who must get a
+fresh conversation. Breakdowns are checked cell by cell, and a chart that shows one row of a
+two-way table as if it were the whole fails. Reports the run creates are deleted at the end,
+and so are its conversations and their transcripts.
+
+Point it at a Chiron that shares file locking with the Ask server (`CHIRON_API`, default
+`http://localhost:8000`). With the bundled demo that is `http://localhost:8001`.
+
 ## Known limits
 
 - **Crosstab needs a configured root collection.** `run_analysis` reads
@@ -591,7 +650,18 @@ suggestion cannot ship broken. It is written against the 10,000-patient Synthea 
   "patients without hypertension" into 4,758 instead of the right 7,861. The Ask server's prompt
   directs the model to Chiron's criteria-set count rule ("exactly 0") instead.
 - **`chiron_crosstab` returns preformatted text**, not structured rows. That is what Chiron's
-  analysis engine hands back.
+  analysis engine hands back, and it needs a root-collection setting the Synthea data lacks.
+  `chiron_breakdown` does the same job with Chiron's count engine and returns structured rows.
+- **Breakdowns group Category and Text variables only.** Numbers and dates have too many values
+  to group; the model filters on ranges and counts each one instead. At most two variables, and
+  the largest groups first (10 for one variable, 6 per axis for two, or `top`).
+- **A report lists distinct rows, not patients, unless the dataset has a patient-ID
+  variable.** Reports default to the variables the cohort filters on; with no ID column,
+  Chiron collapses identical rows, so an asthma-in-women report on synthea-10k shows two rows
+  for 445 subjects. The subject count is right; add an ID variable to the data dictionary to
+  get one row per patient.
+- **For `agg` accounts, masked cells can sometimes be inferred** by subtracting from a total.
+  That is equally true of Chiron's own analysis view, whose rules the breakdown follows.
 - **A SQLite metadata database must not be shared across the Docker boundary.** If Chiron runs
   in a container with its metadata SQLite bind-mounted from the host, and this server runs on
   the host against the same file, the two sides cannot see each other's file locks (Docker
@@ -599,6 +669,9 @@ suggestion cannot ship broken. It is written against the 10,000-patient Synthea 
   image is malformed" errors, and at worst real corruption. Run this server where Chiron runs:
   both on the host, as the bundled demo does, or both in containers on the same mount. Keep a
   backup (`sqlite3 db ".backup copy"`) either way.
+- **Ask conversations are stored as Claude Code transcripts**, which contain patient data.
+  They are deleted on **Clear chat** or after `CHIRON_MCP_THREAD_TTL_HOURS`; see
+  `docs/chiron-ui-integration.md` for the details and a cleanup command for older ones.
 - **Remote deployment is not supported.** The transport is stdio and execution is in-process, so
   the server must run where it can reach both databases. Serving it remotely would need HTTP
   transport plus an authentication story Chiron does not currently have.
@@ -638,8 +711,9 @@ chiron_mcp/
   django_settings.py  inherits the host project's settings, overrides only the databases
   identity.py         identity resolution and the re-implemented permission gates
   filters.py          cohort filter input schemas, transcribed from validate_form()
-  server.py           the 17 tools
+  server.py           the 20 tools
   webapp.py           the Ask chat server embedded in the Chiron UI
+  webui/index.html    the chat page (markdown, tables, charts, buttons)
 scripts/
   harness.py          deployment check with no MCP involved
   grant_access.py     grant, update, revoke or list ChironUser rows
@@ -647,6 +721,7 @@ tests/
   safety.py           permission and whole-dataset invariants
   smoke.py            end-to-end tool exercise
   protocol.py         real MCP stdio handshake
+  ask_e2e.py          the Ask tab end to end, checked against raw SQL and Chiron's API
 ```
 
 Built against Chiron 6.5.4.

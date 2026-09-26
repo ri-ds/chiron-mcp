@@ -19,10 +19,10 @@ answer "open this in Chiron"; without it the rest still works.
 
 Usable on its own at <http://localhost:8900>, with `?dataset=<id>` to preselect.
 
-## 2a. No React UI to hand? Use the bundled one
+## 2a. Without the React UI
 
-The React UI is a separate repository and is **not** vendored here. If you do not have a
-checkout of it, you still get a complete working system from this repo:
+The React UI is vendored under `vendor/is4r-chiron-ui` and `scripts/run_all.sh` starts it
+with the Ask tab already added. If you would rather not run Node at all:
 
 ```bash
 .venv/bin/python scripts/serve_chiron.py   # Chiron (Django UI) at :8001, demo / demo
@@ -58,31 +58,57 @@ Two gotchas worth knowing:
 ## What it can do
 
 - Answers with real figures, since every number comes from a tool call
-- Markdown tables
-- Charts, via a fenced ```chart block the page renders with Chart.js
-- Links into Chiron, rendered as buttons, from `chiron_open_in_ui`
-- **"Use as my current query"** under any answer that came from a cohort. It replaces
-  the filters open in Chiron's query builder with the ones behind that answer, then
-  opens the builder. The server watches the tool calls behind each answer and keeps
-  the last `cohort_def` that was counted, tabulated or handed off; the button posts it
-  to `/load`. It asks for confirmation first, because Chiron's workspace load also
-  erases the undo history.
+- Markdown tables, and charts via a fenced ```chart block the page renders with Chart.js
+- **Follow-up questions.** Each browser tab holds one conversation; "them", "those
+  patients" and "now only women" refer to the cohort behind the previous answer.
+  **Clear chat** ends it.
+- **Breakdowns** by one or two Category variables, with exact distinct-patient counts per
+  group and cell, spelling variants merged, and patients with no recorded value called out.
+- **Reports**: save, rename, change filters or columns, make public or private, delete.
+- **Query · N** under any answer about a cohort: one click replaces the filters in
+  Chiron's query builder with the ones behind that answer and opens the builder. N is
+  Chiron's own count for them, recounted as the clicking user before the button appears.
+- **Report** under an answer that saved or changed a report, opening it in Chiron.
 - Live progress: each Chiron tool call appears as a chip while it works
 
-A question takes roughly 25 to 60 seconds, because the model makes several tool calls.
+A question takes roughly 10 to 40 seconds, because the model makes several tool calls.
+
+## How a conversation works
+
+The first question in a tab runs `claude -p --session-id <new uuid>`; each follow-up runs
+`claude -p --resume <that uuid>`, so the model sees its earlier tool calls and the
+`cohort_def` behind each answer. The page keeps the id in `sessionStorage` and sends it
+back as `thread=` with the next question.
+
+The server only resumes a conversation for the user who started it, on the dataset it
+started on, within `CHIRON_MCP_THREAD_TTL_HOURS` (12 by default) of its last question.
+Anyone else presenting the id gets a fresh conversation with no context. One question
+runs per conversation at a time; a second one sent meanwhile is told to wait.
+
+Claude Code writes each conversation's transcript to
+`~/.claude/projects/<working-dir>/<id>.jsonl`. Transcripts contain tool results, which
+means patient data. **Clear chat** deletes the transcript at once, and any conversation
+idle past the TTL is deleted on the next question. Transcripts written before this
+existed are not tracked; delete them with:
+
+```bash
+rm -rf ~/.claude/projects/*chiron-ask*
+```
 
 ## Limits
 
 - **It acts as the person logged into Chiron.** The Ask server reads the browser's Chiron
-  session cookie, validates it against Chiron's own session table, and runs every question as
-  that user: it sees exactly what they may see, reports are saved as them, and the Query button
-  loads into their own workspace. With no session (the page opened on its own) it falls back to
-  `CHIRON_MCP_USERNAME`, which may not be a superuser.
-- **Workspace loads follow the browser.** The "Use as my current query" button and the
-  `/load` endpoint act as the Chiron user behind the browser's `sessionid` cookie, so
-  the query lands in the workspace of whoever clicked. That works because Chiron, the
-  UI and this server share a host and cookies ignore the port. With no session cookie
-  the load falls back to `CHIRON_MCP_USERNAME`. A `chiron_open_in_ui` hand-off that
-  the model performs itself still lands in `CHIRON_MCP_USERNAME`'s workspace.
+  session cookie, validates it against Chiron's own session table, and runs every question
+  as that user: it sees exactly what they may see, reports are saved as them, and the
+  Query button loads into their own workspace. With no session (the page opened on its
+  own) it falls back to `CHIRON_MCP_USERNAME`, which may not be a superuser. A logged-in
+  superuser is refused unless `CHIRON_MCP_ALLOW_SUPERUSER=1`.
+- **Cookies ignore the port**, which is why this works when Chiron, the UI and the Ask
+  server share a host. On separate hosts the Ask server cannot see the Chiron session.
 - **Bind it to localhost** or put it behind your own auth before exposing it.
-- It inherits the operator's Claude usage limits.
+- **It inherits the operator's Claude usage limits**, and every question is a `claude`
+  process on the operator's machine.
+- **Run it where Chiron runs.** With a SQLite metadata database, the Ask server and
+  Chiron must share file locking: both on the host, or both in containers on one mount.
+  A Dockerised Chiron reading a SQLite file the host writes will intermittently fail with
+  "database disk image is malformed".

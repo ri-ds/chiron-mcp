@@ -44,9 +44,12 @@ TOOLS = [
     "chiron_count_cohort",
     "chiron_run_table",
     "chiron_crosstab",
+    "chiron_breakdown",
     "chiron_saved_reports",
     "chiron_run_saved_report",
     "chiron_open_in_ui",
+    "chiron_update_report",
+    "chiron_delete_report",
 ]
 
 SYSTEM_PROMPT = """You are a research data analyst answering questions about one Chiron dataset.
@@ -67,7 +70,10 @@ value you mean in selected_categories, and say in one clause that you did.
 Building a cohort: start from [] and add one filter per chiron_edit_cohort call, always
 passing the cohort_def the previous call returned. Filters on different collections
 combine with AND and work fine together. Then call chiron_count_cohort on the final
-cohort_def. Never write a cohort_def by hand.
+cohort_def. Never write a cohort_def by hand. Any patient count you state for a cohort
+must come from chiron_count_cohort on exactly that cohort, even when you could read it
+off value counts or a breakdown: that count is what gives the user a working Query
+button for those patients.
 
 Patients WITHOUT something ("no hypertension", "never had asthma"): add the filter for
 the thing, then call chiron_edit_cohort with type "add_criteria_set_count_rule",
@@ -78,15 +84,51 @@ counts almost everyone and is wrong.
 
 Comparing several cohorts in one answer: build and count each one separately from [].
 
+Breakdowns ("by gender", "split by race", "per ethnicity"): call chiron_breakdown with
+the cohort_def and one or two Category variables. It returns exact distinct-patient
+counts with spelling variants already merged. Show them as a markdown table; add a chart
+when there are several groups. Take every total from the tool's row_totals and
+col_totals; never add cells up yourself, because a patient missing one variable is in
+a total but in no cell.
+
+Rankings ("top 5 conditions", "most common medications", "which encounter types are
+most frequent"): one chiron_breakdown call on that variable with top=N, passing the
+cohort_def if the question is about a group of patients. Do not count each item
+separately. Label coded values plainly (F as Female, M as Male). If
+no_value shows patients with no recorded value, add one short line saying how many, so
+the table visibly adds up. Do not use chiron_crosstab unless chiron_breakdown fails.
+
+Reports: chiron_saved_reports(scope="mine") lists the ones this user made. To rename one,
+reword it, change its filters or columns, or make it public or private, use
+chiron_update_report (to change filters, fetch its cohort_def first and edit it with
+chiron_edit_cohort). Only call chiron_delete_report when the user explicitly asks to
+delete a specific report, passing its exact current name as confirm_name, and say
+plainly afterwards that it is gone. Never delete to "tidy up".
+
+Follow-up questions: this may be a continuing conversation. The cohorts you built and
+counted earlier are in your context. When the user says "them", "those patients", "that
+cohort", "now only women", start from the cohort_def behind your previous answer and
+extend it with chiron_edit_cohort, then call chiron_count_cohort on the result. For
+"show their medications" or "what else do they have", pass that cohort_def to the tool
+so the figures are about those patients, not the whole dataset.
+
 Answering. The reader wants the figure, not an essay.
 - One short sentence with the answer. Add a second only if something would mislead
   without it, such as merged spelling variants.
 - A markdown table for more than two rows of figures.
-- For a chart, a fenced block tagged `chart` containing JSON:
-  {"type":"bar","label":"Patients","data":[{"x":"Asthma","y":841},{"x":"COPD","y":199}]}
-  Types: bar, line, doughnut. Use one to compare categories, never for a single number.
+- For a chart, a fenced block tagged `chart` containing JSON, with a title that says
+  exactly what the bars are:
+  {"type":"bar","title":"Patients by condition","label":"Patients",
+   "data":[{"x":"Asthma","y":841},{"x":"COPD","y":199}]}
+  For a two-variable breakdown use one series per row, so every bar is labelled:
+  {"type":"bar","title":"Asthma patients by race and gender","x":["White","Black"],
+   "series":[{"label":"Female","y":[288,73]},{"label":"Male","y":[244,73]}]}
+  Never chart one row of a table as if it were the whole. Types: bar, line, doughnut.
+  Use one to compare categories, never for a single number.
 - Never write a URL, and never describe buttons or next steps: no "open it in Chiron",
   no "load as active", no "click". The page adds Query and Report buttons by itself.
+- Stop when the answer is given. No closing offer or invitation ("let me know", "I can
+  build a cohort from there", "want me to..."): the user knows they can ask.
 
 Saving: call chiron_open_in_ui only when the user asks to save a report
 (mode="report") or to load the cohort into their query (mode="workspace"). Pass as
@@ -243,13 +285,15 @@ class _CohortTracker:
     """
 
     _COUNTED = {"chiron_count_cohort", "chiron_run_table", "chiron_export_table",
-                "chiron_crosstab", "chiron_open_in_ui"}
+                "chiron_crosstab", "chiron_breakdown", "chiron_open_in_ui",
+                "chiron_update_report"}
 
     def __init__(self):
         self._calls: dict[str, tuple[str, dict]] = {}
         self.cohort: dict | None = None
         self.last_edit: dict | None = None
         self.link: dict | None = None
+        self.deleted: list[int] = []  # report ids deleted in this answer
 
     def tool_use(self, block: dict) -> None:
         self._calls[block.get("id", "")] = (
@@ -277,6 +321,19 @@ class _CohortTracker:
                 self.last_edit = {"dataset_id": ds, "cohort_def": data["cohort_def"],
                                   "columns": []}
             return
+
+        # A saved or updated report gets its button whether or not this call carried a
+        # cohort (a rename does not), so take the link before looking for one.
+        if name in ("chiron_open_in_ui", "chiron_update_report") and data.get("url"):
+            self.link = {
+                "label": "Report" if data.get("mode") == "report" else "Query",
+                "url": data["url"],
+                "mode": data.get("mode"),
+            }
+        if name == "chiron_delete_report" and data.get("deleted"):
+            self.link = None  # never point at a report that no longer exists
+            self.deleted.append(data.get("report_id"))
+
         if name not in self._COUNTED or not args.get("cohort_def"):
             return
         self.cohort = {
@@ -284,15 +341,18 @@ class _CohortTracker:
             "cohort_def": args["cohort_def"],
             "columns": [c for c in (args.get("columns") or []) if isinstance(c, dict)],
         }
-        if name == "chiron_open_in_ui" and data.get("url"):
-            self.link = {
-                "label": "Report" if data.get("mode") == "report" else "Query",
-                "url": data["url"],
-                "mode": data.get("mode"),
-            }
 
     def final(self) -> dict | None:
         return self.cohort or self.last_edit
+
+
+def states_count(answer: str, n: int) -> bool:
+    """Whether the answer states `n` as a figure ("7,861" or "7861", not "17861")."""
+    for m in re.finditer(r"(?<![\w.,])\d{1,3}(?:,\d{3})+(?![\d])|(?<![\w.,])\d+(?![\d,])",
+                         answer or ""):
+        if int(m.group().replace(",", "")) == n:
+            return True
+    return False
 
 
 def verify_cohort(state: dict, username: str, allow_superuser: bool) -> dict | None:
@@ -320,17 +380,129 @@ def verify_cohort(state: dict, username: str, allow_superuser: bool) -> dict | N
         return None
 
 
-_NEUTRAL: str | None = None
+def _state_dir() -> Path:
+    """Where the Ask server keeps its working directory and thread registry.
+
+    Stable across restarts, so a conversation can be resumed after the server is
+    restarted. Claude runs with this as its cwd, so no project memory or CLAUDE.md is
+    picked up, and its transcripts land in one predictable place we can prune.
+    """
+    d = Path(os.environ.get("CHIRON_MCP_STATE_DIR", Path.home() / ".cache" / "chiron-ask"))
+    d.mkdir(parents=True, exist_ok=True)
+    try:
+        d.chmod(0o700)
+    except OSError:
+        pass
+    return d
 
 
 def _neutral_dir() -> str:
-    """An empty directory to run Claude in, so no project memory or CLAUDE.md loads."""
-    global _NEUTRAL
-    if not _NEUTRAL or not os.path.isdir(_NEUTRAL):
-        import tempfile
+    wd = _state_dir() / "workdir"
+    wd.mkdir(exist_ok=True)
+    return str(wd)
 
-        _NEUTRAL = tempfile.mkdtemp(prefix="chiron-ask-")
-    return _NEUTRAL
+
+THREAD_TTL_HOURS = float(os.environ.get("CHIRON_MCP_THREAD_TTL_HOURS", "12"))
+
+
+class _Threads:
+    """Conversations that can be continued, and who they belong to.
+
+    A follow-up is answered by resuming the same headless Claude session, so the model
+    still has the cohorts it built. Each thread is bound to the Chiron user and dataset
+    that started it; a thread id presented by anyone else is ignored and a new
+    conversation starts, so one person can never resume another's.
+
+    Claude Code saves each session's transcript to disk, tool results included, which
+    means patient-level data. So a thread's transcript is deleted when it is cleared or
+    once it has been idle for THREAD_TTL_HOURS.
+    """
+
+    def __init__(self):
+        self._path = _state_dir() / "threads.json"
+        self._guard = threading.Lock()
+        self._locks: dict[str, threading.Lock] = {}
+        try:
+            self._data = json.loads(self._path.read_text())
+        except (OSError, ValueError):
+            self._data = {}
+
+    def _save(self) -> None:
+        tmp = self._path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(self._data))
+        tmp.chmod(0o600)
+        tmp.replace(self._path)
+
+    def valid(self, tid: str | None, user: str, dataset: str | None) -> bool:
+        import time
+
+        if not tid:
+            return False
+        with self._guard:
+            t = self._data.get(tid)
+            return bool(
+                t and t["user"] == user and t.get("dataset") == dataset
+                and time.time() - t["last"] < THREAD_TTL_HOURS * 3600
+            )
+
+    def touch(self, tid: str, user: str, dataset: str | None,
+              cohort: dict | None = None) -> None:
+        """Record activity, and the cohort behind the latest Query button if there was one.
+
+        The cohort is a filter definition (concept ids and values), not patient data.
+        """
+        import time
+
+        with self._guard:
+            prev = self._data.get(tid) or {}
+            self._data[tid] = {"user": user, "dataset": dataset, "last": time.time(),
+                               "cohort": cohort or prev.get("cohort")}
+            self._save()
+
+    def cohort(self, tid: str) -> dict | None:
+        with self._guard:
+            return (self._data.get(tid) or {}).get("cohort")
+
+    def lock(self, tid: str) -> threading.Lock:
+        with self._guard:
+            return self._locks.setdefault(tid, threading.Lock())
+
+    @staticmethod
+    def _delete_transcript(tid: str) -> None:
+        import shutil as _sh
+
+        root = Path.home() / ".claude" / "projects"
+        for f in root.glob(f"*/{tid}.jsonl"):
+            f.unlink(missing_ok=True)
+        for d in root.glob(f"*/{tid}"):
+            if d.is_dir():
+                _sh.rmtree(d, ignore_errors=True)
+
+    def forget(self, tid: str, user: str) -> bool:
+        with self._guard:
+            t = self._data.get(tid)
+            if not t or t["user"] != user:
+                return False
+            self._data.pop(tid, None)
+            self._save()
+        self._delete_transcript(tid)
+        return True
+
+    def prune(self) -> None:
+        import time
+
+        cutoff = time.time() - THREAD_TTL_HOURS * 3600
+        with self._guard:
+            stale = [tid for tid, t in self._data.items() if t["last"] < cutoff]
+            for tid in stale:
+                self._data.pop(tid, None)
+            if stale:
+                self._save()
+        for tid in stale:
+            self._delete_transcript(tid)
+
+
+THREADS = _Threads()
 
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
@@ -363,46 +535,23 @@ def tidy(answer: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", out).strip()
 
 
-def ask_stream(question: str, dataset: str | None, username: str, allow_superuser: bool):
-    """Run Claude headless as `username` and yield (event, payload) tuples as it works.
+def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: dict,
+                 inherited: dict | None = None):
+    """One headless Claude run, translated into page events.
 
-    Events: step, link, cohort (verified, with its subject count), answer, error.
+    `inherited` is the cohort behind the conversation's previous Query button. A
+    follow-up the model answers from what it already has ("chart that", "as a table")
+    makes no tool calls, so without it such an answer would lose its button.
+
+    Sets outcome["answered"], outcome["rc"], outcome["stderr"] and outcome["cohort"]
+    (the state behind any Query button offered) for the caller.
     """
-    claude = shutil.which("claude") or os.path.expanduser("~/.local/bin/claude")
-    if not Path(claude).exists():
-        yield "error", "Claude Code CLI not found. Install it, or put `claude` on PATH."
-        return
-
-    prompt = question
-    if dataset:
-        try:
-            brief, _ = dataset_brief(dataset, username, allow_superuser)
-            prompt = f"Question: {question}\n\n{brief}"
-        except Exception as exc:  # noqa: BLE001
-            # No access to this dataset: let the model hit the same refusal and say so.
-            prompt = f"[dataset: {dataset}]\n\n{question}\n\n(Access check: {exc})"
-
-    cfg = _mcp_config(username, allow_superuser)
-    # Isolate the headless session from the operator's own Claude Code setup. Without
-    # this it inherits their git identity, project files, memory and every other MCP
-    # server they have configured, and it will repeat any of it in an answer. The
-    # account email is injected by Claude Code itself and cannot be switched off without
-    # an API key (--bare), which is why tidy() also redacts on the way out.
-    cmd = [
-        claude, "-p", prompt,
-        "--mcp-config", str(cfg),
-        "--strict-mcp-config",
-        "--setting-sources", "",
-        "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in TOOLS),
-        "--system-prompt", SYSTEM_PROMPT,
-        "--output-format", "stream-json",
-        "--verbose",
-    ]
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         stdin=subprocess.DEVNULL, text=True, bufsize=1, cwd=_neutral_dir(),
     )
     tracker = _CohortTracker()
+    outcome.update(answered=False, rc=None, stderr="")
     try:
         for line in proc.stdout:
             line = line.strip()
@@ -430,25 +579,116 @@ def ask_stream(question: str, dataset: str | None, username: str, allow_superuse
             elif kind == "result":
                 if ev.get("is_error"):
                     yield "error", ev.get("result") or "Claude returned an error."
+                    outcome["answered"] = True
                     continue
+                # Earlier answers may carry Report buttons for what was just deleted;
+                # the page retires them.
+                for rid in tracker.deleted:
+                    yield "deleted", rid
                 if tracker.link:
                     yield "link", tracker.link
                 # A workspace hand-off has already loaded the query, and its link says
                 # so; a second Query button for the same cohort would just repeat it.
                 if not (tracker.link and tracker.link.get("mode") == "workspace"):
-                    state = tracker.final()
+                    state = tracker.final() or inherited
                     verified = state and verify_cohort(state, username, allow_superuser)
-                    if verified:
+                    # The button is labelled with its count; offer it only when the
+                    # answer states that count, so it is never about other patients
+                    # than the ones the answer describes.
+                    if verified and states_count(ev.get("result", ""),
+                                                 verified["subject_count"]):
+                        outcome["cohort"] = state
                         yield "cohort", verified
                 yield "answer", tidy(ev.get("result", ""))
+                outcome["answered"] = True
         proc.wait(timeout=10)
-        if proc.returncode not in (0, None):
-            err = (proc.stderr.read() or "").strip()
-            if err:
-                yield "error", err[:500]
+        outcome["rc"] = proc.returncode
+        outcome["stderr"] = (proc.stderr.read() or "").strip()
     finally:
         if proc.poll() is None:
             proc.kill()
+
+
+def ask_stream(
+    question: str,
+    dataset: str | None,
+    username: str,
+    allow_superuser: bool,
+    thread: str | None = None,
+):
+    """Answer one question as `username`, continuing `thread` when it is theirs.
+
+    Events: thread (the conversation id to send back with a follow-up), step, link,
+    cohort (verified, with its subject count), answer, error.
+    """
+    import uuid
+
+    claude = shutil.which("claude") or os.path.expanduser("~/.local/bin/claude")
+    if not Path(claude).exists():
+        yield "error", "Claude Code CLI not found. Install it, or put `claude` on PATH."
+        return
+
+    THREADS.prune()
+    resume = THREADS.valid(thread, username, dataset)
+    tid = thread if resume else str(uuid.uuid4())
+    lock = THREADS.lock(tid)
+    if not lock.acquire(blocking=False):
+        yield "error", "Still answering your previous question in this conversation."
+        return
+
+    cfg = _mcp_config(username, allow_superuser)
+    try:
+        yield "thread", tid
+        for _attempt in range(2):
+            if resume:
+                # The dataset brief is already in the conversation.
+                prompt = f"Follow-up question: {question}"
+                session = ["--resume", tid]
+            else:
+                prompt = question
+                if dataset:
+                    try:
+                        brief, _ = dataset_brief(dataset, username, allow_superuser)
+                        prompt = f"Question: {question}\n\n{brief}"
+                    except Exception as exc:  # noqa: BLE001
+                        # No access: let the model meet the same refusal and say so.
+                        prompt = f"[dataset: {dataset}]\n\n{question}\n\n(Access check: {exc})"
+                session = ["--session-id", tid]
+
+            # Isolate the headless session from the operator's own Claude Code setup.
+            # Without this it inherits their git identity, project files, memory and
+            # every other MCP server they have configured, and repeats them in answers.
+            # The account email is injected by Claude Code itself and cannot be switched
+            # off without an API key (--bare), which is why tidy() also redacts.
+            cmd = [
+                claude, "-p", prompt, *session,
+                "--mcp-config", str(cfg),
+                "--strict-mcp-config",
+                "--setting-sources", "",
+                "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in TOOLS),
+                "--system-prompt", SYSTEM_PROMPT,
+                "--output-format", "stream-json",
+                "--verbose",
+            ]
+            outcome: dict = {}
+            inherited = THREADS.cohort(tid) if resume else None
+            yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited)
+
+            if outcome.get("answered"):
+                break
+            if resume:
+                # The transcript is gone (expired, or cleared elsewhere): start this
+                # question as a fresh conversation rather than failing it.
+                resume = False
+                tid = str(uuid.uuid4())
+                yield "thread", tid
+                continue
+            if outcome.get("stderr"):
+                yield "error", outcome["stderr"][:500]
+            break
+        THREADS.touch(tid, username, dataset, outcome.get("cohort"))
+    finally:
+        lock.release()
         try:
             cfg.unlink()
         except OSError:
@@ -526,6 +766,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/load":
             return self._load()
+        if url.path == "/forget":
+            return self._forget()
         self.send_error(404)
 
     def _file(self, path: Path, ctype: str):
@@ -632,6 +874,19 @@ class Handler(BaseHTTPRequestHandler):
         result["browser_user"] = who
         return self._json(result)
 
+    def _forget(self):
+        """Clear chat: drop the conversation and delete its transcript now."""
+        if not self._origin_ok():
+            return self._json({"error": "Refused: request came from an untrusted origin."})
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, TypeError):
+            return self._json({"error": "Body must be JSON."})
+        who, _ = request_identity(self.headers.get("Cookie"))
+        tid = body.get("thread") or ""
+        return self._json({"forgotten": bool(tid) and THREADS.forget(tid, who)})
+
     def _ask(self, params):
         question = (params.get("q") or [""])[0].strip()
         dataset = (params.get("dataset") or [None])[0]
@@ -651,8 +906,9 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         who, allow_su = request_identity(self.headers.get("Cookie"))
+        thread = (params.get("thread") or [None])[0]
         try:
-            for event, payload in ask_stream(question, dataset, who, allow_su):
+            for event, payload in ask_stream(question, dataset, who, allow_su, thread):
                 send(event, payload)
             send("done", "")
         except (BrokenPipeError, ConnectionResetError):
