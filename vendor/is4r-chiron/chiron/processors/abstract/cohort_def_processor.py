@@ -298,7 +298,7 @@ class CohortDefProcessor:
     #         data["unique_patient_count"] = value_list[0]["unique_patient_count"]
     #     return data
 
-    def _generate_cd_entry_template(self, additional_args={}):
+    def _generate_cd_entry_template(self, additional_args=None):
         """
         Generates a universal base that can be used by self.generate_cohort_def_entry()
 
@@ -307,7 +307,11 @@ class CohortDefProcessor:
         :return: a cd_entry with concept_id and entry_id set
         :rtype: dict
         """
-        response = additional_args
+        # A fresh dict every call. This used to be a mutable default argument
+        # (additional_args={}), so every cd_entry built without arguments in the same
+        # process was the *same* dict: building a second filter silently rewrote the
+        # first, including its exclude flag and its entry_id.
+        response = dict(additional_args or {})
         response["entry_id"] = helpers.generate_entry_id()
         response["concept_id"] = self.concept.permanent_id
         if self.prefilter_value:

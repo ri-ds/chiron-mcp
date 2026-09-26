@@ -390,7 +390,14 @@ def chiron_edit_cohort(
             )
             return out
 
-        out = {"successful": True, "cohort_def": result.get("cohort_def", cohort_def or [])}
+        # Copy the result too, not just the input: unpatched Chiron hands back filter
+        # entries that share one dict across calls (a mutable default argument in
+        # CohortDefProcessor._generate_cd_entry_template), so without this a second
+        # cohort built in the same process rewrites the first one the caller is holding.
+        out = {
+            "successful": True,
+            "cohort_def": copy.deepcopy(result.get("cohort_def", cohort_def or [])),
+        }
         if result.get("entry_id"):
             out["entry_id"] = result["entry_id"]
         try:
@@ -807,6 +814,7 @@ def open_in_ui(
     description: str | None = None,
     *,
     username: str | None = None,
+    allow_superuser: bool = False,
 ) -> dict:
     """The body of chiron_open_in_ui, callable without going through MCP.
 
@@ -829,7 +837,9 @@ def open_in_ui(
         if mode not in ("report", "workspace"):
             raise AccessError(f"mode must be 'report' or 'workspace', got {mode!r}.")
 
-        ident = identity.resolve(dataset_id, username=username)
+        ident = identity.resolve(
+            dataset_id, username=username, allow_superuser=allow_superuser
+        )
         identity.require_workspace(ident)
         identity.require_subject_level(ident)
         cu = identity.checked_chironuser(ident)

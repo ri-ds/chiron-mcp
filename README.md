@@ -8,12 +8,17 @@ finds the right variable, builds the cohort, counts it, and pulls the rows, with
 writing SQL, and without bypassing Chiron's own access rules.
 
 ```
-"How many patients in this dataset?"          -> 300
-"What conditions are most common?"            -> obesity 64 · hypertension 57
-"Build a cohort of asthma patients"           -> cohort_def
-"How many is that?"                           -> 20
-"Show me their diagnoses and dates"           -> 20 records with diagnosis dates
+"How many female patients have asthma?"         -> 445        [Query · 445]
+"How many patients do not have hypertension?"   -> 7,861      [Query · 7,861]
+"Asthma patients earning over $50,000"          -> 702        [Query · 702]
+"Save a type 2 diabetes cohort as a report"     -> 686        [Report]
+"Which 5 conditions affect the most patients?"  -> a chart
 ```
+
+Figures are from the 10,000-patient Synthea deployment and are checked against raw SQL by
+`tests/ask_e2e.py`. Note the first two: the data spells values several ways ("Asthma",
+"ASTHMA", "Asthm"; "F" and "f"), and "without hypertension" has a plausible wrong answer
+(4,758) that a naive filter produces. Both are handled.
 
 ---
 
@@ -127,7 +132,7 @@ subject-visibility filter into the WHERE clause. A saved "report" is just a stor
 
 ## What this server does
 
-It exposes that machinery as **16 MCP tools**, so cohort building can happen in conversation.
+It exposes that machinery as **17 MCP tools**, so cohort building can happen in conversation.
 
 It is **stateless by design**: every tool takes a `cohort_def` and returns one, so the model
 holds the working query and Chiron holds none of it. No tool writes a snapshot, so using this
@@ -213,7 +218,7 @@ absolute paths. On macOS that file is
 }
 ```
 
-Restart the client. Sixteen `chiron_*` tools appear.
+Restart the client. Seventeen `chiron_*` tools appear.
 
 ### Grant the service user access
 
@@ -373,7 +378,7 @@ Every setting is an environment variable. Defaults are the conservative end of e
 | `CHIRON_MCP_MAX_ACCESS_LEVEL` | `deid` | Ceiling. Clamps whatever the `ChironUser` actually has, so PHI is opt-in |
 | `CHIRON_MCP_DATASETS` | *(all with a grant)* | Comma-separated allowlist |
 | `CHIRON_MCP_OPERATOR` | off | Enables the operations tools (also requires `is_staff`) |
-| `CHIRON_MCP_ALLOW_SAVE` | off | Reserved; the write tool is not implemented |
+| `CHIRON_MCP_ALLOW_SAVE` | off | Lets `chiron_open_in_ui` save reports and load cohorts into Chiron, which powers the Query and Report buttons |
 | `CHIRON_MCP_MAX_EXPORT_ROWS` | `50000` | Cap on `chiron_export_table` |
 | `CHIRON_MCP_CHIRON_SRC` | auto-discovered | The `is4r-chiron` checkout |
 | `CHIRON_MCP_PROJECT_DIR` | `<src>/test_project` | The Django host project |
@@ -558,13 +563,19 @@ the DRF class, and only the DRF class.
 ```bash
 CHIRON_MCP_USERNAME=<deid-user> .venv/bin/python tests/safety.py   # invariants
 CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusals
+.venv/bin/python tests/ask_e2e.py                                  # the Ask tab, end to end
 .venv/bin/python -m tests.protocol                                 # real MCP stdio handshake
 ```
 
+`tests/ask_e2e.py` asks real questions through the Ask server exactly as the page does, and
+checks everything a user would click against ground truth computed independently in raw SQL:
+the stated figure, that the Query button loaded into Chiron makes Chiron's own count agree, that
+a report opens with columns and the same subjects, that refusals leak nothing, and that no answer
+contains an email address or file path. Every starter question the page suggests is a case, so a
+suggestion cannot ship broken. It is written against the 10,000-patient Synthea dataset.
+
 ## Known limits
 
-- **`chiron_save_cohort_as_report` is not implemented.** `CHIRON_MCP_ALLOW_SAVE` is reserved but
-  currently does nothing; there is no path from the model back into the Chiron UI.
 - **Crosstab needs a configured root collection.** `run_analysis` reads
   `dataset.root_collection.event_id_field` and dereferences it without a null check. Datasets that
   leave it unset get a clear refusal instead of an `AttributeError`.
@@ -575,13 +586,35 @@ CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusal
 - **Terms absent from the data are rejected** with `Entry X not found`. Pass `ignore_warnings` to
   accept the filter anyway.
 - **Most variables are multi-value**, living in their own lookup table joined one-to-many, so a
-  filter matches a subject if *any* of their values match. "No white race value" and "a non-white
-  race value" are different questions.
+  filter matches a subject if *any* of their values match. That makes `exclude_selected` mean
+  "has at least one record that is something else", not "has none": on the demo data it turns
+  "patients without hypertension" into 4,758 instead of the right 7,861. The Ask server's prompt
+  directs the model to Chiron's criteria-set count rule ("exactly 0") instead.
 - **`chiron_crosstab` returns preformatted text**, not structured rows. That is what Chiron's
   analysis engine hands back.
+- **A SQLite metadata database must not be shared across the Docker boundary.** If Chiron runs
+  in a container with its metadata SQLite bind-mounted from the host, and this server runs on
+  the host against the same file, the two sides cannot see each other's file locks (Docker
+  Desktop does not carry them across its VM). Concurrent writes then produce "database disk
+  image is malformed" errors, and at worst real corruption. Run this server where Chiron runs:
+  both on the host, as the bundled demo does, or both in containers on the same mount. Keep a
+  backup (`sqlite3 db ".backup copy"`) either way.
 - **Remote deployment is not supported.** The transport is stdio and execution is in-process, so
   the server must run where it can reach both databases. Serving it remotely would need HTTP
   transport plus an authentication story Chiron does not currently have.
+
+## A Chiron bug this project found
+
+`CohortDefProcessor._generate_cd_entry_template` (`chiron/processors/abstract/cohort_def_processor.py`)
+has a mutable default argument, `additional_args={}`, and returns it after writing into it. Every
+filter entry built without arguments in the same process is therefore **the same dict**, so
+building a second filter silently rewrites the first: its values, its exclude flag and its
+`entry_id`. In Chiron's web app each request serialises its entries quickly, which mostly hides
+it. Anything that builds several filters in one process does not get that protection.
+
+The bundled copy under `vendor/` is patched (`additional_args=None`, a fresh dict per call), and
+`chiron_edit_cohort` also deep-copies its result, so this server is correct against an unpatched
+Chiron too. The one-line fix belongs upstream.
 
 ## Troubleshooting
 
@@ -605,7 +638,8 @@ chiron_mcp/
   django_settings.py  inherits the host project's settings, overrides only the databases
   identity.py         identity resolution and the re-implemented permission gates
   filters.py          cohort filter input schemas, transcribed from validate_form()
-  server.py           the 16 tools
+  server.py           the 17 tools
+  webapp.py           the Ask chat server embedded in the Chiron UI
 scripts/
   harness.py          deployment check with no MCP involved
   grant_access.py     grant, update, revoke or list ChironUser rows

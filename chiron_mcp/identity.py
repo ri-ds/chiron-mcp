@@ -48,7 +48,7 @@ class Identity:
         return self.dataset.unique_id
 
 
-def _django_user(username: str | None = None):
+def _django_user(username: str | None = None, allow_superuser: bool = False):
     """The Django user this server acts as.
 
     `username` overrides CHIRON_MCP_USERNAME.  It is never exposed to the model: the
@@ -66,7 +66,7 @@ def _django_user(username: str | None = None):
         raise AccessError(f"Django user {name!r} is inactive.")
     # A superuser bypasses nothing in Chiron itself, but running the server as one
     # makes the blast radius of any mistake the whole instance.
-    if user.is_superuser and not CONFIG.operator:
+    if user.is_superuser and not (CONFIG.operator or CONFIG.allow_superuser or allow_superuser):
         raise AccessError(
             f"Django user {name!r} is a superuser. Refusing to start in "
             "analyst mode. Point CHIRON_MCP_USERNAME at a dedicated service user, or "
@@ -88,7 +88,9 @@ def _ceiling(actual: str) -> str:
     return ceiling
 
 
-def resolve(dataset_id: str, username: str | None = None) -> Identity:
+def resolve(
+    dataset_id: str, username: str | None = None, allow_superuser: bool = False
+) -> Identity:
     """Resolve the bound identity against one dataset, or raise AccessError.
 
     `username` resolves someone other than CHIRON_MCP_USERNAME.  Only the Ask web
@@ -112,7 +114,7 @@ def resolve(dataset_id: str, username: str | None = None) -> Identity:
     if not oDataset:
         raise AccessError(f"No dataset with unique_id {dataset_id!r}.")
 
-    user = _django_user(username)
+    user = _django_user(username, allow_superuser=allow_superuser)
 
     # The exact lookup Chiron performs at chiron/authorization.py:59 -- minus the
     # autocreate fallback that follows it.

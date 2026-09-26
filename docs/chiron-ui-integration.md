@@ -73,9 +73,11 @@ A question takes roughly 25 to 60 seconds, because the model makes several tool 
 
 ## Limits
 
-- **One identity for answers.** Questions are answered as `CHIRON_MCP_USERNAME` for
-  everyone who opens the page. It is fine for a single analyst or a trusted team on a
-  private network; it is not multi-user. There is no login of its own.
+- **It acts as the person logged into Chiron.** The Ask server reads the browser's Chiron
+  session cookie, validates it against Chiron's own session table, and runs every question as
+  that user: it sees exactly what they may see, reports are saved as them, and the Query button
+  loads into their own workspace. With no session (the page opened on its own) it falls back to
+  `CHIRON_MCP_USERNAME`, which may not be a superuser.
 - **Workspace loads follow the browser.** The "Use as my current query" button and the
   `/load` endpoint act as the Chiron user behind the browser's `sessionid` cookie, so
   the query lands in the workspace of whoever clicked. That works because Chiron, the

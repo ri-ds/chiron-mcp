@@ -89,6 +89,11 @@ class Config:
     )
     dataset_allowlist: list[str] = field(default_factory=lambda: _csv("CHIRON_MCP_DATASETS"))
     operator: bool = field(default_factory=lambda: _flag("CHIRON_MCP_OPERATOR"))
+    # Set only by the Ask web server, and only when the identity came from a real,
+    # validated Chiron login of a superuser acting as themselves. The refusal it relaxes
+    # exists to stop a *service* being configured as a superuser; a person who is one
+    # already has that access in Chiron's own UI. The access ceiling still applies.
+    allow_superuser: bool = field(default_factory=lambda: _flag("CHIRON_MCP_ALLOW_SUPERUSER"))
     # Base URL of the Chiron web UI, used to build hand-off links.
     ui_url: str = field(
         default_factory=lambda: os.environ.get("CHIRON_MCP_UI_URL", "http://localhost:3000").rstrip("/")

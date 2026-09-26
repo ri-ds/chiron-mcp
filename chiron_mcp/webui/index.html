@@ -18,6 +18,7 @@
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { height: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
@@ -162,7 +163,7 @@
 </main>
 
 <footer>
-  <div class="suggestions" id="suggestions"></div>
+  <div class="suggestions" id="suggestions" hidden></div>
   <div class="composer">
     <textarea id="q" rows="1" placeholder="How many patients have asthma?"></textarea>
     <button class="send" id="send">Ask</button>
@@ -170,43 +171,73 @@
 </footer>
 
 <script>
-const thread = document.getElementById('thread');
-const empty  = document.getElementById('empty');
-const qBox   = document.getElementById('q');
-const sendBtn= document.getElementById('send');
+const thread   = document.getElementById('thread');
+const empty    = document.getElementById('empty');
+const qBox     = document.getElementById('q');
+const sendBtn  = document.getElementById('send');
 const clearBtn = document.getElementById('clear');
-const who    = document.getElementById('who');
-const suggs  = document.getElementById('suggestions');
+const who      = document.getElementById('who');
+const suggs    = document.getElementById('suggestions');
 
-const SUGGESTIONS = [
-  "What are the most common conditions?",
-  "How many patients have asthma?",
-  "Show the top 10 medications as a chart",
-  "Build an asthma cohort and open it in Chiron",
-  "What can I filter on?",
-];
-
-SUGGESTIONS.forEach(s => {
-  const b = document.createElement('button');
-  b.className = 'sugg'; b.textContent = s; b.type = 'button';
-  b.onclick = () => { qBox.value = s; ask(); };
-  suggs.appendChild(b);
-});
-
-// The dataset is fixed by the route that embedded this page (/<dataset>/ask), so
-// there is nothing to choose here; just name it.
+// The dataset is fixed by the route that embedded this page (/<dataset>/ask).
 const DATASET = new URLSearchParams(location.search).get('dataset') || '';
 
-fetch('/datasets').then(r => r.json()).then(d => {
-  if (d.identity) who.textContent = 'as ' + d.identity;
-  if (d.browser_user && d.browser_user !== d.identity) {
-    who.textContent += ' · your workspace: ' + d.browser_user;
-  }
-}).catch(() => {});
+// What each Chiron tool call means to someone waiting for an answer.
+const STEP_LABELS = {
+  datasets: 'Checking access', find_concepts: 'Finding variables',
+  describe_concept: 'Reading a variable', concept_values: 'Looking up values',
+  edit_cohort: 'Building filters', event_rule_options: 'Checking date rules',
+  count_cohort: 'Counting patients', run_table: 'Pulling rows', export_table: 'Exporting',
+  crosstab: 'Cross-tabulating', saved_reports: 'Reading reports',
+  run_saved_report: 'Running a report', open_in_ui: 'Saving to Chiron',
+};
 
-// --- history -----------------------------------------------------------------
-// Following a link into Chiron navigates the whole UI, and coming back reloads this
-// iframe from scratch, so the thread has to outlive the page. Kept per dataset.
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+function scroll() { document.querySelector('main').scrollTop = 1e9; }
+
+// --- who, and starter questions for this dataset ------------------------------
+fetch('/datasets?dataset=' + encodeURIComponent(DATASET)).then(r => r.json()).then(d => {
+  if (d.identity) who.textContent = 'as ' + d.identity;
+  (d.suggestions || []).forEach(s => {
+    const b = el('button', 'sugg', s);
+    b.type = 'button';
+    b.onclick = () => { qBox.value = s; ask(); };
+    suggs.appendChild(b);
+  });
+  suggs.hidden = !(d.suggestions || []).length;
+}).catch(() => { suggs.hidden = true; });
+
+// --- progress: one chip per kind of step, counted, not one per call -------------
+function Progress(box) {
+  const chips = new Map();
+  let last = null;
+  return {
+    add(tool) {
+      const label = STEP_LABELS[tool] || tool.replace(/_/g, ' ');
+      let chip = chips.get(label);
+      if (!chip) {
+        chip = { n: 0, node: el('span', 'step') };
+        chips.set(label, chip);
+        box.appendChild(chip.node);
+      }
+      chip.n += 1;
+      chip.node.textContent = chip.n > 1 ? `${label} ×${chip.n}` : label;
+      if (last && last !== chip.node) last.classList.remove('working');
+      chip.node.classList.add('working');
+      last = chip.node;
+    },
+    done() { box.remove(); },
+  };
+}
+
+// --- history ---------------------------------------------------------------------
+// Following a link into Chiron navigates the whole UI and reloads this iframe, so the
+// thread has to outlive the page. Kept per dataset.
 const HKEY = 'chiron-ask:' + DATASET;
 const HMAX = 30;
 let history = [];
@@ -217,20 +248,19 @@ function saveHistory() {
   clearBtn.hidden = history.length === 0;
 }
 
+function showTurn(bubble, turn) {
+  if (turn.answer) render(bubble, turn.answer);
+  else bubble.appendChild(el('div', 'err', turn.error || 'No answer was recorded.'));
+  if (turn.link) addLink(bubble, turn.link);
+  if (turn.cohort) offerLoad(bubble, turn.cohort);
+}
+
 function replay() {
   history.forEach(turn => {
-    const userMsg = el('div', 'msg user');
-    userMsg.appendChild(el('div', 'bubble', turn.q));
-    thread.appendChild(userMsg);
-
-    const botMsg = el('div', 'msg bot');
-    const bubble = el('div', 'bubble');
-    botMsg.appendChild(bubble);
-    thread.appendChild(botMsg);
-    if (turn.answer) render(bubble, turn.answer);
-    else bubble.appendChild(el('div', 'err', turn.error || 'No answer was recorded.'));
-    if (turn.link) addLink(bubble, turn.link);
-    if (turn.cohort) offerLoad(bubble, turn.cohort);
+    const u = el('div', 'msg user'); u.appendChild(el('div', 'bubble', turn.q));
+    const b = el('div', 'msg bot'); const bubble = el('div', 'bubble'); b.appendChild(bubble);
+    thread.append(u, b);
+    showTurn(bubble, turn);
   });
   if (history.length) { empty.style.display = 'none'; scroll(); }
   clearBtn.hidden = history.length === 0;
@@ -252,14 +282,7 @@ qBox.addEventListener('input', () => {
 });
 sendBtn.onclick = ask;
 
-function el(tag, cls, text) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text !== undefined) n.textContent = text;
-  return n;
-}
-function scroll() { document.querySelector('main').scrollTop = 1e9; }
-
+// --- asking ------------------------------------------------------------------------
 let busy = false;
 
 function ask() {
@@ -269,81 +292,87 @@ function ask() {
   empty.style.display = 'none';
   qBox.value = ''; qBox.style.height = 'auto';
 
-  const userMsg = el('div', 'msg user');
-  userMsg.appendChild(el('div', 'bubble', q));
-  thread.appendChild(userMsg);
-
-  const botMsg  = el('div', 'msg bot');
-  const steps   = el('div', 'steps');
-  const bubble  = el('div', 'bubble');
-  botMsg.append(steps, bubble);
-  thread.appendChild(botMsg);
+  const u = el('div', 'msg user'); u.appendChild(el('div', 'bubble', q));
+  const b = el('div', 'msg bot');
+  const stepsBox = el('div', 'steps');
+  const bubble = el('div', 'bubble');
+  b.append(stepsBox, bubble);
+  thread.append(u, b);
   scroll();
 
-  const working = el('span', 'step working', 'thinking');
-  steps.appendChild(working);
+  const progress = Progress(stepsBox);
+  const thinking = el('span', 'step working', 'Thinking');
+  stepsBox.appendChild(thinking);
 
   const turn = { q, answer: '', cohort: null, link: null, error: '' };
   history.push(turn);
 
-  const url = '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET);
-  const src = new EventSource(url);
+  const src = new EventSource(
+    '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET));
 
   src.addEventListener('step', e => {
-    working.remove();
-    steps.appendChild(el('span', 'step', JSON.parse(e.data)));
-    steps.appendChild(working);
+    thinking.remove();
+    progress.add(JSON.parse(e.data));
     scroll();
   });
-  let cohort = null;
-  src.addEventListener('link', e => {
-    try { turn.link = JSON.parse(e.data); saveHistory(); } catch (_) {}
-  });
-  src.addEventListener('cohort', e => {
-    try {
-      cohort = JSON.parse(e.data);
-      turn.cohort = cohort;
-      saveHistory();
-    } catch (_) {}
-  });
+  src.addEventListener('link', e => { try { turn.link = JSON.parse(e.data); } catch (_) {} });
+  src.addEventListener('cohort', e => { try { turn.cohort = JSON.parse(e.data); } catch (_) {} });
   src.addEventListener('answer', e => {
-    working.remove();
     turn.answer = JSON.parse(e.data);
+    progress.done();          // the answer replaces the progress chips
+    showTurn(bubble, turn);
     saveHistory();
-    render(bubble, turn.answer);
-    if (cohort) offerLoad(bubble, cohort);
     scroll();
   });
   src.addEventListener('error', e => {
-    working.remove();
+    // A named error from the server carries data; a bare connection error does not,
+    // and is handled by onerror below.
+    if (!e.data) return;
     let m = 'Something went wrong.';
     try { m = JSON.parse(e.data); } catch (_) {}
     turn.error = m;
-    saveHistory();
+    progress.done();
     bubble.appendChild(el('div', 'err', m));
+    saveHistory();
     scroll();
   });
   src.addEventListener('done', () => { src.close(); finish(); });
-  src.onerror = () => { src.close(); working.remove(); finish(); };
+  src.onerror = () => {
+    src.close();
+    if (!turn.answer && !turn.error) {
+      turn.error = 'The connection to the Ask server was lost.';
+      progress.done();
+      bubble.appendChild(el('div', 'err', turn.error));
+      saveHistory();
+    }
+    finish();
+  };
 
   function finish() { busy = false; sendBtn.disabled = false; qBox.focus(); }
 }
 
-// Offer to make the cohort behind this answer the user's live Chiron query.
-function addLink(target, link) {
+// --- buttons -------------------------------------------------------------------------
+function linkBox(target) {
   let box = target.querySelector('.chiron-links');
   if (!box) { box = el('div', 'chiron-links'); target.appendChild(box); }
+  return box;
+}
+
+function addLink(target, link) {
+  const box = linkBox(target);
+  if ([...box.querySelectorAll('a')].some(a => a.href === link.url)) return;
   const a = el('a', 'chiron-link', link.label || 'Open');
   a.href = link.url; a.target = '_top';
   box.appendChild(a);
 }
 
 function offerLoad(target, cohort) {
-  let box = target.querySelector('.chiron-links');
-  if (!box) { box = el('div', 'chiron-links'); target.appendChild(box); }
-  const b = el('button', 'chiron-link load', 'Query');
+  const box = linkBox(target);
+  if (box.querySelector('button.load')) return;
+  const label = cohort.subject_count != null
+    ? 'Query · ' + Number(cohort.subject_count).toLocaleString() : 'Query';
+  const b = el('button', 'chiron-link load', label);
   b.type = 'button';
-  // Says what it does on hover; the label and the button are the whole explanation.
   b.title = 'Load these filters into the Chiron query builder, replacing what is open there';
   box.appendChild(b);
 
@@ -356,25 +385,34 @@ function offerLoad(target, cohort) {
       });
       const res = await r.json();
       if (res.error) throw new Error(res.error);
-      // Inside the Chiron UI this page is an iframe: navigate the UI itself so the
-      // filter builder reloads with the new workspace.
-      (window.top || window).location.href = res.url || '';
+      // Inside Chiron this page is an iframe: navigate the UI itself so the query
+      // builder reloads with the new workspace.
+      (window.top || window).location.href = res.url;
     } catch (err) {
-      b.disabled = false; b.textContent = 'Query';
+      b.disabled = false; b.textContent = label;
       target.appendChild(el('div', 'err', err.message));
     }
   };
 }
 
+// --- rendering -----------------------------------------------------------------------
 function render(target, markdown) {
-  // Pull out ```chart blocks before markdown parsing, and render them with Chart.js.
+  // Pull out ```chart blocks before markdown parsing, and draw them with Chart.js.
   const charts = [];
   const text = markdown.replace(/```chart\s*([\s\S]*?)```/g, (_, body) => {
-    try { charts.push(JSON.parse(body)); return `\n<!--CHART${charts.length - 1}-->\n`; }
+    try { charts.push(JSON.parse(body)); return `\n\n<!--CHART${charts.length - 1}-->\n\n`; }
     catch (_) { return ''; }
   });
 
   target.innerHTML = marked.parse(text, { breaks: true });
+
+  // Links into Chiron are offered as buttons from the server's own record of what was
+  // saved, so any the model wrote into its prose are reduced to plain text.
+  target.querySelectorAll('a').forEach(a => {
+    if (/\/(query|results|reports)(\/|$|\?)/.test(a.getAttribute('href') || '')) {
+      a.replaceWith(document.createTextNode(a.textContent));
+    }
+  });
 
   // Tables get their own scroll container so a wide one never widens the page.
   target.querySelectorAll('table').forEach(t => {
@@ -383,37 +421,13 @@ function render(target, markdown) {
     wrap.appendChild(t);
   });
 
-  // Links into Chiron become buttons rather than plain links.
-  const links = [];
-  target.querySelectorAll('a').forEach(a => {
-    if (/\/(query|results|reports)(\/|$)/.test(a.getAttribute('href') || '')) links.push(a);
-  });
-  if (links.length) {
-    const box = el('div', 'chiron-links');
-    links.forEach(a => {
-      const href = a.getAttribute('href') || '';
-      // The model tends to paste the whole URL as the link text. Name the button by
-      // where it goes instead.
-      const label = /\/reports\//.test(href) ? 'Report'
-                  : /\/results/.test(href) ? 'Results'
-                  : 'Query';
-      const b = el('a', 'chiron-link', label);
-      b.href = href; b.target = '_top';
-      box.appendChild(b);
-      a.replaceWith(el('span'));
-    });
-    target.appendChild(box);
-  }
-
-  // Swap chart placeholders for canvases.
   charts.forEach((spec, i) => {
     const marker = [...target.childNodes].find(
-      n => n.nodeType === 8 && n.nodeValue.trim() === 'CHART' + i
-    );
+      n => n.nodeType === 8 && n.nodeValue.trim() === 'CHART' + i);
     const box = el('div', 'chart-box');
     const canvas = document.createElement('canvas');
     box.appendChild(canvas);
-    (marker || target).parentNode === target && marker ? marker.replaceWith(box) : target.appendChild(box);
+    if (marker) marker.replaceWith(box); else target.appendChild(box);
     const rows = spec.data || [];
     new Chart(canvas, {
       type: spec.type || 'bar',
@@ -432,14 +446,14 @@ function render(target, markdown) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: spec.type === 'doughnut' || !!spec.label } },
+        plugins: { legend: { display: spec.type === 'doughnut' } },
         scales: spec.type === 'doughnut' ? {} : { y: { beginAtZero: true } },
       },
     });
   });
 }
 
-// Restore the thread last, once render() and offerLoad() are defined.
+// Restore the thread last, once everything above is defined.
 replay();
 </script>
 </body>
