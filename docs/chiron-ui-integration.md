@@ -59,9 +59,11 @@ Two gotchas worth knowing:
 
 - Answers with real figures, since every number comes from a tool call
 - Markdown tables, and charts via a fenced ```chart block the page renders with Chart.js
-- **Follow-up questions.** Each browser tab holds one conversation; "them", "those
+- **Follow-up questions.** Each conversation remembers its own cohorts: "them", "those
   patients" and "now only women" refer to the cohort behind the previous answer.
-  **Clear chat** ends it.
+- **Conversation history.** A sidebar keeps past conversations (in the browser, per Chiron
+  user and dataset), grouped by day and searchable. **New chat** starts another; reopening
+  one continues it; the trash icon deletes it, and its transcript on the server.
 - **Breakdowns** by one or two Category variables, with exact distinct-patient counts per
   group and cell, spelling variants merged, and patients with no recorded value called out.
 - **Reports**: save, rename, change filters or columns, make public or private, delete.
@@ -87,8 +89,10 @@ runs per conversation at a time; a second one sent meanwhile is told to wait.
 
 Claude Code writes each conversation's transcript to
 `~/.claude/projects/<working-dir>/<id>.jsonl`. Transcripts contain tool results, which
-means patient data. **Clear chat** deletes the transcript at once, and any conversation
-idle past the TTL is deleted on the next question. Transcripts written before this
+means patient data. Deleting a conversation in the sidebar deletes its transcript at once,
+and any conversation idle past the TTL is deleted on the next question. The sidebar still
+shows an expired conversation; a follow-up in it is answered on its own, and the page
+says so under that answer. Transcripts written before this
 existed are not tracked; delete them with:
 
 ```bash

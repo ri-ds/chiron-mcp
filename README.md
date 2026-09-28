@@ -75,7 +75,8 @@ What the Ask tab does:
 - **Counts and cohorts**, with spelling variants merged ("Asthma", "ASTHMA", "Asthm") and
   negation done right ("without hypertension" is 7,861, not the 4,758 a naive filter gives).
 - **Follow-up questions.** The chat is a conversation: "them", "those patients", "now only
-  women" refer to the previous answer's cohort. **Clear chat** starts a new one.
+  women" refer to the previous answer's cohort. **New chat** starts another, and past
+  conversations stay in a searchable sidebar.
 - **Breakdowns** by one or two variables ("by gender", "by gender and race"): exact distinct
   patients per group and per cell, as a table and chart, with patients who have no recorded
   value called out so the table adds up.
@@ -678,7 +679,7 @@ Point it at a Chiron that shares file locking with the Ask server (`CHIRON_API`,
   both on the host, as the bundled demo does, or both in containers on the same mount. Keep a
   backup (`sqlite3 db ".backup copy"`) either way.
 - **Ask conversations are stored as Claude Code transcripts**, which contain patient data.
-  They are deleted on **Clear chat** or after `CHIRON_MCP_THREAD_TTL_HOURS`; see
+  They are deleted when you delete the conversation or after `CHIRON_MCP_THREAD_TTL_HOURS`; see
   `docs/chiron-ui-integration.md` for the details and a cleanup command for older ones.
 - **Remote deployment is not supported.** The transport is stdio and execution is in-process, so
   the server must run where it can reach both databases. Serving it remotely would need HTTP

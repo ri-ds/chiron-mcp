@@ -936,7 +936,7 @@ class Handler(BaseHTTPRequestHandler):
         return self._json(result)
 
     def _forget(self):
-        """Clear chat: drop the conversation and delete its transcript now."""
+        """A conversation deleted in the page: drop it and delete its transcript now."""
         if not self._same_site():
             return self._json({"error": "Refused: request came from an untrusted origin."})
         try:

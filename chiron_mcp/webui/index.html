@@ -5,17 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ask Chiron</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
-    --teal-900: #004d40; --teal-700: #00796b; --teal-50: #e0f2f1;
-    --purple-900: #4a148c;
-    --grey-50: #fafafa; --grey-100: #f5f5f5; --grey-300: #e0e0e0;
-    --grey-600: #757575; --grey-800: #424242;
-    --ink: #212121; --bg: #ffffff;
-    --danger: #b3261e; --danger-bg: #fdecea;
+    --accent: #00796b; --accent-strong: #00574d; --accent-soft: #e3f2ef; --accent-line: #b8ddd6;
+    --brand: #4a148c;
+    --ink: #1d2328; --ink-2: #3c464f; --muted: #6b7780; --faint: #98a2ab;
+    --line: #e3e7ea; --line-2: #eef1f3;
+    --panel: #f7f8f9; --bg: #ffffff;
+    --danger: #b3261e; --danger-bg: #fdf0ef; --danger-line: #f3c9c5;
+    --radius: 12px;
     --font: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --shadow: 0 1px 2px rgba(16, 24, 32, .06), 0 4px 16px rgba(16, 24, 32, .06);
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -23,163 +26,325 @@
   body {
     margin: 0; background: var(--bg); color: var(--ink);
     font-family: var(--font); font-size: 15px; line-height: 1.6;
-    display: flex; flex-direction: column;
+    display: flex; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
   }
 
-  header {
-    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    padding: 10px 20px; background: var(--grey-100);
-    border-bottom: 1px solid var(--grey-300); flex: none;
+  /* ---------------------------------------------------------------- sidebar */
+  .sidebar {
+    width: 272px; flex: none; display: flex; flex-direction: column;
+    background: var(--panel); border-right: 1px solid var(--line);
   }
-  header h1 {
-    margin: 0; font-size: 1.15rem; font-weight: 500; color: var(--purple-900);
+  .side-head { padding: 16px 14px 10px; }
+  .brand { margin: 2px 4px 14px; }
+  .brand-name { font-weight: 600; font-size: 15px; line-height: 1.2; color: var(--ink); }
+  .brand-sub { font-size: 12px; color: var(--muted); line-height: 1.2; }
+  .new-chat {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 9px 12px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500;
+    background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+    transition: border-color .15s, background .15s;
   }
-  header .spacer { flex: 1; }
-  button.clear {
-    font-family: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
-    background: none; border: 1px solid var(--grey-300); border-radius: 4px;
-    color: var(--grey-600);
+  .new-chat:hover { border-color: var(--accent-line); background: var(--accent-soft); }
+  .search {
+    margin-top: 10px; position: relative;
   }
-  button.clear:hover { border-color: var(--teal-700); color: var(--teal-900); }
-  .who { font-size: 12px; color: var(--grey-600); }
+  .search input {
+    width: 100%; font: inherit; font-size: 13px; padding: 7px 10px 7px 32px;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--ink);
+  }
+  .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--faint); }
 
-  main { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 20px 4px; }
-  .thread { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px;
-           padding-bottom: 4px; }
+  .chats { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 8px 12px; }
+  .group-label {
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--faint); padding: 14px 8px 6px;
+  }
+  .chat-item {
+    position: relative; display: flex; align-items: center; gap: 8px;
+    border-radius: 9px; margin: 1px 0;
+  }
+  .chat-item > button.open {
+    flex: 1; min-width: 0; text-align: left; background: none; border: 0; cursor: pointer;
+    padding: 8px 34px 8px 10px; border-radius: 9px; color: var(--ink-2);
+  }
+  .chat-item .title {
+    display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chat-item .meta { display: block; font-size: 11.5px; color: var(--faint); }
+  .chat-item:hover > button.open { background: #eceff1; }
+  .chat-item.active > button.open { background: var(--accent-soft); color: var(--ink); }
+  .chat-item.active .title { font-weight: 500; }
+  .chat-item .del {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 26px; height: 26px; border-radius: 7px; border: 0; background: none; cursor: pointer;
+    color: var(--faint); display: grid; place-items: center; opacity: 0; transition: opacity .12s;
+  }
+  .chat-item:hover .del, .chat-item.active .del, .chat-item .del:focus-visible { opacity: 1; }
+  .chat-item .del:hover { background: #e2e6e9; color: var(--danger); }
+  .chat-item .live {
+    position: absolute; right: 12px; top: 50%; width: 8px; height: 8px; margin-top: -4px;
+    border-radius: 50%; background: var(--accent); animation: pulse 1.1s ease-in-out infinite;
+  }
+  .confirm {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    padding: 7px 8px 7px 10px; border-radius: 9px; background: var(--danger-bg);
+    font-size: 12.5px; color: var(--danger);
+  }
+  .confirm span { flex: 1; }
+  .confirm button {
+    border: 1px solid var(--danger-line); background: #fff; color: var(--danger);
+    font-size: 12px; padding: 3px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .confirm button.yes { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .no-chats { font-size: 13px; color: var(--muted); padding: 18px 10px; line-height: 1.5; }
 
-  .msg { display: flex; flex-direction: column; gap: 8px; }
+  .side-foot {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2);
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex: none;
+    background: #dfe4e8; color: var(--ink-2); display: grid; place-items: center;
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+  }
+  .side-foot .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side-foot .who small { display: block; color: var(--faint); font-size: 11.5px; }
+  .link-btn {
+    border: 0; background: none; color: var(--muted); font-size: 12px; cursor: pointer;
+    padding: 4px 6px; border-radius: 6px;
+  }
+  .link-btn:hover { color: var(--danger); background: #eceff1; }
+
+  /* ------------------------------------------------------------ main pane */
+  .pane { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+  .topbar {
+    height: 52px; flex: none; display: flex; align-items: center; gap: 10px;
+    padding: 0 20px; border-bottom: 1px solid var(--line-2); background: var(--bg);
+  }
+  .topbar h1 {
+    margin: 0; font-size: 15px; font-weight: 500; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 9px; border: 0; background: none; cursor: pointer;
+    display: grid; place-items: center; color: var(--ink-2); flex: none;
+  }
+  .icon-btn:hover { background: var(--panel); }
+  .menu-btn { display: none; }
+
+  main { flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; }
+  .thread { max-width: 800px; margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; gap: 26px; }
+
+  /* empty state */
+  .hero { text-align: center; padding: 8vh 0 0; }
+  .hero h2 { margin: 0 0 6px; font-size: 22px; font-weight: 500; color: var(--ink); letter-spacing: -.01em; }
+  .hero p { margin: 0 auto; max-width: 520px; color: var(--muted); font-size: 14.5px; }
+  .caps { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 16px 0 26px; }
+  .cap {
+    font-size: 12px; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line);
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: left; }
+  .card {
+    border: 1px solid var(--line); background: var(--bg); border-radius: var(--radius);
+    padding: 12px 14px; cursor: pointer; font-size: 14px; color: var(--ink-2); line-height: 1.45;
+    transition: border-color .15s, box-shadow .15s, transform .15s; text-align: left;
+  }
+  .card:hover { border-color: var(--accent-line); box-shadow: var(--shadow); transform: translateY(-1px); }
+  .card small { display: block; color: var(--faint); font-size: 11.5px; margin-bottom: 2px; }
+
+  /* messages */
+  .msg.user { display: flex; justify-content: flex-end; }
   .msg.user .bubble {
-    align-self: flex-end; background: var(--teal-700); color: #fff;
-    padding: 9px 14px; border-radius: 16px 16px 2px 16px; max-width: 80%;
+    background: var(--accent); color: #fff; padding: 10px 15px; border-radius: 18px 18px 4px 18px;
+    max-width: 78%; white-space: pre-wrap; word-wrap: break-word;
   }
-  .msg.user { align-items: flex-end; }
-  .msg.bot .bubble { max-width: 100%; }
+  .msg.bot .body { min-width: 0; }
 
-  .steps { display: flex; flex-wrap: wrap; gap: 6px; }
+  .steps { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 3px; }
   .step {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .02em;
-    background: var(--teal-50); color: var(--teal-900);
-    padding: 3px 9px; border-radius: 11px; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12.5px; color: var(--ink-2); background: var(--panel);
+    border: 1px solid var(--line); padding: 3px 11px 3px 9px; border-radius: 999px; white-space: nowrap;
   }
-  .step.working::after { content: " …"; }
+  .step::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-line); }
+  .step.working::before { background: var(--accent); animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.1); } }
 
-  .bubble h1, .bubble h2, .bubble h3 { font-size: 1.05rem; margin: 18px 0 6px; font-weight: 500; }
-  .bubble p { margin: 0 0 10px; }
-  .bubble ul, .bubble ol { margin: 0 0 10px; padding-left: 22px; }
-  .bubble li { margin-bottom: 4px; }
-  .bubble strong { font-weight: 600; }
-  .bubble code {
-    font-family: var(--mono); font-size: .87em;
-    background: var(--grey-100); padding: 1px 5px; border-radius: 3px;
+  .answer h1, .answer h2, .answer h3 { font-size: 1.05rem; margin: 18px 0 6px; font-weight: 600; }
+  .answer p { margin: 0 0 10px; }
+  .answer > :last-child { margin-bottom: 0; }
+  .answer ul, .answer ol { margin: 0 0 10px; padding-left: 22px; }
+  .answer li { margin-bottom: 4px; }
+  .answer strong { font-weight: 600; }
+  .answer a { color: var(--accent-strong); }
+  .answer code {
+    font-family: var(--mono); font-size: .86em; background: var(--panel);
+    border: 1px solid var(--line-2); padding: 1px 5px; border-radius: 5px;
   }
-  .bubble pre {
-    background: var(--grey-50); border: 1px solid var(--grey-300);
-    padding: 12px 14px; border-radius: 4px; overflow-x: auto;
+  .answer pre {
+    background: var(--panel); border: 1px solid var(--line); padding: 12px 14px;
+    border-radius: 10px; overflow-x: auto;
   }
-  .bubble pre code { background: none; padding: 0; }
+  .answer pre code { background: none; border: 0; padding: 0; }
 
-  .table-wrap { overflow-x: auto; margin: 0 0 12px; }
-  .bubble table { border-collapse: collapse; font-size: 14px; min-width: 320px; }
-  .bubble th {
-    text-align: left; background: var(--teal-700); color: #fff;
-    font-weight: 500; padding: 7px 14px; white-space: nowrap;
+  .table-wrap {
+    overflow-x: auto; margin: 2px 0 12px; border: 1px solid var(--line); border-radius: 10px;
   }
-  .bubble td {
-    padding: 7px 14px; border-bottom: 1px solid var(--grey-300);
-    font-variant-numeric: tabular-nums;
+  .answer table { border-collapse: collapse; font-size: 14px; width: 100%; min-width: 320px; }
+  .answer th {
+    text-align: left; background: var(--panel); color: var(--ink-2); font-weight: 600;
+    font-size: 12.5px; padding: 9px 14px; white-space: nowrap; border-bottom: 1px solid var(--line);
   }
-  .bubble tbody tr:nth-child(even) { background: var(--grey-50); }
+  .answer td {
+    padding: 8px 14px; border-bottom: 1px solid var(--line-2); font-variant-numeric: tabular-nums;
+  }
+  .answer tbody tr:last-child td { border-bottom: 0; }
+  .answer tbody tr:hover td { background: #fafbfb; }
 
   .chart-box {
-    border: 1px solid var(--grey-300); border-radius: 4px;
-    padding: 12px; margin: 0 0 12px; background: #fff; height: 300px;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; margin: 2px 0 12px; background: #fff; height: 310px;
   }
 
-  .chiron-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .chiron-link {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: var(--teal-700); color: #fff; text-decoration: none;
-    padding: 8px 15px; border-radius: 4px; font-size: 14px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    background: var(--accent); color: #fff; text-decoration: none; border: 1px solid var(--accent);
+    padding: 7px 14px; border-radius: 9px; font-size: 13.5px; font-weight: 500;
+    transition: background .15s, border-color .15s;
   }
-  .chiron-link:hover { background: var(--teal-900); }
-  .chiron-link::before { content: "↗"; font-size: 15px; }
-  button.chiron-link { border: 0; cursor: pointer; font-family: inherit; }
-  button.chiron-link.load { background: #fff; color: var(--teal-900); border: 1px solid var(--teal-700); }
-  button.chiron-link.load::before { content: "⇄"; }
-  button.chiron-link.load:hover { background: var(--teal-50); }
-  button.chiron-link:disabled { opacity: .6; cursor: default; }
-  .chiron-link.gone { background: #eee; color: #777; cursor: default; }
-  .chiron-link.gone::before { content: "✕"; }
+  .chiron-link:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .chiron-link.load { background: #fff; color: var(--accent-strong); border-color: var(--accent-line); }
+  .chiron-link.load:hover { background: var(--accent-soft); }
+  .chiron-link:disabled { opacity: .6; cursor: default; }
+  .chiron-link.gone { background: var(--panel); color: var(--faint); border-color: var(--line); cursor: default; }
 
+  .note { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; }
   .err {
-    background: var(--danger-bg); color: var(--danger);
-    border-left: 3px solid var(--danger); padding: 10px 14px; border-radius: 3px;
-    font-size: 14px;
+    background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-line);
+    padding: 10px 14px; border-radius: 10px; font-size: 14px;
   }
 
-  .suggestions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 900px; margin: 0 auto 4px; }
-  .sugg {
-    font-size: 13px; background: #fff; border: 1px solid var(--grey-300);
-    color: var(--grey-800); padding: 6px 12px; border-radius: 15px; cursor: pointer;
-    font-family: inherit;
+  .to-bottom {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: 118px;
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+    background: #fff; box-shadow: var(--shadow); cursor: pointer; color: var(--ink-2);
+    display: grid; place-items: center;
   }
-  .sugg:hover { border-color: var(--teal-700); color: var(--teal-900); background: var(--teal-50); }
 
-  footer {
-    flex: none; padding: 10px 20px 12px; border-top: 1px solid var(--grey-300);
-    background: var(--grey-50);
+  /* composer */
+  .composer-wrap { flex: none; padding: 8px 24px 18px; background: var(--bg); }
+  .composer {
+    max-width: 752px; margin: 0 auto; display: flex; align-items: flex-end; gap: 8px;
+    background: #fff; border: 1px solid var(--line); border-radius: 16px;
+    padding: 8px 8px 8px 16px; box-shadow: var(--shadow);
+    transition: border-color .15s, box-shadow .15s;
   }
-  .composer { max-width: 900px; margin: 8px auto 0; display: flex; gap: 10px; }
-  textarea {
-    flex: 1; font-family: inherit; font-size: 15px; padding: 11px 14px;
-    border: 1px solid var(--grey-300); border-radius: 4px; resize: none;
-    min-height: 46px; max-height: 160px; background: #fff; color: var(--ink);
+  .composer:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+  .composer textarea {
+    flex: 1; min-width: 0; font: inherit; font-size: 15px; line-height: 1.5;
+    border: 0; outline: 0; resize: none; background: transparent; color: var(--ink);
+    padding: 7px 0; margin: 0; max-height: 200px; min-height: 22px;
   }
-  textarea:focus { outline: 2px solid var(--teal-700); outline-offset: -1px; }
-  button.send {
-    font-family: inherit; font-size: 15px; font-weight: 500; padding: 0 22px;
-    background: var(--teal-700); color: #fff; border: 0; border-radius: 4px; cursor: pointer;
+  .composer textarea:focus-visible { outline: 0; }
+  .send {
+    width: 36px; height: 36px; flex: none; border-radius: 10px; border: 0; cursor: pointer;
+    background: var(--accent); color: #fff; display: grid; place-items: center;
+    transition: background .15s, opacity .15s;
   }
-  button.send:disabled { background: var(--grey-300); color: var(--grey-600); cursor: default; }
+  .send:hover { background: var(--accent-strong); }
+  .send:disabled { background: #cfd6db; cursor: default; }
+  .hint { max-width: 752px; margin: 7px auto 0; text-align: center; font-size: 11.5px; color: var(--faint); }
 
-  .empty { color: var(--grey-600); text-align: center; padding: 40px 20px; }
-  .empty h2 { font-weight: 400; font-size: 1.2rem; color: var(--grey-800); margin: 0 0 6px; }
+  .scrim { display: none; }
+
+  /* ------------------------------------------------------------- narrow */
+  @media (max-width: 760px) {
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; z-index: 20; width: 84vw; max-width: 300px;
+      transform: translateX(-100%); transition: transform .2s ease; box-shadow: var(--shadow);
+    }
+    body.side-open .sidebar { transform: none; }
+    body.side-open .scrim {
+      display: block; position: fixed; inset: 0; z-index: 10; background: rgba(16, 24, 32, .32);
+    }
+    .menu-btn { display: grid; }
+    .topbar { padding: 0 12px; }
+    .thread { padding: 20px 14px 16px; }
+    .composer-wrap { padding: 6px 12px 12px; }
+    .cards { grid-template-columns: 1fr; }
+    .msg.user .bubble { max-width: 88%; }
+    .hint { display: none; }
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Ask Chiron</h1>
-  <span class="spacer"></span>
-  <button class="clear" id="clear" type="button" hidden>Clear chat</button>
-  <span class="who" id="who"></span>
-</header>
-
-<main>
-  <div class="thread" id="thread">
-    <div class="empty" id="empty">
-      <h2>Ask a question about this dataset</h2>
-      <p>Answers come from Chiron itself, with the real numbers.</p>
+<aside class="sidebar" id="sidebar" aria-label="Conversations">
+  <div class="side-head">
+    <div class="brand">
+      <div class="brand-name">Ask Chiron</div>
+      <div class="brand-sub" id="dataset-name"></div>
     </div>
+    <button class="new-chat" id="new-chat" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      New chat
+    </button>
+    <label class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="Search chats" aria-label="Search chats">
+    </label>
   </div>
-</main>
+  <nav class="chats" id="chats"></nav>
+  <div class="side-foot">
+    <div class="avatar" id="avatar">?</div>
+    <div class="who" id="who">&nbsp;<small>&nbsp;</small></div>
+    <button class="link-btn" id="clear-all" type="button" hidden>Clear all</button>
+  </div>
+</aside>
+<div class="scrim" id="scrim"></div>
 
-<footer>
-  <div class="suggestions" id="suggestions" hidden></div>
-  <div class="composer">
-    <textarea id="q" rows="1" placeholder="How many patients have asthma?"></textarea>
-    <button class="send" id="send">Ask</button>
+<section class="pane">
+  <div class="topbar">
+    <button class="icon-btn menu-btn" id="menu" type="button" aria-label="Show conversations">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <h1 id="chat-title">New chat</h1>
   </div>
-</footer>
+
+  <main id="scroller">
+    <div class="thread" id="thread"></div>
+  </main>
+
+  <button class="to-bottom" id="to-bottom" type="button" aria-label="Scroll to the latest answer" hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+  </button>
+
+  <div class="composer-wrap">
+    <form class="composer" id="composer">
+      <textarea id="q" rows="1" placeholder="Ask about this dataset…" aria-label="Your question"></textarea>
+      <button class="send" id="send" type="submit" aria-label="Send" disabled>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </form>
+    <div class="hint">Enter to send, Shift+Enter for a new line. Every figure comes from Chiron itself.</div>
+  </div>
+</section>
 
 <script>
-const thread   = document.getElementById('thread');
-const empty    = document.getElementById('empty');
-const qBox     = document.getElementById('q');
-const sendBtn  = document.getElementById('send');
-const clearBtn = document.getElementById('clear');
-const who      = document.getElementById('who');
-const suggs    = document.getElementById('suggestions');
+// ---------------------------------------------------------------------------------
+// Ask Chiron. Every call to the server is a relative URL, so the page works at the Ask
+// server's own root (http://localhost:8900/) and behind a proxy at a prefix (/ask/).
+// ---------------------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const threadEl = $('thread'), scroller = $('scroller'), qBox = $('q'), sendBtn = $('send');
+const chatsEl = $('chats'), searchBox = $('search');
 
 // The dataset is fixed by the route that embedded this page (/<dataset>/ask).
 const DATASET = new URLSearchParams(location.search).get('dataset') || '';
@@ -194,6 +359,7 @@ const STEP_LABELS = {
   run_saved_report: 'Running a report', open_in_ui: 'Saving to Chiron',
   update_report: 'Updating the report', delete_report: 'Deleting the report',
 };
+const MAX_CHATS = 50, MAX_TURNS = 40;
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -201,231 +367,427 @@ function el(tag, cls, text) {
   if (text !== undefined) n.textContent = text;
   return n;
 }
-function scroll() { document.querySelector('main').scrollTop = 1e9; }
-// Charts draw, and the starter questions load, after the text is in place, which makes
-// the page taller than when the first scroll ran; scroll again once they have.
-function settle() { scroll(); requestAnimationFrame(scroll); setTimeout(scroll, 350); }
-
-// --- who, and starter questions for this dataset ------------------------------
-// Every call below is a relative URL, so the page works at the Ask server's own root
-// (http://localhost:8900/) and behind a proxy that mounts it at a prefix (/ask/).
-fetch('datasets?dataset=' + encodeURIComponent(DATASET)).then(r => r.json()).then(d => {
-  if (d.identity) who.textContent = 'as ' + d.identity;
-  (d.suggestions || []).forEach(s => {
-    const b = el('button', 'sugg', s);
-    b.type = 'button';
-    b.onclick = () => { qBox.value = s; ask(); };
-    suggs.appendChild(b);
-  });
-  suggs.hidden = !(d.suggestions || []).length;
-  if (history.length) settle();  // the suggestions just shrank the chat area
-}).catch(() => { suggs.hidden = true; });
-
-// --- progress: one chip per kind of step, counted, not one per call -------------
-function Progress(box) {
-  const chips = new Map();
-  let last = null;
-  return {
-    add(tool) {
-      const label = STEP_LABELS[tool] || tool.replace(/_/g, ' ');
-      let chip = chips.get(label);
-      if (!chip) {
-        chip = { n: 0, node: el('span', 'step') };
-        chips.set(label, chip);
-        box.appendChild(chip.node);
-      }
-      chip.n += 1;
-      chip.node.textContent = chip.n > 1 ? `${label} ×${chip.n}` : label;
-      if (last && last !== chip.node) last.classList.remove('working');
-      chip.node.classList.add('working');
-      last = chip.node;
-    },
-    done() { box.remove(); },
-  };
+function uid() {
+  return (crypto.randomUUID && crypto.randomUUID()) ||
+    Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-// --- history ---------------------------------------------------------------------
+// --- scrolling ---------------------------------------------------------------------
+function atBottom() { return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80; }
+function scrollDown(smooth) {
+  scroller.style.scrollBehavior = smooth ? 'smooth' : 'auto';
+  scroller.scrollTop = scroller.scrollHeight;
+}
+// Charts draw after the text is in place, which makes the page taller than when the
+// first scroll ran; scroll again once they have.
+function settle() { scrollDown(false); requestAnimationFrame(() => scrollDown(false)); setTimeout(() => scrollDown(false), 350); }
+scroller.addEventListener('scroll', () => { $('to-bottom').hidden = atBottom(); });
+$('to-bottom').onclick = () => scrollDown(true);
+
+// --- conversations, kept in this browser ---------------------------------------------
 // Following a link into Chiron navigates the whole UI and reloads this iframe, so the
-// thread has to outlive the page. Kept per dataset.
-const HKEY = 'chiron-ask:' + DATASET;
-const TKEY = HKEY + ':thread';
-const HMAX = 30;
-let history = [];
-try { history = JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (_) { history = []; }
-// The server's id for this conversation. Sent back with each question so follow-ups
-// ("how many of them are women?") continue from the cohorts already built.
-let threadId = null;
-try { threadId = localStorage.getItem(TKEY); } catch (_) {}
-function saveThread(id) {
-  threadId = id;
-  try { id ? localStorage.setItem(TKEY, id) : localStorage.removeItem(TKEY); } catch (_) {}
+// conversations have to outlive the page. They are kept per Chiron user and dataset, so
+// two people sharing a browser never see each other's questions.
+let ME = null, DATASET_NAME = DATASET, SUGGESTIONS = [];
+let chats = [];          // newest first
+let activeId = null;     // null = a new, empty chat
+let busy = null;         // { chatId, turnId } while an answer streams
+
+const storeKey = () => `chiron-ask:v2:${ME || 'anon'}:${DATASET}`;
+const activeChat = () => chats.find(c => c.id === activeId) || null;
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(storeKey()) || 'null');
+    chats = (d && Array.isArray(d.chats)) ? d.chats : [];
+    activeId = d && d.active;
+  } catch (_) { chats = []; activeId = null; }
+  migrateV1();
+  // An answer that was still streaming when the page went away is gone.
+  chats.forEach(c => c.turns.forEach(t => {
+    if (t.pending) { t.pending = false; t.error = t.error || 'This answer was interrupted. Ask again.'; }
+  }));
+  if (!activeChat()) activeId = null;
 }
 
-function saveHistory() {
-  try { localStorage.setItem(HKEY, JSON.stringify(history.slice(-HMAX))); } catch (_) {}
-  clearBtn.hidden = history.length === 0;
-}
-
-function showTurn(bubble, turn) {
-  if (turn.answer) render(bubble, turn.answer);
-  else bubble.appendChild(el('div', 'err', turn.error || 'No answer was recorded.'));
-  if (turn.link) addLink(bubble, turn.link);
-  if (turn.cohort) offerLoad(bubble, turn.cohort);
-}
-
-function replay() {
-  history.forEach(turn => {
-    const u = el('div', 'msg user'); u.appendChild(el('div', 'bubble', turn.q));
-    const b = el('div', 'msg bot'); const bubble = el('div', 'bubble'); b.appendChild(bubble);
-    thread.append(u, b);
-    showTurn(bubble, turn);
-  });
-  if (history.length) { empty.style.display = 'none'; settle(); }
-  clearBtn.hidden = history.length === 0;
-}
-
-clearBtn.onclick = () => {
-  // Also drop the conversation on the server, which deletes its transcript now rather
-  // than when it would expire.
-  if (threadId) {
-    fetch('forget', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ thread: threadId }),
-    }).catch(() => {});
+function save() {
+  chats.sort((a, b) => b.updated - a.updated);
+  let keep = chats.slice(0, MAX_CHATS);
+  chats.slice(MAX_CHATS).forEach(forgetOnServer);
+  chats = keep;
+  // localStorage is small; when it fills up, drop the oldest conversations first.
+  for (;;) {
+    try { localStorage.setItem(storeKey(), JSON.stringify({ chats: keep, active: activeId })); return; }
+    catch (_) {
+      if (!keep.length) return;
+      forgetOnServer(keep[keep.length - 1]);
+      keep = keep.slice(0, -1);
+      chats = keep;
+    }
   }
-  saveThread(null);
-  history = [];
-  saveHistory();
-  thread.querySelectorAll('.msg').forEach(n => n.remove());
-  empty.style.display = '';
-};
+}
 
-qBox.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
-});
-qBox.addEventListener('input', () => {
-  qBox.style.height = 'auto';
-  qBox.style.height = Math.min(qBox.scrollHeight, 160) + 'px';
-});
-sendBtn.onclick = ask;
+// The single conversation the page used to keep becomes the first entry in the list.
+function migrateV1() {
+  const oldKey = 'chiron-ask:' + DATASET;
+  let old = null, oldThread = null;
+  try { old = JSON.parse(localStorage.getItem(oldKey) || 'null'); oldThread = localStorage.getItem(oldKey + ':thread'); } catch (_) {}
+  if (Array.isArray(old) && old.length) {
+    const now = Date.now();
+    chats.unshift({
+      id: uid(), title: titleFor(old[0].q), created: now, updated: now, thread: oldThread,
+      turns: old.map(t => Object.assign({ id: uid(), steps: [] }, t)),
+    });
+  }
+  try { localStorage.removeItem(oldKey); localStorage.removeItem(oldKey + ':thread'); } catch (_) {}
+}
+
+function titleFor(q) {
+  const t = (q || '').replace(/\s+/g, ' ').trim();
+  return t.length > 64 ? t.slice(0, 61).trimEnd() + '…' : (t || 'New chat');
+}
+
+// Deleting a conversation also deletes its transcript on the server now, rather than
+// when it would expire.
+function forgetOnServer(chat) {
+  if (!chat || !chat.thread) return;
+  fetch('forget', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ thread: chat.thread }),
+  }).catch(() => {});
+}
+
+// --- sidebar -------------------------------------------------------------------------
+function groupOf(ts) {
+  const d = new Date(ts), now = new Date();
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 864e5);
+  if (diff <= 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff < 7) return 'Previous 7 days';
+  return 'Older';
+}
+function when(ts) {
+  const d = new Date(ts), g = groupOf(ts);
+  if (g === 'Today') return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (g === 'Yesterday') return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+let confirming = null;   // chat id showing "Delete?"
+function renderSidebar() {
+  chatsEl.textContent = '';
+  const term = searchBox.value.trim().toLowerCase();
+  const shown = chats.filter(c => !term || c.title.toLowerCase().includes(term) ||
+    c.turns.some(t => (t.q || '').toLowerCase().includes(term)));
+  if (!shown.length) {
+    chatsEl.appendChild(el('div', 'no-chats', term
+      ? 'No conversations match.'
+      : 'Your conversations will appear here. Each one remembers its own follow-ups.'));
+  }
+  let lastGroup = null;
+  shown.forEach(c => {
+    const g = groupOf(c.updated);
+    if (g !== lastGroup) { chatsEl.appendChild(el('div', 'group-label', g)); lastGroup = g; }
+    const item = el('div', 'chat-item' + (c.id === activeId ? ' active' : ''));
+    if (confirming === c.id) {
+      const box = el('div', 'confirm');
+      box.appendChild(el('span', null, 'Delete this chat?'));
+      const yes = el('button', 'yes', 'Delete'); yes.type = 'button';
+      const no = el('button', null, 'Cancel'); no.type = 'button';
+      yes.onclick = () => deleteChat(c.id);
+      no.onclick = () => { confirming = null; renderSidebar(); };
+      box.append(yes, no);
+      item.appendChild(box);
+    } else {
+      const open = el('button', 'open'); open.type = 'button';
+      open.appendChild(el('span', 'title', c.title));
+      open.appendChild(el('span', 'meta', `${when(c.updated)} · ${c.turns.length} question${c.turns.length === 1 ? '' : 's'}`));
+      open.onclick = () => selectChat(c.id);
+      if (c.id === activeId) open.setAttribute('aria-current', 'true');
+      item.appendChild(open);
+      if (busy && busy.chatId === c.id) {
+        item.appendChild(el('span', 'live'));
+      } else {
+        const del = el('button', 'del'); del.type = 'button';
+        del.setAttribute('aria-label', 'Delete chat');
+        del.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
+        del.onclick = e => { e.stopPropagation(); confirming = c.id; renderSidebar(); };
+        item.appendChild(del);
+      }
+    }
+    chatsEl.appendChild(item);
+  });
+  $('clear-all').hidden = !chats.length || !!busy;
+}
+searchBox.addEventListener('input', renderSidebar);
+
+function selectChat(id) {
+  confirming = null;
+  activeId = id;
+  save();
+  closeSidebar();
+  renderSidebar();
+  renderThread();
+  updateComposer();
+  qBox.focus();
+}
+function newChat() {
+  confirming = null;
+  activeId = null;
+  save();
+  closeSidebar();
+  renderSidebar();
+  renderThread();
+  updateComposer();
+  qBox.focus();
+}
+function deleteChat(id) {
+  const c = chats.find(x => x.id === id);
+  forgetOnServer(c);
+  chats = chats.filter(x => x.id !== id);
+  confirming = null;
+  if (activeId === id) activeId = null;
+  save();
+  renderSidebar();
+  renderThread();
+  updateComposer();
+}
+$('new-chat').onclick = newChat;
+$('clear-all').onclick = () => {
+  if ($('clear-all').dataset.armed !== '1') {
+    $('clear-all').dataset.armed = '1'; $('clear-all').textContent = 'Delete all?';
+    setTimeout(() => { $('clear-all').dataset.armed = ''; $('clear-all').textContent = 'Clear all'; }, 3000);
+    return;
+  }
+  chats.forEach(forgetOnServer);
+  chats = []; activeId = null; confirming = null;
+  $('clear-all').dataset.armed = ''; $('clear-all').textContent = 'Clear all';
+  save(); renderSidebar(); renderThread(); updateComposer();
+};
+function closeSidebar() { document.body.classList.remove('side-open'); }
+$('menu').onclick = () => document.body.classList.add('side-open');
+$('scrim').onclick = closeSidebar;
+
+// --- the conversation --------------------------------------------------------------
+function renderThread() {
+  threadEl.textContent = '';
+  const chat = activeChat();
+  $('chat-title').textContent = chat ? chat.title : 'New chat';
+  if (!chat || !chat.turns.length) { threadEl.appendChild(hero()); scroller.scrollTop = 0; $('to-bottom').hidden = true; return; }
+  chat.turns.forEach(t => threadEl.appendChild(turnNode(t)));
+  settle();
+}
+
+function hero() {
+  const h = el('div', 'hero');
+  h.appendChild(el('h2', null, `Ask about ${DATASET_NAME}`));
+  h.appendChild(el('p', null,
+    'Plain-English questions, exact answers from Chiron. Ask follow-ups, break results down, ' +
+    'chart them, and hand any cohort to Chiron in one click.'));
+  const caps = el('div', 'caps');
+  ['Counts', 'Follow-ups', 'Breakdowns', 'Charts', 'Reports', 'Query in Chiron'].forEach(c => caps.appendChild(el('span', 'cap', c)));
+  h.appendChild(caps);
+  if (SUGGESTIONS.length) {
+    const cards = el('div', 'cards');
+    SUGGESTIONS.slice(0, 6).forEach(s => {
+      const b = el('button', 'card'); b.type = 'button';
+      b.appendChild(el('small', null, 'Try'));
+      b.appendChild(document.createTextNode(s));
+      b.onclick = () => ask(s);
+      cards.appendChild(b);
+    });
+    h.appendChild(cards);
+  }
+  return h;
+}
+
+function turnNode(turn) {
+  const wrap = el('div', 'turn');
+  wrap.dataset.turn = turn.id;
+  const u = el('div', 'msg user'); u.appendChild(el('div', 'bubble', turn.q));
+  const b = el('div', 'msg bot');
+  const body = el('div', 'body');
+  b.append(body);
+  wrap.append(u, b);
+  paintBot(body, turn);
+  return wrap;
+}
+
+function paintBot(body, turn) {
+  body.textContent = '';
+  if (turn.pending) {
+    const steps = el('div', 'steps');
+    const list = turn.steps.length ? turn.steps : [{ label: 'Thinking', n: 1 }];
+    list.forEach((s, i) => {
+      const chip = el('span', 'step' + (i === list.length - 1 ? ' working' : ''),
+        s.n > 1 ? `${s.label} ×${s.n}` : s.label);
+      steps.appendChild(chip);
+    });
+    body.appendChild(steps);
+    return;
+  }
+  if (turn.fresh) {
+    body.appendChild(el('div', 'note',
+      'This conversation had expired, so this was answered on its own, without the earlier questions.'));
+  }
+  if (turn.answer) {
+    const a = el('div', 'answer');
+    render(a, turn.answer);
+    body.appendChild(a);
+  }
+  if (turn.error) body.appendChild(el('div', 'err', turn.error));
+  if (!turn.answer && !turn.error) body.appendChild(el('div', 'err', 'No answer was recorded.'));
+  if (turn.link || turn.cohort) {
+    const actions = el('div', 'actions');
+    if (turn.link) actions.appendChild(linkButton(turn.link));
+    if (turn.cohort) actions.appendChild(loadButton(body, turn.cohort));
+    body.appendChild(actions);
+  }
+}
+
+// Repaint one answer wherever it is on screen (it is not, if another chat is open).
+function repaint(turn, follow) {
+  const node = threadEl.querySelector(`[data-turn="${turn.id}"] .body`);
+  if (!node) return;
+  const stick = atBottom();
+  paintBot(node, turn);
+  if (follow || stick) settle();
+}
 
 // --- asking ------------------------------------------------------------------------
-let busy = false;
+function updateComposer() {
+  sendBtn.disabled = !qBox.value.trim() || !!busy;
+  // One answer at a time; if it is streaming in another chat, say so rather than
+  // leaving the box mysteriously disabled.
+  qBox.placeholder = !busy ? (activeChat() ? 'Ask a follow-up…' : 'Ask about this dataset…')
+    : busy.chatId === activeId ? 'Answering…' : 'Waiting for the answer in another chat…';
+}
+function autosize() { qBox.style.height = 'auto'; qBox.style.height = Math.min(qBox.scrollHeight, 200) + 'px'; }
+qBox.addEventListener('input', () => { autosize(); updateComposer(); });
+qBox.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); ask(); }
+});
+$('composer').addEventListener('submit', e => { e.preventDefault(); ask(); });
 
-function ask() {
-  const q = qBox.value.trim();
+function ask(text) {
+  const q = (text !== undefined ? text : qBox.value).trim();
   if (!q || busy) return;
-  busy = true; sendBtn.disabled = true;
-  empty.style.display = 'none';
-  qBox.value = ''; qBox.style.height = 'auto';
 
-  const u = el('div', 'msg user'); u.appendChild(el('div', 'bubble', q));
-  const b = el('div', 'msg bot');
-  const stepsBox = el('div', 'steps');
-  const bubble = el('div', 'bubble');
-  b.append(stepsBox, bubble);
-  thread.append(u, b);
-  scroll();
+  let chat = activeChat();
+  if (!chat) {
+    const now = Date.now();
+    chat = { id: uid(), title: titleFor(q), created: now, updated: now, thread: null, turns: [] };
+    chats.unshift(chat);
+    activeId = chat.id;
+    threadEl.textContent = '';
+    $('chat-title').textContent = chat.title;
+  }
+  const turn = { id: uid(), q, answer: '', cohort: null, link: null, error: '', steps: [], pending: true, at: Date.now() };
+  chat.turns.push(turn);
+  if (chat.turns.length > MAX_TURNS) chat.turns.shift();
+  chat.updated = Date.now();
+  busy = { chatId: chat.id, turnId: turn.id };
+  save();
 
-  const progress = Progress(stepsBox);
-  const thinking = el('span', 'step working', 'Thinking');
-  stepsBox.appendChild(thinking);
-
-  const turn = { q, answer: '', cohort: null, link: null, error: '' };
-  history.push(turn);
+  qBox.value = ''; autosize(); updateComposer();
+  threadEl.querySelectorAll('.hero').forEach(n => n.remove());
+  threadEl.appendChild(turnNode(turn));
+  renderSidebar();
+  scrollDown(true);
 
   const src = new EventSource(
     'ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET) +
-    (threadId ? '&thread=' + encodeURIComponent(threadId) : ''));
+    (chat.thread ? '&thread=' + encodeURIComponent(chat.thread) : ''));
+  const parse = e => { try { return JSON.parse(e.data); } catch (_) { return null; } };
 
-  src.addEventListener('thread', e => { try { saveThread(JSON.parse(e.data)); } catch (_) {} });
-
-  src.addEventListener('step', e => {
-    thinking.remove();
-    progress.add(JSON.parse(e.data));
-    scroll();
+  // The server's id for this conversation, sent back with each follow-up so "how many
+  // of them are women?" continues from the cohorts already built.
+  src.addEventListener('thread', e => {
+    const id = parse(e); if (!id) return;
+    // A different id back for an existing conversation means the server no longer had
+    // it (idle past its expiry, or deleted), so this answer starts without the earlier
+    // questions. Say so, or "them" in the question would silently mean nothing.
+    if (chat.thread && id !== chat.thread) turn.fresh = true;
+    chat.thread = id; save();
   });
-  src.addEventListener('link', e => { try { turn.link = JSON.parse(e.data); } catch (_) {} });
-  src.addEventListener('deleted', e => { try { retireReport(JSON.parse(e.data)); } catch (_) {} });
-  src.addEventListener('cohort', e => { try { turn.cohort = JSON.parse(e.data); } catch (_) {} });
+  src.addEventListener('step', e => {
+    const tool = parse(e); if (!tool) return;
+    const label = STEP_LABELS[tool] || String(tool).replace(/_/g, ' ');
+    const last = turn.steps[turn.steps.length - 1];
+    const same = turn.steps.find(s => s.label === label);
+    if (same) { same.n += 1; if (same !== last) { turn.steps.splice(turn.steps.indexOf(same), 1); turn.steps.push(same); } }
+    else turn.steps.push({ label, n: 1 });
+    repaint(turn);
+  });
+  src.addEventListener('link', e => { turn.link = parse(e); });
+  src.addEventListener('deleted', e => { retireReport(parse(e)); });
+  src.addEventListener('cohort', e => { turn.cohort = parse(e); });
   src.addEventListener('answer', e => {
-    turn.answer = JSON.parse(e.data);
-    progress.done();          // the answer replaces the progress chips
-    showTurn(bubble, turn);
-    saveHistory();
-    settle();
+    turn.answer = parse(e) || '';
+    turn.pending = false;
+    save();
+    repaint(turn, true);
   });
   src.addEventListener('error', e => {
-    // A named error from the server carries data; a bare connection error does not,
-    // and is handled by onerror below.
+    // A named error from the server carries data; a dropped connection does not, and
+    // is handled by onerror below.
     if (!e.data) return;
-    let m = 'Something went wrong.';
-    try { m = JSON.parse(e.data); } catch (_) {}
-    turn.error = m;
-    progress.done();
-    bubble.appendChild(el('div', 'err', m));
-    saveHistory();
-    scroll();
+    turn.error = parse(e) || 'Something went wrong.';
+    turn.pending = false;
+    save();
+    repaint(turn, true);
   });
   src.addEventListener('done', () => { src.close(); finish(); });
   src.onerror = () => {
     src.close();
-    if (!turn.answer && !turn.error) {
-      turn.error = 'The connection to the Ask server was lost.';
-      progress.done();
-      bubble.appendChild(el('div', 'err', turn.error));
-      saveHistory();
+    if (turn.pending) {
+      turn.pending = false;
+      turn.error = 'The connection to the Ask server was lost. Ask again.';
+      save();
+      repaint(turn, true);
     }
     finish();
   };
-
-  function finish() { busy = false; sendBtn.disabled = false; qBox.focus(); }
-}
-
-// --- buttons -------------------------------------------------------------------------
-function linkBox(target) {
-  let box = target.querySelector('.chiron-links');
-  if (!box) { box = el('div', 'chiron-links'); target.appendChild(box); }
-  return box;
-}
-
-function addLink(target, link) {
-  const box = linkBox(target);
-  if ([...box.querySelectorAll('a')].some(a => a.href === link.url)) return;
-  if (link.gone) {
-    box.appendChild(el('span', 'chiron-link gone', 'Report deleted'));
-    return;
+  function finish() {
+    busy = null;
+    chat.updated = Date.now();
+    save(); renderSidebar(); updateComposer();
+    if (chat.id === activeId) qBox.focus();
   }
-  const a = el('a', 'chiron-link', link.label || 'Open');
+}
+
+// --- buttons under an answer ----------------------------------------------------------
+function linkButton(link) {
+  if (link.gone) return el('span', 'chiron-link gone', 'Report deleted');
+  const a = el('a', 'chiron-link');
   a.href = link.url; a.target = '_top';
-  box.appendChild(a);
+  a.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+  a.appendChild(document.createTextNode(link.label || 'Open'));
+  return a;
 }
 
-// A report deleted in a later answer must not stay clickable in earlier ones, here or
-// after a reload, so both the page and the saved history are updated.
+// A report deleted in a later answer must not stay clickable in earlier ones, in any
+// conversation, now or after a reload.
 function retireReport(id) {
+  if (id == null) return;
   const re = new RegExp('/reports/' + Number(id) + '(/|$|\\?)');
-  history.forEach(t => { if (t.link && re.test(t.link.url)) t.link.gone = true; });
-  saveHistory();
-  thread.querySelectorAll('a.chiron-link').forEach(a => {
-    if (re.test(a.getAttribute('href') || '')) {
-      a.replaceWith(el('span', 'chiron-link gone', 'Report deleted'));
-    }
-  });
+  chats.forEach(c => c.turns.forEach(t => {
+    if (t.link && re.test(t.link.url)) { t.link.gone = true; repaint(t); }
+  }));
+  save();
 }
 
-function offerLoad(target, cohort) {
-  const box = linkBox(target);
-  if (box.querySelector('button.load')) return;
+function loadButton(body, cohort) {
   const label = cohort.subject_count != null
     ? 'Query · ' + Number(cohort.subject_count).toLocaleString() : 'Query';
-  const b = el('button', 'chiron-link load', label);
-  b.type = 'button';
+  const b = el('button', 'chiron-link load'); b.type = 'button';
   b.title = 'Load these filters into the Chiron query builder, replacing what is open there';
-  box.appendChild(b);
-
+  const icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>';
+  const set = text => { b.innerHTML = icon; b.appendChild(document.createTextNode(text)); };
+  set(label);
   b.onclick = async () => {
-    b.disabled = true; b.textContent = 'Loading…';
+    b.disabled = true; set('Loading…');
     try {
       const r = await fetch('load', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -437,28 +799,34 @@ function offerLoad(target, cohort) {
       // builder reloads with the new workspace.
       (window.top || window).location.href = res.url;
     } catch (err) {
-      b.disabled = false; b.textContent = label;
-      target.appendChild(el('div', 'err', err.message));
+      b.disabled = false; set(label);
+      body.appendChild(el('div', 'err', err.message));
     }
   };
+  return b;
 }
 
-// --- rendering -----------------------------------------------------------------------
+// --- rendering an answer --------------------------------------------------------------
 function render(target, markdown) {
   // Pull out ```chart blocks before markdown parsing, and draw them with Chart.js.
   const charts = [];
   const text = markdown.replace(/```chart\s*([\s\S]*?)```/g, (_, body) => {
-    try { charts.push(JSON.parse(body)); return `\n\n<!--CHART${charts.length - 1}-->\n\n`; }
+    try { charts.push(JSON.parse(body)); return `\n\n<div data-chart="${charts.length - 1}"></div>\n\n`; }
     catch (_) { return ''; }
   });
 
-  target.innerHTML = marked.parse(text, { breaks: true });
+  // Answers can quote values straight from the data, so the HTML is sanitised: a value
+  // that happens to contain markup must never run as script on Chiron's origin.
+  target.innerHTML = DOMPurify.sanitize(marked.parse(text, { breaks: true }));
 
   // Links into Chiron are offered as buttons from the server's own record of what was
-  // saved, so any the model wrote into its prose are reduced to plain text.
+  // saved, so any the model wrote into its prose are reduced to plain text. Others
+  // open in a new tab.
   target.querySelectorAll('a').forEach(a => {
     if (/\/(query|results|reports)(\/|$|\?)/.test(a.getAttribute('href') || '')) {
       a.replaceWith(document.createTextNode(a.textContent));
+    } else {
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
     }
   });
 
@@ -469,57 +837,71 @@ function render(target, markdown) {
     wrap.appendChild(t);
   });
 
-  charts.forEach((spec, i) => {
-    const marker = [...target.childNodes].find(
-      n => n.nodeType === 8 && n.nodeValue.trim() === 'CHART' + i);
+  target.querySelectorAll('[data-chart]').forEach(slot => {
+    const spec = charts[Number(slot.dataset.chart)];
+    if (!spec) { slot.remove(); return; }
     const box = el('div', 'chart-box');
     const canvas = document.createElement('canvas');
     box.appendChild(canvas);
-    if (marker) marker.replaceWith(box); else target.appendChild(box);
-    // Two forms: one series as data:[{x,y}], or several as x:[...] with
-    // series:[{label, y:[...]}] (a two-variable breakdown, one series per row), which
-    // gets a legend so no bar is ever unlabelled.
-    const multi = Array.isArray(spec.series) && Array.isArray(spec.x);
-    const rows = spec.data || [];
-    const palette = ['#00796b', '#7b1fa2', '#f57c00', '#1976d2', '#c2185b', '#689f38',
-                     '#5d4037', '#455a64'];
-    const datasets = multi
-      ? spec.series.map((sr, k) => ({
-          label: sr.label || '',
-          data: sr.y || [],
-          backgroundColor: palette[k % palette.length],
-          borderColor: palette[k % palette.length],
-          borderWidth: spec.type === 'line' ? 2 : 0,
-          tension: 0.25,
-        }))
-      : [{
-          label: spec.label || '',
-          data: rows.map(r => r.y),
-          backgroundColor: spec.type === 'doughnut' ? palette : '#00796b',
-          borderColor: '#00796b',
-          borderWidth: spec.type === 'line' ? 2 : 0,
-          tension: 0.25,
-        }];
-    new Chart(canvas, {
-      type: spec.type || 'bar',
-      data: { labels: multi ? spec.x : rows.map(r => r.x), datasets },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: multi || spec.type === 'doughnut' },
-          title: { display: !!spec.title, text: spec.title || '' },
-        },
-        scales: spec.type === 'doughnut' ? {} : {
-          y: { beginAtZero: true,
-               title: { display: !!spec.label && !multi, text: spec.label || '' } },
-        },
-      },
-    });
+    slot.replaceWith(box);
+    drawChart(canvas, spec);
   });
 }
 
-// Restore the thread last, once everything above is defined.
-replay();
+function drawChart(canvas, spec) {
+  // Two forms: one series as data:[{x,y}], or several as x:[...] with
+  // series:[{label, y:[...]}] (a two-variable breakdown, one series per row), which
+  // gets a legend so no bar is ever unlabelled.
+  const multi = Array.isArray(spec.series) && Array.isArray(spec.x);
+  const rows = spec.data || [];
+  const palette = ['#00796b', '#7b1fa2', '#f57c00', '#1976d2', '#c2185b', '#689f38', '#5d4037', '#455a64'];
+  const datasets = multi
+    ? spec.series.map((sr, k) => ({
+        label: sr.label || '', data: sr.y || [],
+        backgroundColor: palette[k % palette.length], borderColor: palette[k % palette.length],
+        borderWidth: spec.type === 'line' ? 2 : 0, borderRadius: 4, tension: 0.25,
+      }))
+    : [{
+        label: spec.label || '', data: rows.map(r => r.y),
+        backgroundColor: spec.type === 'doughnut' ? palette : '#00796b', borderColor: '#00796b',
+        borderWidth: spec.type === 'line' ? 2 : 0, borderRadius: 4, tension: 0.25,
+      }];
+  new Chart(canvas, {
+    type: spec.type || 'bar',
+    data: { labels: multi ? spec.x : rows.map(r => r.x), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: multi || spec.type === 'doughnut', labels: { boxWidth: 12, boxHeight: 12 } },
+        title: { display: !!spec.title, text: spec.title || '', font: { size: 14, weight: '600' }, color: '#1d2328' },
+      },
+      scales: spec.type === 'doughnut' ? {} : {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: '#eef1f3' },
+             title: { display: !!spec.label && !multi, text: spec.label || '' } },
+      },
+    },
+  });
+}
+
+// --- start ---------------------------------------------------------------------------
+// Who is asking decides whose conversations to show, so nothing renders until then.
+function start(d) {
+  ME = (d && d.identity) || null;
+  const match = d && (d.datasets || []).find(x => x.id === DATASET);
+  DATASET_NAME = (match && match.name) || DATASET || 'this dataset';
+  SUGGESTIONS = (d && d.suggestions) || [];
+  $('dataset-name').textContent = DATASET_NAME;
+  $('avatar').textContent = ME ? ME[0] : '?';
+  const who = $('who'); who.textContent = ME || 'Not logged in';
+  who.appendChild(el('small', null, ME ? 'Logged into Chiron' : (d && d.error) || 'Log in to Chiron to ask'));
+  load();
+  renderSidebar();
+  renderThread();
+  updateComposer();
+}
+fetch('datasets?dataset=' + encodeURIComponent(DATASET))
+  .then(r => r.json()).then(start).catch(() => start(null));
 </script>
 </body>
 </html>
