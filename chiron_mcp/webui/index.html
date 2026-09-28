@@ -39,10 +39,7 @@
     width: 272px; flex: none; display: flex; flex-direction: column;
     background: var(--panel); border-right: 1px solid var(--line);
   }
-  .side-head { padding: 16px 14px 10px; }
-  .brand { margin: 2px 4px 14px; }
-  .brand-name { font-weight: 600; font-size: 15px; line-height: 1.2; color: var(--ink); }
-  .brand-sub { font-size: 12px; color: var(--muted); line-height: 1.2; }
+  .side-head { padding: 14px 14px 8px; display: flex; flex-direction: column; gap: 10px; }
   .new-chat {
     width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
     padding: 9px 12px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500;
@@ -50,9 +47,7 @@
     transition: border-color .15s, background .15s;
   }
   .new-chat:hover { border-color: var(--accent-line); background: var(--accent-soft); }
-  .search {
-    margin-top: 10px; position: relative;
-  }
+  .search { display: block; position: relative; }
   .search input {
     width: 100%; font: inherit; font-size: 13px; padding: 7px 10px 7px 32px;
     border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--ink);
@@ -138,7 +133,8 @@
   .menu-btn { display: none; }
 
   main { flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; }
-  .thread { max-width: 800px; margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; gap: 26px; }
+  .thread { max-width: 800px; margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; gap: 36px; }
+  .turn { display: flex; flex-direction: column; gap: 18px; }
 
   /* empty state */
   .hero { text-align: center; padding: 8vh 0 0; }
@@ -156,7 +152,8 @@
     transition: border-color .15s, box-shadow .15s, transform .15s; text-align: left;
   }
   .card:hover { border-color: var(--accent-line); box-shadow: var(--shadow); transform: translateY(-1px); }
-  .card small { display: block; color: var(--faint); font-size: 11.5px; margin-bottom: 2px; }
+  .card small { display: block; color: var(--accent-strong); font-size: 11px; font-weight: 600;
+                letter-spacing: .03em; text-transform: uppercase; margin-bottom: 3px; }
 
   /* messages */
   .msg.user { display: flex; justify-content: flex-end; }
@@ -226,13 +223,22 @@
   .chiron-link.gone { background: var(--panel); color: var(--faint); border-color: var(--line); cursor: default; }
 
   .note { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; }
+  .followups { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .followup {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-align: left;
+    font-size: 13.5px; color: var(--ink-2); background: var(--bg); border: 1px solid var(--line);
+    padding: 7px 13px; border-radius: 999px; line-height: 1.35;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .followup::before { content: "\21B3"; color: var(--accent); font-size: 13px; }
+  .followup:hover { border-color: var(--accent-line); background: var(--accent-soft); color: var(--ink); }
   .err {
     background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-line);
     padding: 10px 14px; border-radius: 10px; font-size: 14px;
   }
 
   .to-bottom {
-    position: absolute; left: 50%; transform: translateX(-50%); bottom: 118px;
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: 96px;
     width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
     background: #fff; box-shadow: var(--shadow); cursor: pointer; color: var(--ink-2);
     display: grid; place-items: center;
@@ -260,7 +266,6 @@
   }
   .send:hover { background: var(--accent-strong); }
   .send:disabled { background: #cfd6db; cursor: default; }
-  .hint { max-width: 752px; margin: 7px auto 0; text-align: center; font-size: 11.5px; color: var(--faint); }
 
   .scrim { display: none; }
 
@@ -280,7 +285,6 @@
     .composer-wrap { padding: 6px 12px 12px; }
     .cards { grid-template-columns: 1fr; }
     .msg.user .bubble { max-width: 88%; }
-    .hint { display: none; }
   }
 </style>
 </head>
@@ -288,10 +292,6 @@
 
 <aside class="sidebar" id="sidebar" aria-label="Conversations">
   <div class="side-head">
-    <div class="brand">
-      <div class="brand-name">Ask Chiron</div>
-      <div class="brand-sub" id="dataset-name"></div>
-    </div>
     <button class="new-chat" id="new-chat" type="button">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
       New chat
@@ -333,7 +333,6 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
       </button>
     </form>
-    <div class="hint">Enter to send, Shift+Enter for a new line. Every figure comes from Chiron itself.</div>
   </div>
 </section>
 
@@ -388,7 +387,7 @@ $('to-bottom').onclick = () => scrollDown(true);
 // Following a link into Chiron navigates the whole UI and reloads this iframe, so the
 // conversations have to outlive the page. They are kept per Chiron user and dataset, so
 // two people sharing a browser never see each other's questions.
-let ME = null, DATASET_NAME = DATASET, SUGGESTIONS = [];
+let ME = null, DATASET_NAME = DATASET, POOL = [], FEATURES = {}, STARTERS = [];
 let chats = [];          // newest first
 let activeId = null;     // null = a new, empty chat
 let busy = null;         // { chatId, turnId } while an answer streams
@@ -445,6 +444,27 @@ function migrateV1() {
 function titleFor(q) {
   const t = (q || '').replace(/\s+/g, ' ').trim();
   return t.length > 64 ? t.slice(0, 61).trimEnd() + '…' : (t || 'New chat');
+}
+
+// Six starter questions for a new chat, each showing a different Ask feature. The
+// features shown least recently come first and questions seen lately are skipped, so
+// every new chat offers something new and a few chats walk through all of Ask.
+function pickStarters() {
+  const seenKey = storeKey() + ':seen';
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch (_) {}
+  const recent = new Set(seen), lastShown = {}, byFeature = {};
+  POOL.forEach(p => (byFeature[p.feature] = byFeature[p.feature] || []).push(p));
+  seen.forEach((q, i) => { const p = POOL.find(x => x.q === q); if (p) lastShown[p.feature] = i; });
+  const features = Object.keys(byFeature)
+    .map(f => [f, Math.random()]).sort((a, b) => a[1] - b[1]).map(x => x[0])   // shuffle
+    .sort((a, b) => (lastShown[a] ?? -1) - (lastShown[b] ?? -1));            // oldest first
+  STARTERS = features.slice(0, 6).map(f => {
+    const fresh = byFeature[f].filter(p => !recent.has(p.q));
+    const from = fresh.length ? fresh : byFeature[f];
+    return from[Math.floor(Math.random() * from.length)];
+  });
+  try { localStorage.setItem(seenKey, JSON.stringify(seen.concat(STARTERS.map(p => p.q)).slice(-90))); } catch (_) {}
 }
 
 // Deleting a conversation also deletes its transcript on the server now, rather than
@@ -534,6 +554,7 @@ function selectChat(id) {
 }
 function newChat() {
   confirming = null;
+  pickStarters();
   activeId = null;
   save();
   closeSidebar();
@@ -547,7 +568,7 @@ function deleteChat(id) {
   forgetOnServer(c);
   chats = chats.filter(x => x.id !== id);
   confirming = null;
-  if (activeId === id) activeId = null;
+  if (activeId === id) { activeId = null; pickStarters(); }
   save();
   renderSidebar();
   renderThread();
@@ -561,7 +582,7 @@ $('clear-all').onclick = () => {
     return;
   }
   chats.forEach(forgetOnServer);
-  chats = []; activeId = null; confirming = null;
+  chats = []; activeId = null; confirming = null; pickStarters();
   $('clear-all').dataset.armed = ''; $('clear-all').textContent = 'Clear all';
   save(); renderSidebar(); renderThread(); updateComposer();
 };
@@ -588,13 +609,13 @@ function hero() {
   const caps = el('div', 'caps');
   ['Counts', 'Follow-ups', 'Breakdowns', 'Charts', 'Reports', 'Query in Chiron'].forEach(c => caps.appendChild(el('span', 'cap', c)));
   h.appendChild(caps);
-  if (SUGGESTIONS.length) {
+  if (STARTERS.length) {
     const cards = el('div', 'cards');
-    SUGGESTIONS.slice(0, 6).forEach(s => {
+    STARTERS.forEach(s => {
       const b = el('button', 'card'); b.type = 'button';
-      b.appendChild(el('small', null, 'Try'));
-      b.appendChild(document.createTextNode(s));
-      b.onclick = () => ask(s);
+      b.appendChild(el('small', null, FEATURES[s.feature] || 'Try'));
+      b.appendChild(document.createTextNode(s.q));
+      b.onclick = () => ask(s.q);
       cards.appendChild(b);
     });
     h.appendChild(cards);
@@ -644,6 +665,17 @@ function paintBot(body, turn) {
     if (turn.cohort) actions.appendChild(loadButton(body, turn.cohort));
     body.appendChild(actions);
   }
+  const chat = activeChat();
+  if (turn.followups && turn.followups.length && chat && chat.turns[chat.turns.length - 1] === turn) {
+    const box = el('div', 'followups');
+    box.setAttribute('aria-label', 'Suggested follow-ups');
+    turn.followups.forEach(q => {
+      const b = el('button', 'followup', q); b.type = 'button';
+      b.onclick = () => ask(q);
+      box.appendChild(b);
+    });
+    body.appendChild(box);
+  }
 }
 
 // Repaint one answer wherever it is on screen (it is not, if another chat is open).
@@ -691,7 +723,7 @@ function ask(text) {
   save();
 
   qBox.value = ''; autosize(); updateComposer();
-  threadEl.querySelectorAll('.hero').forEach(n => n.remove());
+  threadEl.querySelectorAll('.hero, .followups').forEach(n => n.remove());
   threadEl.appendChild(turnNode(turn));
   renderSidebar();
   scrollDown(true);
@@ -723,6 +755,7 @@ function ask(text) {
   src.addEventListener('link', e => { turn.link = parse(e); });
   src.addEventListener('deleted', e => { retireReport(parse(e)); });
   src.addEventListener('cohort', e => { turn.cohort = parse(e); });
+  src.addEventListener('followups', e => { const f = parse(e); if (Array.isArray(f)) turn.followups = f; });
   src.addEventListener('answer', e => {
     turn.answer = parse(e) || '';
     turn.pending = false;
@@ -890,12 +923,13 @@ function start(d) {
   ME = (d && d.identity) || null;
   const match = d && (d.datasets || []).find(x => x.id === DATASET);
   DATASET_NAME = (match && match.name) || DATASET || 'this dataset';
-  SUGGESTIONS = (d && d.suggestions) || [];
-  $('dataset-name').textContent = DATASET_NAME;
+  POOL = (d && d.pool) || [];
+  FEATURES = (d && d.features) || {};
   $('avatar').textContent = ME ? ME[0] : '?';
   const who = $('who'); who.textContent = ME || 'Not logged in';
   who.appendChild(el('small', null, ME ? 'Logged into Chiron' : (d && d.error) || 'Log in to Chiron to ask'));
   load();
+  pickStarters();
   renderSidebar();
   renderThread();
   updateComposer();

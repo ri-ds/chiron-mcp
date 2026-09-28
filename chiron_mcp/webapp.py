@@ -130,6 +130,21 @@ Answering. The reader wants the figure, not an essay.
 - Stop when the answer is given. No closing offer or invitation ("let me know", "I can
   build a cohort from there", "want me to..."): the user knows they can ask.
 
+Suggested follow-ups: after an answer that gave figures or saved something, end with a
+fenced block tagged `followups` holding a JSON list of exactly 3 short questions the
+user might ask next, for example:
+```followups
+["How many of them are women?", "Break them down by race", "Save them as a report"]
+```
+Make the three different kinds of next step: narrow the cohort with another filter,
+break it down by a category (gender, race, ethnicity, marital status), rank what is
+common among these patients (conditions, medications, visit types), compare with
+another group, or save it as a report (after saving one: rename it, change its
+filters, or delete it). Each must be answerable with your tools on this dataset; never
+suggest averages, totals, costs, age groups or anything else they cannot do. Under 60
+characters each, phrased as the user would type them. Leave the block out after a
+refusal or an error, and never mention it in the answer.
+
 Saving: call chiron_open_in_ui only when the user asks to save a report
 (mode="report") or to load the cohort into their query (mode="workspace"). Pass as
 columns the variables you filtered on.
@@ -215,30 +230,177 @@ def dataset_brief(dataset_id: str, username: str, allow_superuser: bool) -> tupl
     return brief, ids
 
 
-def suggestions_for(concept_ids: list[str]) -> list[str]:
-    """Starter questions that work on this dataset, checked by tests/ask_e2e.py.
+# --- starter questions ---------------------------------------------------------------
+#
+# A pool of questions built from this dataset's real values, each tagged with the Ask
+# feature it shows off. The page picks six from six different features for every new
+# chat and avoids ones the user has just seen, so the starters keep changing and, over a
+# few chats, walk through everything Ask can do. tests/ask_e2e.py --suggestions runs the
+# whole pool, so a starter cannot ship broken.
 
-    Each one exercises something different (a chart, a two-collection cohort, a numeric
-    bound, a date bound, a report, a workspace hand-off) rather than five ways of asking
-    for a count.
-    """
-    have = {c.split("__", 1)[-1] for c in concept_ids}
-    synthea = {"condition__description", "subject__gender", "subject__income",
-               "subject__birthdate", "medication__description"}
-    if synthea <= have:
-        return [
-            "Which 5 conditions affect the most patients? Chart it",
-            "How many women have essential hypertension?",
-            "Asthma patients earning over $50,000",
-            "How many patients were born before 1950?",
-            "Top 10 medications by number of patients",
-            "Save a type 2 diabetes cohort as a report",
-            "Load a COPD cohort into my query",
-        ]
-    return [
-        "How many subjects are in this dataset?",
-        "What can I filter on?",
-    ]
+FEATURES = {
+    "count": "Count", "combine": "Combine filters", "number": "Number range",
+    "date": "Dates", "negation": "Without", "compare": "Compare", "breakdown": "Breakdown",
+    "breakdown2": "Two-way breakdown", "ranking": "Top list and chart", "visits": "Visits",
+    "medications": "Medications", "rows": "Patient list", "report": "Save a report",
+    "query": "Open in Chiron", "filters": "What is here",
+}
+
+# Long or clinical names that read badly in a question, and a plainer form the model
+# still finds (it looks the value up, variants included).
+_ALIASES = {
+    "chronic obstructive pulmonary disease": "COPD",
+    "body mass index 30+ - obesity": "obesity",
+    "type 2 diabetes mellitus": "type 2 diabetes",
+    "type 1 diabetes mellitus": "type 1 diabetes",
+}
+_ENCOUNTER_WORDS = {"urgentcare": "urgent care", "ambulatory": "ambulatory",
+                    "emergency": "emergency", "wellness": "wellness",
+                    "outpatient": "outpatient", "inpatient": "inpatient"}
+# Medications that go with a condition, so "How many asthma patients take albuterol?"
+# asks something a researcher would.
+_PAIRS = {"asthma": "albuterol", "type 2 diabetes": "metformin",
+          "hypothyroidism": "levothyroxine", "essential hypertension": "lisinopril",
+          "major depressive disorder": "sertraline", "coronary arteriosclerosis": "atorvastatin"}
+
+_POOL_CACHE: dict = {}
+_POOL_TTL = 3600
+
+
+def _plain(value: str) -> str | None:
+    """A value as it reads in a sentence, or None when it would read badly."""
+    v = " ".join(str(value).split())
+    alias = _ALIASES.get(v.lower())
+    if alias:
+        return alias
+    if len(v) > 32 or any(ch in v for ch in "()[]/+:;"):
+        return None
+    return v if v.isupper() else v[0].lower() + v[1:]
+
+
+def _medication(value: str) -> str:
+    words = str(value).split()
+    n = 2 if words and words[0].lower() == "insulin" and len(words) > 1 else 1
+    return " ".join(words[:n]).lower()
+
+
+def _top(ident, concept_id: str, n: int) -> list[str]:
+    """The n most common values of a variable, spelling variants merged."""
+    from chiron_mcp import server as S
+
+    try:
+        oConcept = S._concept(ident, concept_id)
+        groups, _ = S._groups(S._value_counts(ident, [], oConcept), n)
+    except Exception:  # noqa: BLE001  a starter is never worth an error
+        return []
+    return [g["label"] for g in groups]
+
+
+def suggestion_pool(dataset: str, username: str, allow_superuser: bool,
+                    concept_ids: list[str]) -> list[dict]:
+    """Starter questions for this dataset as [{"q", "feature"}], cached for an hour."""
+    import time
+
+    key = (dataset, username)
+    hit = _POOL_CACHE.get(key)
+    if hit and time.time() - hit[0] < _POOL_TTL:
+        return hit[1]
+
+    from chiron_mcp import identity
+
+    have = {c.split("__", 1)[-1]: c for c in concept_ids}
+    pool: list[dict] = []
+
+    def add(feature, q):
+        if q and not any(p["q"] == q for p in pool):
+            pool.append({"q": q, "feature": feature})
+
+    try:
+        ident = identity.resolve(dataset, username=username, allow_superuser=allow_superuser)
+    except identity.AccessError:
+        return []
+
+    cond_id = have.get("condition__description")
+    if cond_id and "subject__gender" in have:
+        conds = [c for c in (_plain(v) for v in _top(ident, cond_id, 14)) if c][:9]
+        meds = [_medication(v) for v in _top(ident, have.get("medication__description", ""), 8)] \
+            if "medication__description" in have else []
+        visits = [_ENCOUNTER_WORDS.get(v.lower(), v.lower())
+                  for v in _top(ident, have.get("encounter__encounterclass", ""), 6)] \
+            if "encounter__encounterclass" in have else []
+        pairs = list(zip(conds, conds[1:] + conds[:1]))
+
+        for c in conds:
+            add("count", f"How many patients have {c}?")
+            add("combine", f"How many women have {c}?")
+            add("breakdown", f"Break down patients with {c} by race")
+            add("breakdown2", f"Break down patients with {c} by gender and race")
+            add("report", f"Save patients with {c} as a report")
+            add("query", f"Load patients with {c} into my query")
+            add("rows", f"Show 10 patients with {c}, with their city and birthdate")
+        for c in conds[:5]:
+            add("combine", f"How many men have {c}?")
+        for a, b in pairs[:6]:
+            add("negation", f"How many patients have {a} but not {b}?")
+            add("compare", f"How many patients have {a}, and how many have {b}?")
+        add("negation", "How many patients do not have essential hypertension?"
+            if "essential hypertension" in conds else None)
+
+        if "subject__income" in have:
+            for n in ("30,000", "50,000", "75,000", "100,000"):
+                add("number", f"How many patients earn more than ${n} a year?")
+            for c in conds[:4]:
+                add("number", f"How many patients with {c} earn over $50,000?")
+            add("number", "How many patients earn between $30,000 and $60,000?")
+        if "subject__birthdate" in have:
+            for y in (1940, 1950, 1960, 1970):
+                add("date", f"How many patients were born before {y}?")
+            for c in conds[:3]:
+                add("date", f"How many patients born after 1980 have {c}?")
+        if "subject__deathdate" in have:
+            add("date", "How many patients have died?")
+        if "subject__ethnicity" in have:
+            add("breakdown", "How many patients are there of each ethnicity?")
+            for c in conds[:3]:
+                add("combine", f"How many Hispanic patients have {c}?")
+        if "subject__married" in have:
+            add("breakdown", "How many patients are there of each marital status?")
+
+        add("ranking", "Which 5 conditions affect the most patients? Chart it")
+        add("ranking", "What are the 10 most common conditions?")
+        for c in conds[:4]:
+            add("ranking", f"Top 5 medications among patients with {c}")
+        if meds:
+            add("ranking", "Top 10 medications by number of patients")
+            for m in meds[:6]:
+                add("medications", f"How many patients take {m}?")
+            for c in conds:
+                m = _PAIRS.get(c)
+                if m and m in meds:
+                    add("medications", f"How many patients with {c} take {m}?")
+        if "procedure__description" in have:
+            add("ranking", "What are the 5 most common procedures? Chart them")
+        if visits:
+            add("ranking", "Which visit types are most common? Chart them")
+            for v in visits:
+                add("visits", f"How many patients have had an {v} visit?"
+                    if v[0] in "aeiou" else f"How many patients have had a {v} visit?")
+            if "emergency" in visits:
+                for c in conds[:3]:
+                    add("visits", f"How many patients with {c} have had an emergency visit?")
+        add("filters", "What can I filter on?")
+    else:
+        # Any other dataset: questions that work on every Chiron schema.
+        add("count", "How many subjects are in this dataset?")
+        add("filters", "What can I filter on?")
+        cats = [c for c in concept_ids if c.split("__")[-2:-1] and "subject" in c][:3]
+        for c in cats:
+            name = c.split("__")[-1].replace("_", " ")
+            add("breakdown", f"Break down subjects by {name}")
+            add("ranking", f"What are the most common values of {name}? Chart them")
+
+    _POOL_CACHE[key] = (time.time(), pool)
+    return pool
 
 
 def request_identity(cookie_header: str | None) -> tuple[str, bool]:
@@ -306,6 +468,7 @@ class _CohortTracker:
         self._calls: dict[str, tuple[str, dict]] = {}
         self.cohort: dict | None = None
         self.last_edit: dict | None = None
+        self.breakdown: dict | None = None  # the last breakdown's groups, for subgroup buttons
         self.link: dict | None = None
         self.deleted: list[int] = []  # report ids deleted in this answer
 
@@ -348,6 +511,16 @@ class _CohortTracker:
             self.link = None  # never point at a report that no longer exists
             self.deleted.append(data.get("report_id"))
 
+        if name == "chiron_breakdown":
+            by = [b.get("concept_id") for b in data.get("by") or [] if isinstance(b, dict)]
+            if by:
+                self.breakdown = {
+                    "dataset_id": ds, "cohort_def": args.get("cohort_def") or [],
+                    "concept_id": by[0], "rows": data.get("rows") or [],
+                    "totals": data.get("row_totals") or [],
+                    "variants": data.get("merged_variants") or {},
+                }
+
         if name not in self._COUNTED or not args.get("cohort_def"):
             return
         self.cohort = {
@@ -358,6 +531,77 @@ class _CohortTracker:
 
     def final(self) -> dict | None:
         return self.cohort or self.last_edit
+
+
+_FOLLOWUPS = re.compile(r"```followups\s*([\s\S]*?)```", re.I)
+# What the tools cannot do; a suggestion that invites it would fail when clicked.
+_UNANSWERABLE = re.compile(
+    r"\b(average|mean|median|sum|totals?|costs?|spend|price|age groups?|by age)\b", re.I)
+
+
+def split_followups(text: str) -> tuple[str, list[str]]:
+    """The answer without its ```followups block, and up to 3 usable suggestions."""
+    found: list[str] = []
+    for block in _FOLLOWUPS.findall(text or ""):
+        try:
+            items = json.loads(block)
+        except ValueError:
+            continue
+        for q in items if isinstance(items, list) else []:
+            q = " ".join(str(q).split())
+            if (q and len(q) <= 90 and not _UNANSWERABLE.search(q)
+                    and q.lower() not in (f.lower() for f in found)):
+                found.append(q)
+    return _FOLLOWUPS.sub("", text or "").rstrip(), found[:3]
+
+
+_NUMBER = re.compile(r"(?<![\w.,])\d{1,3}(?:,\d{3})+(?![\d])|(?<![\w.,])\d+(?![\d,])")
+
+
+def headline_figure(answer: str) -> int | None:
+    """The figure an answer leads with: its first bold number, else its first number.
+
+    "**445** of the 841 asthma patients are women" leads with 445, not 841. A Query
+    button must be about the patients the answer is about, not a larger cohort it
+    merely mentions.
+    """
+    # Only the prose counts: tables bold their totals and charts are all numbers.
+    prose = re.sub(r"```[\s\S]*?```", " ", answer or "")
+    prose = "\n".join(line for line in prose.splitlines() if not line.lstrip().startswith("|"))
+    for bold in re.findall(r"\*\*([^*]+)\*\*", prose):
+        m = _NUMBER.search(bold)
+        if m:
+            return int(m.group().replace(",", ""))
+    m = _NUMBER.search(prose)
+    return int(m.group().replace(",", "")) if m else None
+
+
+def subgroup_cohort(bd: dict, figure: int, username: str, allow_superuser: bool) -> dict | None:
+    """The cohort behind one group of the last breakdown, when the answer leads with it.
+
+    "How many of them are women?" is sometimes answered by breaking the cohort down by
+    gender and reading off one row. The cohort counted was all of them, so its button
+    would be for the wrong patients; the group's own cohort is the base AND that group.
+    """
+    from chiron_mcp import identity, server as S
+
+    for label, total in zip(bd["rows"], bd["totals"]):
+        if total != figure:
+            continue
+        try:
+            ident = identity.resolve(bd["dataset_id"], username=username,
+                                     allow_superuser=allow_superuser)
+            oConcept = S._concept(ident, bd["concept_id"])
+            proc = oConcept.get_cohort_def_processor(identity.checked_chironuser(ident))
+            field = S._GROUPABLE.get(type(proc).__name__)
+            if not field:
+                return None
+            values = bd["variants"].get(label) or [label]
+            cohort_def = S._add_filter(ident, bd["cohort_def"], oConcept, values, field)
+        except Exception:  # noqa: BLE001  no button is better than a wrong one
+            return None
+        return {"dataset_id": bd["dataset_id"], "cohort_def": cohort_def, "columns": []}
+    return None
 
 
 def states_count(answer: str, n: int) -> bool:
@@ -609,6 +853,9 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                     yield "error", explain_claude_error(ev.get("result") or "Claude returned an error.")
                     outcome["answered"] = True
                     continue
+                # The suggested follow-ups travel separately; everything below judges
+                # the answer itself, never numbers that only appear in a suggestion.
+                text, followups = split_followups(ev.get("result", ""))
                 # Earlier answers may carry Report buttons for what was just deleted;
                 # the page retires them.
                 for rid in tracker.deleted:
@@ -620,14 +867,24 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 if not (tracker.link and tracker.link.get("mode") == "workspace"):
                     state = tracker.final() or inherited
                     verified = state and verify_cohort(state, username, allow_superuser)
-                    # The button is labelled with its count; offer it only when the
-                    # answer states that count, so it is never about other patients
-                    # than the ones the answer describes.
-                    if verified and states_count(ev.get("result", ""),
-                                                 verified["subject_count"]):
+                    # The button is labelled with its count; offer it only when that is
+                    # the figure the answer leads with, so it is never about other
+                    # patients than the ones the answer describes. If the answer leads
+                    # with one group of a breakdown, offer that group's cohort instead.
+                    figure = headline_figure(text)
+                    if verified and verified["subject_count"] != figure:
+                        verified = None
+                        sub = tracker.breakdown and figure is not None and subgroup_cohort(
+                            tracker.breakdown, figure, username, allow_superuser)
+                        checked = sub and verify_cohort(sub, username, allow_superuser)
+                        if checked and checked["subject_count"] == figure:
+                            state, verified = sub, checked
+                    if verified:
                         outcome["cohort"] = state
                         yield "cohort", verified
-                yield "answer", tidy(ev.get("result", ""))
+                if followups:
+                    yield "followups", followups
+                yield "answer", tidy(text)
                 outcome["answered"] = True
         proc.wait(timeout=10)
         outcome["rc"] = proc.returncode
@@ -885,7 +1142,8 @@ class Handler(BaseHTTPRequestHandler):
                 out["access_level"] = match["access_level"] if match else None
                 if match and match["access_level"] in ("phi", "deid"):
                     _, ids = dataset_brief(dataset, who, allow_su)
-                    out["suggestions"] = suggestions_for(ids)
+                    out["pool"] = suggestion_pool(dataset, who, allow_su, ids)
+                    out["features"] = FEATURES
         except Exception as exc:  # noqa: BLE001
             out["error"] = str(exc)
         return self._json(out)

@@ -15,6 +15,7 @@ Run against the synthea-10k deployment:
 
     .venv/bin/python tests/ask_e2e.py            # all cases, 4 at a time
     .venv/bin/python tests/ask_e2e.py asthma     # cases whose id contains "asthma"
+    .venv/bin/python tests/ask_e2e.py --suggestions   # every starter question in the pool
 
 Needs the Ask server on :8900 (CHIRON_MCP_ALLOW_SAVE=1) and Chiron's API on :8000.
 Exit code 0 means every case passed.
@@ -35,6 +36,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# For the few things done in-process (sessions, the shared-report fixture, cleanup).
+os.environ.setdefault("CHIRON_MCP_USERNAME", "demouser")
+os.environ.setdefault("CHIRON_MCP_ALLOW_SAVE", "1")
 
 ASK = os.environ.get("ASK_URL", "http://localhost:8900")
 API = os.environ.get("CHIRON_API", "http://localhost:8000")
@@ -626,12 +630,37 @@ SHARED_REPORT = "Team asthma cohort (shared)"
 
 
 def shared_report_id() -> int | None:
-    """The public report admin owns; demouser can open it but must not change it."""
+    """The public report admin owns; demouser can open it but must not change it.
+
+    Made here when missing, so the case never depends on a report someone might tidy
+    away in Chiron's own Reports page.
+    """
     from chiron.models import UserCreatedContent
 
     row = UserCreatedContent.objects.filter(
         name=SHARED_REPORT, creator__user__username="admin").first()
-    return row.pk if row else None
+    if row:
+        return row.pk
+    from chiron_mcp import server as S
+
+    made = S.open_in_ui(
+        DS, _asthma_cohort(), None, SHARED_REPORT,
+        "report", "Shared by admin for the delete-refusal test",
+        username="admin", allow_superuser=True,
+    )
+    if made.get("error") or not made.get("report_id"):
+        return None
+    UserCreatedContent.objects.filter(pk=made["report_id"]).update(public=True)
+    return made["report_id"]
+
+
+def _asthma_cohort() -> list:
+    from chiron_mcp import server as S
+
+    return S.chiron_edit_cohort(DS, [], {
+        "type": "add_entry", "concept_id": f"{P}condition__description",
+        "selected_categories": ["Asthma", "ASTHMA", "asthma", "Asthm"],
+    })["cohort_def"]
 
 
 def delete_refused(r: Result, case: Case, cookie: str) -> None:
@@ -739,7 +768,81 @@ CASES = [
 ]
 
 
+def run_suggestions() -> int:
+    """Every starter question in the pool the page picks from must give a real answer.
+
+    The pool is built from the dataset's own values, so a starter could name something
+    the tools cannot answer. Checked for each: no error or refusal, a figure, table or
+    chart, the button its feature promises (Report, or the Query hand-off), a Query
+    button that loads, and at most three sane follow-ups.
+    """
+    cookie = mint_session("demouser")
+    SESSIONS["demouser"] = cookie
+    pool = get_json(f"{ASK}/datasets?dataset={DS}", cookie).get("pool") or []
+    print(f"running {len(pool)} starter questions against {ASK} ...\n")
+
+    def one(item):
+        r = Result(Case(item["feature"], item["q"], "starter"))
+        t0 = time.time()
+        try:
+            ev = ask(item["q"], cookie)
+        except Exception as exc:  # noqa: BLE001
+            r.fail(f"/ask raised {exc}")
+            return r
+        r.seconds = time.time() - t0
+        answer = ev.get("answer") or ""
+        r.answer, r.steps = answer, ev.get("step", [])
+        link, cohort, followups = ev.get("link"), ev.get("cohort"), ev.get("followups") or []
+        if "error" in ev:
+            r.fail(f"error event: {str(ev['error'])[:140]}")
+        if not answer.strip():
+            r.fail("empty answer")
+        elif REFUSAL.search(answer) and item["feature"] != "filters":
+            r.fail("answered with a refusal")
+        has_table = bool(re.search(r"^\s*\|.*\|\s*$", answer, re.M))
+        if not (numbers(answer) or has_table or "```chart" in answer) and item["feature"] != "filters":
+            r.fail("no figure, table or chart")
+        low = answer.lower()
+        for phrase in CLUTTER:
+            if phrase in low:
+                r.fail(f"clutter: {phrase!r}")
+        if item["feature"] == "report":
+            m = re.search(r"/reports/(\d+)", (link or {}).get("url", ""))
+            if not m:
+                r.fail(f"no Report button (link: {link})")
+            else:
+                r.created.append(int(m.group(1)))
+        if item["feature"] == "query" and (not link or link.get("label") != "Query"):
+            r.fail(f"no Query hand-off (link: {link})")
+        if item["feature"] == "ranking" and "```chart" not in answer and not has_table \
+                and "chart" in item["q"].lower():
+            r.fail("asked for a chart, got none")
+        if cohort:
+            loaded = post_json(f"{ASK}/load", cohort, cookie)
+            if loaded.get("error"):
+                r.fail(f"Query button fails: {loaded['error'][:120]}")
+        if len(followups) > 3 or any(len(f) > 90 for f in followups):
+            r.fail(f"bad follow-ups {followups}")
+        return r
+
+    with ThreadPoolExecutor(max_workers=4) as pool_ex:
+        results = list(pool_ex.map(one, pool))
+    failed = [r for r in results if not r.ok]
+    for r in results:
+        mark = "PASS" if r.ok else "FAIL"
+        print(f"{mark}  {r.case.id:12} {r.seconds:5.0f}s  {r.case.q}")
+        for n in r.notes:
+            print(f"        {n}")
+        if not r.ok:
+            print("        answer: " + r.answer.replace("\n", " ")[:220])
+    cleanup(results)
+    print(f"\n{len(results) - len(failed)}/{len(results)} starter questions passed")
+    return 1 if failed else 0
+
+
 def main() -> int:
+    if "--suggestions" in sys.argv:
+        return run_suggestions()
     only = sys.argv[1:] and sys.argv[1]
     cases = [c for c in CASES if not only or only in c.id]
     print(f"computing ground truth from {SCHEMA} ...")

@@ -64,6 +64,14 @@ Two gotchas worth knowing:
 - **Conversation history.** A sidebar keeps past conversations (in the browser, per Chiron
   user and dataset), grouped by day and searchable. **New chat** starts another; reopening
   one continues it; the trash icon deletes it, and its transcript on the server.
+- **Starter questions that change.** Each new chat shows six, from six different features
+  (counts, combined filters, dates, "without", comparisons, breakdowns, rankings, visits,
+  medications, patient lists, reports, the Query hand-off), picked from a pool the server
+  builds from the dataset's own values. Features shown least recently come first, and
+  questions seen lately are skipped.
+- **Suggested follow-ups.** Claude ends each answer with three next steps its tools can
+  answer; the server takes them out of the text (dropping any that ask for averages, costs
+  or age groups) and the page shows them as chips under the latest answer.
 - **Breakdowns** by one or two Category variables, with exact distinct-patient counts per
   group and cell, spelling variants merged, and patients with no recorded value called out.
 - **Reports**: save, rename, change filters or columns, make public or private, delete.

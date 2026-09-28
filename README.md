@@ -76,7 +76,8 @@ What the Ask tab does:
   negation done right ("without hypertension" is 7,861, not the 4,758 a naive filter gives).
 - **Follow-up questions.** The chat is a conversation: "them", "those patients", "now only
   women" refer to the previous answer's cohort. **New chat** starts another, and past
-  conversations stay in a searchable sidebar.
+  conversations stay in a searchable sidebar. Under each answer, three suggested
+  follow-ups; each new chat offers six fresh starters, one per feature.
 - **Breakdowns** by one or two variables ("by gender", "by gender and race"): exact distinct
   patients per group and per cell, as a table and chart, with patients who have no recorded
   value called out so the table adds up.
@@ -627,8 +628,12 @@ CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusal
 checks everything a user would click against ground truth computed independently in raw SQL:
 the stated figure, that the Query button loaded into Chiron makes Chiron's own count agree, that
 a report opens with columns and the same subjects, that refusals leak nothing, and that no answer
-contains an email address or file path. Every starter question the page suggests is a case, so a
-suggestion cannot ship broken. It is written against the 10,000-patient Synthea dataset.
+contains an email address or file path. It is written against the 10,000-patient Synthea dataset.
+
+The page's starter questions come from a pool of about 130 built from the dataset's own values
+and tagged by feature; `tests/ask_e2e.py --suggestions` asks every one of them and fails any that
+errors, is refused, shows no figure, or lacks the button its feature promises, so a starter cannot
+ship broken.
 
 It also runs whole conversations: three follow-ups that each narrow the last cohort (841, 445,
 370, each checked in Chiron); "now show their medications", which must give the asthma
