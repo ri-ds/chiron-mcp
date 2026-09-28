@@ -105,6 +105,10 @@ rm -rf ~/.claude/projects/*chiron-ask*
   superuser is refused unless `CHIRON_MCP_ALLOW_SUPERUSER=1`.
 - **Cookies ignore the port**, which is why this works when Chiron, the UI and the Ask
   server share a host. On separate hosts the Ask server cannot see the Chiron session.
+- **Claude can only call Chiron.** Each question runs `claude -p` with `--tools ""` (no
+  shell, file or web tools), `--strict-mcp-config` (no other MCP servers), no settings
+  files and Ask's own system prompt, in an empty working directory. Asked to read a file
+  on the server, it has no tool to do it with.
 - **Bind it to localhost** or put it behind your own auth before exposing it.
 - **It inherits the operator's Claude usage limits**, and every question is a `claude`
   process on the operator's machine.

@@ -207,7 +207,9 @@ function scroll() { document.querySelector('main').scrollTop = 1e9; }
 function settle() { scroll(); requestAnimationFrame(scroll); setTimeout(scroll, 350); }
 
 // --- who, and starter questions for this dataset ------------------------------
-fetch('/datasets?dataset=' + encodeURIComponent(DATASET)).then(r => r.json()).then(d => {
+// Every call below is a relative URL, so the page works at the Ask server's own root
+// (http://localhost:8900/) and behind a proxy that mounts it at a prefix (/ask/).
+fetch('datasets?dataset=' + encodeURIComponent(DATASET)).then(r => r.json()).then(d => {
   if (d.identity) who.textContent = 'as ' + d.identity;
   (d.suggestions || []).forEach(s => {
     const b = el('button', 'sugg', s);
@@ -286,7 +288,7 @@ clearBtn.onclick = () => {
   // Also drop the conversation on the server, which deletes its transcript now rather
   // than when it would expire.
   if (threadId) {
-    fetch('/forget', {
+    fetch('forget', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ thread: threadId }),
     }).catch(() => {});
@@ -333,7 +335,7 @@ function ask() {
   history.push(turn);
 
   const src = new EventSource(
-    '/ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET) +
+    'ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET) +
     (threadId ? '&thread=' + encodeURIComponent(threadId) : ''));
 
   src.addEventListener('thread', e => { try { saveThread(JSON.parse(e.data)); } catch (_) {} });
@@ -425,7 +427,7 @@ function offerLoad(target, cohort) {
   b.onclick = async () => {
     b.disabled = true; b.textContent = 'Loading…';
     try {
-      const r = await fetch('/load', {
+      const r = await fetch('load', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cohort),
       });

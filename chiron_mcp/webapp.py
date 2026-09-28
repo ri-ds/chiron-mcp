@@ -134,8 +134,14 @@ Saving: call chiron_open_in_ui only when the user asks to save a report
 (mode="report") or to load the cohort into their query (mode="workspace"). Pass as
 columns the variables you filtered on.
 
+Aggregate-only accounts (access level agg) cannot count or list patients; for them use
+chiron_breakdown, which masks small counts the way Chiron's analysis view does, and say
+the figures are aggregate. Never try to get patient rows for them.
+
 If a tool refuses because of access, say in one sentence that this account cannot see
-that data, and stop. Do not work around it.
+that data, and stop. Do not work around it. The same goes for a question about a dataset
+you cannot find or open: say so and stop, and never answer with figures from a different
+dataset instead.
 
 Your context also contains details of the machine this runs on: an email address, file
 paths, a working directory. They belong to whoever set the server up, not to the person
@@ -246,7 +252,15 @@ def request_identity(cookie_header: str | None) -> tuple[str, bool]:
     who = session_username(cookie_header)
     if who:
         return who, True
+    if REQUIRE_SESSION:
+        return None, False
     return CONFIG.username, False
+
+
+# On a public deployment nobody should get the fallback identity: every question must
+# come from someone logged into Chiron. The Docker stack turns this on.
+REQUIRE_SESSION = os.environ.get("CHIRON_MCP_REQUIRE_SESSION") == "1"
+NOT_LOGGED_IN = "Log in to Chiron first; Ask answers as the person logged in."
 
 
 def _mcp_config(username: str, allow_superuser: bool) -> Path:
@@ -535,6 +549,20 @@ def tidy(answer: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", out).strip()
 
 
+_NOT_LOGGED_IN = re.compile(
+    r"invalid api key|please run /login|not logged in|log ?in to|authenticat|oauth|"
+    r"credit balance|x-api-key", re.I)
+
+
+def explain_claude_error(text: str) -> str:
+    """Turn the CLI's own wording for a missing or expired login into what to do."""
+    if _NOT_LOGGED_IN.search(text or ""):
+        return ("Ask is not connected to a Claude account on this server yet, or its "
+                "login has expired. Whoever runs the server can fix it: docker compose "
+                "exec -it ask claude, then /login.")
+    return text
+
+
 def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: dict,
                  inherited: dict | None = None):
     """One headless Claude run, translated into page events.
@@ -578,7 +606,7 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                         tracker.tool_result(block)
             elif kind == "result":
                 if ev.get("is_error"):
-                    yield "error", ev.get("result") or "Claude returned an error."
+                    yield "error", explain_claude_error(ev.get("result") or "Claude returned an error.")
                     outcome["answered"] = True
                     continue
                 # Earlier answers may carry Report buttons for what was just deleted;
@@ -665,6 +693,10 @@ def ask_stream(
                 "--mcp-config", str(cfg),
                 "--strict-mcp-config",
                 "--setting-sources", "",
+                # No built-in tools at all (Bash, Read, Write, WebFetch...): the only thing
+                # a question can make Claude do is call Chiron. Without this, a visitor
+                # could ask it to read files on the server, the Claude login among them.
+                "--tools", "",
                 "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in TOOLS),
                 "--system-prompt", SYSTEM_PROMPT,
                 "--output-format", "stream-json",
@@ -684,7 +716,7 @@ def ask_stream(
                 yield "thread", tid
                 continue
             if outcome.get("stderr"):
-                yield "error", outcome["stderr"][:500]
+                yield "error", explain_claude_error(outcome["stderr"][:500])
             break
         THREADS.touch(tid, username, dataset, outcome.get("cohort"))
     finally:
@@ -738,9 +770,35 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):  # keep the console quiet
         pass
 
+    def _allowed_origins(self) -> set[str]:
+        allowed = {
+            f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}",
+            CONFIG.ui_url,
+        }
+        extra = os.environ.get("CHIRON_MCP_ALLOWED_ORIGINS", "")
+        return allowed | {o.strip() for o in extra.split(",") if o.strip()}
+
     def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        # Only the page itself calls this server, from its own origin, so no other site
+        # is ever told it may read the answers. (It used to say "*".)
+        origin = self.headers.get("Origin")
+        if origin and origin in self._allowed_origins():
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+
+    def _same_site(self) -> bool:
+        """Refuse requests another site's page makes a visitor's browser send.
+
+        Browsers label every request with Sec-Fetch-Site; the Ask page's own requests
+        are "same-origin". Without this, a page elsewhere could start question runs on
+        the operator's Claude account just by being visited. Tools such as curl send no
+        such header and are judged by Origin alone.
+        """
+        site = self.headers.get("Sec-Fetch-Site")
+        if site and site not in ("same-origin", "none"):
+            return False
+        return self._origin_ok()
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -756,8 +814,12 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/health":
             return self._json({"ok": True, "identity": CONFIG.username})
         if url.path == "/datasets":
+            if not self._same_site():
+                return self.send_error(403, "cross-site request refused")
             return self._datasets()
         if url.path == "/ask":
+            if not self._same_site():
+                return self.send_error(403, "cross-site request refused")
             return self._ask(parse_qs(url.query))
 
         self.send_error(404)
@@ -799,6 +861,9 @@ class Handler(BaseHTTPRequestHandler):
         who, allow_su = request_identity(self.headers.get("Cookie"))
         dataset = (parse_qs(urlparse(self.path).query).get("dataset") or [None])[0]
         out: dict = {"identity": who, "datasets": [], "suggestions": []}
+        if not who:
+            out["error"] = NOT_LOGGED_IN
+            return self._json(out)
         try:
             from chiron import models
             from chiron_mcp import identity
@@ -836,13 +901,7 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         if not origin:
             return True  # curl, scripts, and same-origin form posts from this page
-        allowed = {
-            f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}",
-            CONFIG.ui_url,
-        }
-        extra = os.environ.get("CHIRON_MCP_ALLOWED_ORIGINS", "")
-        allowed |= {o.strip() for o in extra.split(",") if o.strip()}
-        return origin in allowed
+        return origin in self._allowed_origins()
 
     def _load(self):
         """Replace the browser user's live Chiron query with a cohort from an answer.
@@ -852,7 +911,7 @@ class Handler(BaseHTTPRequestHandler):
         CHIRON_MCP_USERNAME when there is none.  Same guards as chiron_open_in_ui:
         CHIRON_MCP_ALLOW_SAVE must be on, and an errored definition is refused.
         """
-        if not self._origin_ok():
+        if not self._same_site():
             return self._json({"error": "Refused: request came from an untrusted origin."})
         try:
             length = int(self.headers.get("Content-Length") or 0)
@@ -867,6 +926,8 @@ class Handler(BaseHTTPRequestHandler):
         from chiron_mcp import server as S
 
         who, allow_su = request_identity(self.headers.get("Cookie"))
+        if not who:
+            return self._json({"error": NOT_LOGGED_IN})
         result = S.open_in_ui(
             dataset_id, cohort_def, body.get("columns") or [], mode="workspace",
             username=who, allow_superuser=allow_su,
@@ -876,7 +937,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _forget(self):
         """Clear chat: drop the conversation and delete its transcript now."""
-        if not self._origin_ok():
+        if not self._same_site():
             return self._json({"error": "Refused: request came from an untrusted origin."})
         try:
             length = int(self.headers.get("Content-Length") or 0)
@@ -906,6 +967,10 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         who, allow_su = request_identity(self.headers.get("Cookie"))
+        if not who:
+            send("error", NOT_LOGGED_IN)
+            send("done", "")
+            return
         thread = (params.get("thread") or [None])[0]
         try:
             for event, payload in ask_stream(question, dataset, who, allow_su, thread):

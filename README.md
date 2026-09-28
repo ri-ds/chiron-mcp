@@ -90,6 +90,13 @@ What the Ask tab does:
 Questions take roughly 10 to 40 seconds, because the model makes several Chiron tool
 calls. Each one shows as a chip while it works.
 
+### Everything in Docker, at your own address
+
+`deploy/` runs the same system as containers behind one HTTPS address and a password,
+with Chiron's metadata in Postgres: `cd deploy && ./setup.sh --domain chiron.example.org`.
+See [deploy/README.md](deploy/README.md), which also has a prompt to paste into Claude to
+do the whole setup, and how to bring the 10,000-patient dataset along.
+
 ### The demo data
 
 Four datasets, the useful one being **300 synthetic patients** (Synthea) with conditions,
@@ -120,6 +127,7 @@ at your own Chiron. See [Configuration](#configuration).
 - [What this server does](#what-this-server-does)
 - [Why it runs in-process](#why-it-runs-in-process-and-not-over-chirons-rest-api)
 - [Install](#install)
+- [Docker deployment](deploy/README.md)
 - [Setup guide for an AI agent](#setup-guide-for-an-ai-agent)
 - [Configuration](#configuration)
 - [The tools](#the-tools)
@@ -410,7 +418,7 @@ Every setting is an environment variable. Defaults are the conservative end of e
 | `CHIRON_MCP_CHIRON_SRC` | auto-discovered | The `is4r-chiron` checkout |
 | `CHIRON_MCP_PROJECT_DIR` | `<src>/test_project` | The Django host project |
 | `CHIRON_MCP_BASE_SETTINGS` | `project.settings` | Host project's settings module |
-| `CHIRON_MCP_METADATA_DB` | *(host project's)* | Metadata SQLite |
+| `CHIRON_MCP_METADATA_DB` | *(host project's)* | Metadata database: a SQLite file path, or a `postgresql://` URL |
 | `CHIRON_MCP_WAREHOUSE_URL` | *(host project's)* | SQLAlchemy warehouse URL |
 | `CHIRON_MCP_UI_URL` | `http://localhost:3000` | Where Query and Report links point |
 
@@ -717,6 +725,8 @@ chiron_mcp/
 scripts/
   harness.py          deployment check with no MCP involved
   grant_access.py     grant, update, revoke or list ChironUser rows
+  export_dataset.py   pack one dataset (dictionary + warehouse) into a file
+deploy/               the whole stack in Docker: compose.yml, setup.sh, check.py
 tests/
   safety.py           permission and whole-dataset invariants
   smoke.py            end-to-end tool exercise

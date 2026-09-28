@@ -124,7 +124,8 @@ class Config:
                 "CHIRON_MCP_PROJECT_DIR to your Chiron host project (the directory holding "
                 "manage.py), and CHIRON_MCP_BASE_SETTINGS if it is not `project.settings`."
             )
-        if self.metadata_db and not Path(self.metadata_db).exists():
+        if (self.metadata_db and "://" not in self.metadata_db
+                and not Path(self.metadata_db).exists()):
             raise SystemExit(f"CHIRON_MCP_METADATA_DB={self.metadata_db!r} does not exist.")
         if not self.username:
             raise SystemExit(

@@ -10,8 +10,11 @@ import {
 } from "@mui/icons-material";
 import { useParams } from "react-router-dom";
 
-// Where the "Ask Chiron" server is running (python -m chiron_mcp.webapp).
-const ASK_URL = "http://localhost:8900";
+// Where the "Ask Chiron" server is running (python -m chiron_mcp.webapp). Local
+// development talks to it directly; the Docker deployment builds with
+// VITE_ASK_URL=/ask so it is served from the same origin as Chiron, which is what lets
+// it read the Chiron login.
+const ASK_URL = (import.meta.env.VITE_ASK_URL || "http://localhost:8900").replace(/\/$/, "");
 
 /**
  * Natural-language question box for the current dataset.

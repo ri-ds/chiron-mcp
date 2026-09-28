@@ -34,7 +34,9 @@ rm -rf .venv
 "$PY" -m venv .venv
 .venv/bin/pip install -q --upgrade pip
 echo "Installing dependencies (takes a minute)..."
-.venv/bin/pip install -q "mcp>=2.0.0" -r "$CHIRON_SRC/requirements/base.txt"
+# constraints.txt pins the exact versions this was tested with; without it a newer
+# SQLAlchemy silently switches Postgres drivers and every warehouse query fails.
+.venv/bin/pip install -q -c constraints.txt "mcp>=2.0.0" -r "$CHIRON_SRC/requirements/base.txt"
 # Install this package so the chiron-mcp console script exists. MCP clients do not
 # reliably honour a "cwd" setting, so "python -m chiron_mcp.server" can fail with
 # ModuleNotFoundError; the console script works from any directory.

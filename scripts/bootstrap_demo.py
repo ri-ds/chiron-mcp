@@ -10,6 +10,11 @@ Needs a running Postgres. The bundled compose file provides one:
 
 Safe to re-run: it rebuilds the demo metadata database from scratch each time. It only ever
 touches the demo database, never a real deployment.
+
+With CHIRON_MCP_METADATA_DB set to a postgresql:// URL (the Docker deployment), it builds
+into that database instead and never deletes anything. `--resume` then does only what is
+missing (a no-op once the demo is complete), so a container can run it on every start and
+an interrupted first start finishes on the next one.
 """
 
 import os
@@ -40,14 +45,18 @@ DEMO_USERS = [
 
 
 def main() -> int:
-    fresh = "--keep" not in sys.argv
-    DEMO_DB.parent.mkdir(parents=True, exist_ok=True)
-    if fresh and DEMO_DB.exists():
-        DEMO_DB.unlink()
-        print(f"removed existing {DEMO_DB.name}")
+    configured = os.environ.get("CHIRON_MCP_METADATA_DB", "")
+    use_postgres = configured.startswith(("postgres://", "postgresql://"))
+    target = configured if use_postgres else str(DEMO_DB)
+    if not use_postgres:
+        fresh = "--keep" not in sys.argv
+        DEMO_DB.parent.mkdir(parents=True, exist_ok=True)
+        if fresh and DEMO_DB.exists():
+            DEMO_DB.unlink()
+            print(f"removed existing {DEMO_DB.name}")
 
     # Point this process at the demo databases before Django starts.
-    os.environ["CHIRON_MCP_METADATA_DB"] = str(DEMO_DB)
+    os.environ["CHIRON_MCP_METADATA_DB"] = target
     os.environ["CHIRON_MCP_WAREHOUSE_URL"] = DEMO_WAREHOUSE
     os.environ.setdefault("CHIRON_MCP_USERNAME", "demouser")
 
@@ -55,8 +64,8 @@ def main() -> int:
     from chiron_mcp.config import CONFIG
 
     print(f"chiron source : {CONFIG.chiron_src}")
-    print(f"metadata db   : {DEMO_DB}")
-    print(f"warehouse     : {DEMO_WAREHOUSE}")
+    print(f"metadata db   : {_redact(target)}")
+    print(f"warehouse     : {_redact(DEMO_WAREHOUSE)}")
     print()
 
     ensure_django()
@@ -69,33 +78,49 @@ def main() -> int:
     print("[1/5] creating metadata tables")
     call_command("migrate", verbosity=0, interactive=False)
 
-    print("[2/5] loading the bundled data dictionary")
-    # chiron_restore_dd reads CHIRON_DATA_DICT_BACKUP_DIR, relative to the project dir.
+    # Chiron's own migrations create a placeholder dataset called "default", which the
+    # data dictionary restore replaces; it does not count as data.
+    real = models.Dataset.objects.exclude(unique_id="default")
+    resume = use_postgres and "--resume" in sys.argv
+    if use_postgres and real.exists() and not resume:
+        names = ", ".join(real.values_list("unique_id", flat=True))
+        print(f"The metadata database already has datasets ({names}). This script only "
+              "builds into an empty one; --resume finishes a build that was interrupted.")
+        return 1
+
+    if real.exists():
+        print("[2/5] data dictionary already loaded")
+    else:
+        print("[2/5] loading the bundled data dictionary")
+        # chiron_restore_dd reads CHIRON_DATA_DICT_BACKUP_DIR, relative to the project dir.
+        cwd = os.getcwd()
+        os.chdir(CONFIG.project_dir)
+        try:
+            call_command("chiron_restore_dd", verbosity=0)
+        finally:
+            os.chdir(cwd)
+        n_ds = models.Dataset.objects.count()
+        n_concepts = models.Concept.objects.count()
+        print(f"      {n_ds} dataset(s), {n_concepts} concept(s)")
+
+    # Only the demo's own datasets are loaded from the bundled CSVs. Anything else (an
+    # imported dataset) arrived with its warehouse tables and has no source files here.
+    # A dataset counts as loaded once Chiron has logged a completed ETL for it, which it
+    # does only after the very last step, so an interrupted load is simply redone.
+    demo_ids = _bundled_dataset_ids(CONFIG.project_dir)
+    print("[3/5] running ETL into the warehouse (this is the slow step)")
     cwd = os.getcwd()
     os.chdir(CONFIG.project_dir)
     try:
-        call_command("chiron_restore_dd", verbosity=0)
-    finally:
-        os.chdir(cwd)
-    n_ds = models.Dataset.objects.count()
-    n_concepts = models.Concept.objects.count()
-    print(f"      {n_ds} dataset(s), {n_concepts} concept(s)")
-
-    print("[3/5] running ETL into the warehouse (this is the slow step)")
-    os.chdir(CONFIG.project_dir)
-    try:
-        for oDataset in models.Dataset.objects.all():
+        for oDataset in models.Dataset.objects.filter(unique_id__in=demo_ids):
+            done = models.EtlLog.objects.filter(
+                dataset=oDataset.unique_id, status=models.EtlLog.Status.ETL_COMPLETED
+            ).exists()
+            if resume and done:
+                print(f"      {oDataset.unique_id}: already loaded")
+                continue
             print(f"      {oDataset.unique_id} ...", flush=True)
-            try:
-                call_command(
-                    "chiron_run_etl",
-                    dataset=oDataset.unique_id,
-                    force=True,
-                    verbosity=0,
-                )
-            except TypeError:
-                # Older signature takes the dataset positionally.
-                call_command("chiron_run_etl", oDataset.unique_id, force=True, verbosity=0)
+            call_command("chiron_run_etl", oDataset.unique_id, force=True, verbosity=0)
     finally:
         os.chdir(cwd)
 
@@ -139,6 +164,9 @@ def main() -> int:
     if not ok:
         print("\nNo dataset returned data. Is Postgres running? (docker compose up -d)")
         return 1
+    if use_postgres:
+        print(f"\nDemo ready. {ok} dataset(s) queryable.")
+        return 0
 
     print(f"""
 Demo ready. {ok} dataset(s) queryable.
@@ -160,6 +188,22 @@ Add this to your Claude config, then restart the client:
 }}
 """)
     return 0
+
+
+def _bundled_dataset_ids(project_dir: str) -> set[str]:
+    """The datasets in the bundled data dictionary, i.e. the ones the demo loads."""
+    import json
+
+    backup = Path(project_dir) / "chiron_config" / "backups" / "full_dd.json"
+    return {row["fields"]["unique_id"] for row in json.loads(backup.read_text())
+            if row.get("model") == "chiron.dataset"}
+
+
+def _redact(url: str) -> str:
+    """A connection string with its password hidden, for printing."""
+    import re
+
+    return re.sub(r"(://[^:/@]+:)[^@]+@", r"\1***@", url)
 
 
 if __name__ == "__main__":

@@ -11,3 +11,9 @@ vendor/is4r-chiron-ui/dist/
 # runtime MCP configs written by the Ask server; contain local paths and credentials
 chiron_mcp/.mcp-web*.json
 .mcp-web*.json
+
+# deployment secrets and data bundles (deploy/setup.sh, scripts/export_dataset.py)
+deploy/gate.caddy
+deploy/.gate-password
+deploy/data/
+*.chiron.tar.gz

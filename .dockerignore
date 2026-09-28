@@ -1,0 +1,21 @@
+# Keep the build context small and free of local state. The UI's node_modules alone is
+# over 500 MB, and nothing machine-specific (venvs, databases, secrets) belongs in an image.
+.git
+.venv
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/dist
+demo/
+**/*.sqlite3
+**/*.sqlite3.bak-*
+.env
+**/.env
+deploy/gate.caddy
+deploy/.gate-password
+deploy/data/
+**/*.dump
+**/*.tar.gz
+.mcp-web*.json
+**/.mcp-web*.json

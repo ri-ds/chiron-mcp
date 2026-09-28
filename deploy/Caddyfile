@@ -1,0 +1,55 @@
+# Routes for the whole site. SITE_ADDRESS (from .env) decides how it is served:
+#   chiron.example.org  Caddy gets a real certificate itself (ports 80 and 443 must
+#                       reach this machine)
+#   :80                 plain HTTP on any host name, for a tunnel (Cloudflare) that does
+#                       TLS in front, or for trying it on this machine
+{
+	servers {
+		# The tunnel container and Docker's own proxies are on private addresses;
+		# trusting them is what passes "this was HTTPS" through to Django.
+		trusted_proxies static private_ranges
+	}
+}
+
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# A password in front of everything (see setup.sh). The site is on the internet
+	# and Chiron's demo login page has one-click buttons, so without this anyone could
+	# log in, and ask questions on your Claude account.
+	import /etc/caddy/gate.caddy
+
+	# The Ask server, on the same origin as Chiron so it can read the Chiron login.
+	redir /ask /ask/ 308
+	handle_path /ask/* {
+		reverse_proxy ask:8900 {
+			# answers stream as server-sent events; pass each one on at once
+			flush_interval -1
+		}
+	}
+
+	# Django's own static files (admin, login page), collected into a shared volume.
+	handle /static/* {
+		root * /srv
+		file_server
+	}
+
+	# Everything Chiron's Django serves for the UI.
+	@django path /api/* /accounts/* /admin/* /backend/* /ajax/*
+	handle @django {
+		reverse_proxy chiron:8000
+	}
+
+	# The React UI; client-side routes fall back to index.html.
+	handle {
+		root * /srv/ui
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

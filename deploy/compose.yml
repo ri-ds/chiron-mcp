@@ -1,0 +1,124 @@
+# Chiron with the Ask tab, the whole stack on one machine, reachable at one address.
+#
+#   cd deploy
+#   ./setup.sh --domain chiron.example.org      # first time: writes .env, builds, starts
+#   docker compose up -d                        # after that
+#
+# Services: db (Postgres: warehouse + Chiron metadata), chiron (Django), ask (the Ask
+# server with the Claude Code CLI), web (Caddy: the UI, TLS, the password gate), and,
+# only with --profile tunnel, a Cloudflare tunnel. Only web publishes a port.
+name: chiron-ask
+
+x-app-env: &app-env
+  CHIRON_MCP_METADATA_DB: postgresql://chiron:${POSTGRES_PASSWORD}@db:5432/chiron_meta
+  CHIRON_MCP_WAREHOUSE_URL: postgresql://chiron:${POSTGRES_PASSWORD}@db:5432/chiron
+  CHIRON_MCP_USERNAME: demouser
+  CHIRON_MCP_UI_URL: ${PUBLIC_URL}
+  CHIRON_PUBLIC_URL: ${PUBLIC_URL}
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?run ./setup.sh first}
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: chiron
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./setup.sh first}
+      POSTGRES_DB: chiron
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chiron -d chiron_meta"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  chiron:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: chiron-ask-app:latest
+    command: ["/app/deploy/entrypoint-chiron.sh"]
+    environment:
+      <<: *app-env
+    volumes:
+      - static:/app/static
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8000), 3).close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      # the first start builds the demo (a real ETL), which takes a few minutes
+      start_period: 15m
+    restart: unless-stopped
+
+  ask:
+    image: chiron-ask-app:latest
+    pull_policy: never
+    command: ["python", "-m", "chiron_mcp.webapp"]
+    environment:
+      <<: *app-env
+      CHIRON_MCP_ALLOW_SAVE: "1"
+      # every question must come from someone logged into Chiron; no fallback account
+      CHIRON_MCP_REQUIRE_SESSION: "1"
+      CHIRON_MCP_MAX_ACCESS_LEVEL: ${ASK_MAX_ACCESS_LEVEL:-deid}
+      CHIRON_MCP_THREAD_TTL_HOURS: ${ASK_THREAD_TTL_HOURS:-12}
+    volumes:
+      # The Claude login (made once with: docker compose exec -it ask claude) and the
+      # Ask server's conversation state live in this home directory.
+      - ask-home:/home/app
+    depends_on:
+      chiron:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8900/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+      args:
+        VITE_MUI_KEY: ${VITE_MUI_KEY:-}
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - static:/srv/static:ro
+      - ./gate.caddy:/etc/caddy/gate.caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - chiron
+      - ask
+    restart: unless-stopped
+
+  # Only with:  docker compose --profile tunnel up -d
+  # For a domain whose DNS is on Cloudflare: the tunnel reaches out from this machine,
+  # so no router ports need opening. In the Cloudflare dashboard, point the tunnel's
+  # public hostname at http://web:80.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    profiles: ["tunnel"]
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  static:
+  ask-home:
+  caddy-data:
+  caddy-config:

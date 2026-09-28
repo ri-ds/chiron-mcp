@@ -20,14 +20,34 @@ for _name in dir(_base):
 
 # Metadata DB. Only overridden when CHIRON_MCP_METADATA_DB is set; otherwise the host
 # project's own DATABASES setting is inherited untouched, which is what a fresh checkout
-# wants. Point it at a different file to read a deployment's live metadata.
-if CONFIG.metadata_db:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": CONFIG.metadata_db,
-        }
+# wants. Point it at a different file to read a deployment's live metadata, or at a
+# postgresql:// URL. Postgres is the safe choice whenever Chiron and this server run in
+# different places (say Chiron in Docker, this on the host): SQLite's file locks do not
+# cross that boundary, and concurrent writers then corrupt reads.
+def _database_from_url(url: str) -> dict:
+    from urllib.parse import unquote, urlparse
+
+    u = urlparse(url)
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": unquote(u.path.lstrip("/")),
+        "USER": unquote(u.username or ""),
+        "PASSWORD": unquote(u.password or ""),
+        "HOST": u.hostname or "localhost",
+        "PORT": str(u.port or 5432),
     }
+
+
+if CONFIG.metadata_db:
+    if CONFIG.metadata_db.startswith(("postgres://", "postgresql://")):
+        DATABASES = {"default": _database_from_url(CONFIG.metadata_db)}
+    else:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": CONFIG.metadata_db,
+            }
+        }
 
 # Warehouse: reached only through SQLAlchemy, never the Django ORM. Same rule.
 if CONFIG.warehouse_url:
