@@ -69,6 +69,7 @@ filter builder:
 > Break down asthma patients by gender and race
 > Show the top 10 medications as a chart
 > Save an asthma cohort as a report *then* Rename it *then* Delete it
+> Show asthma patients in my results *then* Add birthdate and city *then* Sort by birthdate, newest first
 
 What the Ask tab does:
 
@@ -81,9 +82,16 @@ What the Ask tab does:
 - **Breakdowns** by one or two variables ("by gender", "by gender and race"): exact distinct
   patients per group and per cell, as a table and chart, with patients who have no recorded
   value called out so the table adds up.
+- **Results tab**: put a cohort into Chiron's Results, add or remove columns, reorder
+  them, sort (ask again to reverse), and change how each column is shown: stacked (one row
+  per value), list, count, most frequent, has value ("whether they take albuterol", as
+  true/false or a count), or sum, average, median, min, max for numbers and earliest or
+  latest for dates. Each change is a new step in Chiron's undo history, and a **Results**
+  button opens the updated table.
 - **Reports**: save a cohort as a Chiron report, then rename it, change its filters or
-  columns, make it public or private, or delete it. Only the report's creator can change or
-  delete it, and deletion needs its exact name.
+  columns (the same column, sort and aggregation changes as Results), make it public or
+  private, or delete it. Only the report's creator can change or delete it, and deletion
+  needs its exact name.
 - **Query · N** under any cohort answer: one click loads those filters into Chiron's query
   builder, and N is Chiron's own count for them.
 - **Tables and charts** for rankings and comparisons. Two-variable breakdowns chart as
@@ -169,13 +177,16 @@ subject-visibility filter into the WHERE clause. A saved "report" is just a stor
 
 ## What this server does
 
-It exposes that machinery as **17 MCP tools**, so cohort building can happen in conversation.
+It exposes that machinery as **23 MCP tools** (19 for analysts, 4 for operators), so cohort
+building can happen in conversation.
 
 It is **stateless by design**: every tool takes a `cohort_def` and returns one, so the model
-holds the working query and Chiron holds none of it. No tool writes a snapshot, so using this
-server never disturbs a researcher's saved workspace in the Chiron UI.
+holds the working query and Chiron holds none of it.
 
-It is **read-only**. Nothing here runs an ETL, alters a schema, or saves a report.
+It is **read-only by default**. Nothing here runs an ETL or alters a schema. Only with
+`CHIRON_MCP_ALLOW_SAVE=1` can tools save or change the identity's own reports, or write its
+query workspace (the Results tab), and workspace writes add a snapshot rather than erase
+the undo history.
 
 ## Why it runs in-process, and not over Chiron's REST API
 
@@ -255,7 +266,7 @@ absolute paths. On macOS that file is
 }
 ```
 
-Restart the client. Seventeen `chiron_*` tools appear.
+Restart the client. The `chiron_*` tools appear (19, or 23 with `CHIRON_MCP_OPERATOR`).
 
 ### Grant the service user access
 
@@ -470,6 +481,16 @@ See `.env.example`. A superuser is refused in analyst mode; point it at a dedica
 | `chiron_crosstab` | Chiron's own analysis-view pivot (preformatted text); `chiron_breakdown` is usually better |
 | `chiron_saved_reports` | Browse saved reports (`scope="mine"` for your own), or open one's stored definitions |
 | `chiron_run_saved_report` | Run a saved report by id |
+| `chiron_column_options` | How one variable can be shown as a column: its default and every aggregation, with the settings each takes |
+
+### The Results tab
+
+Both write tools require `CHIRON_MCP_ALLOW_SAVE=1`.
+
+| Tool | Purpose |
+|---|---|
+| `chiron_results` | What the identity's Results tab holds now: filters, columns with their aggregation, sort, and a preview |
+| `chiron_update_results` | Put a cohort into Results and add, remove, reorder, sort or re-aggregate columns. Previews before saving, and saves a new snapshot so Chiron's undo still works |
 
 ### Change saved reports
 
@@ -477,7 +498,7 @@ Both require `CHIRON_MCP_ALLOW_SAVE=1`, and both act only on reports the identit
 
 | Tool | Purpose |
 |---|---|
-| `chiron_update_report` | Rename, re-describe, change filters or columns, or make public/private. Validates and recounts the new cohort |
+| `chiron_update_report` | Rename, re-describe, change filters, or make public/private; add, remove, reorder, sort or re-aggregate columns. Validates and previews before saving |
 | `chiron_delete_report` | Permanently delete. `confirm_name` must equal the report's exact current name |
 
 ### Operations
@@ -573,6 +594,28 @@ share one workspace and will overwrite each other. Give each person their own ac
 `mode="report"`, which has no such problem.
 
 Set `CHIRON_MCP_UI_URL` to point the links at your deployment (default `http://localhost:3000`).
+
+### Columns, aggregation and the Results tab
+
+Chiron groups a table's rows by its **stacked** columns and combines every other column
+within each group. With only gender stacked there is one row per gender; stack patient-level
+columns such as birthdate and city to get about one row per patient. Each column is
+`{"concept_id", "aggregation", "settings", "alias"}`, where `aggregation` is `"stack"` or one
+of the variable's methods from `chiron_column_options` (Chiron's own default is stack on the
+patient record and `list_distinct` elsewhere). Settings are checked against the method's
+inputs, so `has_value` takes `{"values": [...], "return_value": "boolean" | "count"}`.
+
+`chiron_update_results` and `chiron_update_report` take the same edits, applied through
+Chiron's own table transformations in this order: `remove_columns`, `add_columns`,
+`set_aggregation` (`[{column, aggregation, settings}]`), `order` (these columns first, the
+rest after them), `sort` (`[{column, direction: "asc" | "desc"}]`, replacing the sort;
+`[]` clears it). A column can be named by its entry id,
+its concept id, or the label `chiron_results` gives ("medication description"); an ambiguous
+or unknown name is refused with the columns that exist. Both preview the result before
+saving, so a change Chiron cannot run is never stored.
+
+Unlike `chiron_open_in_ui(mode="workspace")`, `chiron_update_results` saves new active
+snapshots instead of clearing history, so Chiron's undo goes back to the previous table.
 
 ## Access model and safety
 
@@ -725,7 +768,7 @@ chiron_mcp/
   django_settings.py  inherits the host project's settings, overrides only the databases
   identity.py         identity resolution and the re-implemented permission gates
   filters.py          cohort filter input schemas, transcribed from validate_form()
-  server.py           the 20 tools
+  server.py           the 23 tools
   webapp.py           the Ask chat server embedded in the Chiron UI
   webui/index.html    the chat page (markdown, tables, charts, buttons)
 scripts/

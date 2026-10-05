@@ -74,11 +74,18 @@ Two gotchas worth knowing:
   or age groups) and the page shows them as chips under the latest answer.
 - **Breakdowns** by one or two Category variables, with exact distinct-patient counts per
   group and cell, spelling variants merged, and patients with no recorded value called out.
-- **Reports**: save, rename, change filters or columns, make public or private, delete.
+- **Results tab**: put a cohort into Chiron's Results; add, remove or reorder columns;
+  sort (asking again reverses it); and change how a column is shown: stacked, list, count,
+  most frequent, has value (true/false or a count of chosen values), sum, average, median,
+  min or max for numbers, earliest or latest for dates. Rows are grouped by the stacked
+  columns. Each change is a new snapshot, so Chiron's undo still works.
+- **Reports**: save, rename, change filters or columns (with the same column, sort and
+  aggregation changes as Results), make public or private, delete.
 - **Query · N** under any answer about a cohort: one click replaces the filters in
   Chiron's query builder with the ones behind that answer and opens the builder. N is
   Chiron's own count for them, recounted as the clicking user before the button appears.
-- **Report** under an answer that saved or changed a report, opening it in Chiron.
+- **Report** under an answer that saved or changed a report, and **Results** under one
+  that changed the Results tab, opening it in Chiron.
 - Live progress: each Chiron tool call appears as a chip while it works
 
 A question takes roughly 10 to 40 seconds, because the model makes several tool calls.

@@ -79,31 +79,222 @@ def _validated_cohort(ident, cohort_def: list):
     return cohort
 
 
-def _table_def_from_columns(ident, cohort_def: list, columns: list[dict]) -> dict:
-    """Turn a plain column list into a real table_def via Chiron's own transformations."""
+# --- table columns -------------------------------------------------------------------
+#
+# A column is {"concept_id", "aggregation"?, "settings"?, "alias"?}. Chiron groups result
+# rows by the columns that are NOT aggregated ("stack"), and combines aggregated columns
+# within each row: a list, a count, a sum. So stacking only gender gives one row per
+# gender, with every aggregated column summed over that gender; patient-level columns
+# such as birthdate are what make one row per patient. With no aggregation given a
+# column gets Chiron's own default, exactly as when added in the UI: stack for
+# patient-level variables, list_distinct for everything else.
+
+def _apply_td(cu, table_def: dict, transformation: dict) -> dict:
+    """One Chiron table_def transformation, on copies (some of them edit their input)."""
     from chiron.api.utils import table_def as td_utils
 
+    result = td_utils.transformation_function_lookup[transformation["type"]](
+        cu, copy.deepcopy(table_def or {}), copy.deepcopy(transformation)
+    )
+    if not result.get("transformation_successful"):
+        raise AccessError(f"Chiron rejected the column change: {result.get('transformation_errors')}")
+    return copy.deepcopy(result["table_def"])
+
+
+def _aggregation_id(col: dict) -> str | None:
+    """The aggregation a column spec asks for, accepting the older spelling too."""
+    agg = col.get("aggregation")
+    if agg is None and col.get("aggregation_method"):
+        agg = col["aggregation_method"]
+    if agg is None and col.get("aggregate") is False:
+        agg = "stack"
+    if agg is None:
+        return None
+    return str(agg).strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def _column_transformation(cu, oConcept, col: dict) -> dict:
+    """The add_entry transformation for one column, its aggregation checked first.
+
+    Chiron's own form validation accepts any aggregation name and saves it, and the table
+    then fails when it runs; so the name is checked against the methods Chiron offers
+    for this variable, and the settings against the inputs that method takes.
+    """
+    dp = oConcept.get_display_processor(cu)
+    if dp is None:
+        raise AccessError(f"{oConcept.permanent_id!r} cannot be shown as a column.")
+    transformation = {"type": "add_entry", "concept_id": oConcept.permanent_id}
+    agg = _aggregation_id(col)
+    if agg is not None:
+        methods = {m.id: m for m in dp.aggregation_methods}
+        if agg != "stack" and agg not in methods:
+            raise AccessError(
+                f"{oConcept.name!r} cannot be shown as {agg!r}. Choose from: stack, "
+                + ", ".join(methods) + " (chiron_column_options explains each)."
+            )
+        transformation["aggregation_method"] = agg
+        if agg != "stack":
+            allowed = {i["id"] for i in methods[agg].get_inputs(
+                cu, {"concept_id": oConcept.permanent_id})}
+            settings = dict(col.get("settings") or {})
+            for key in allowed:  # settings passed at the top level, the older way
+                if key in col and key not in settings:
+                    settings[key] = col[key]
+            unknown = sorted(set(settings) - allowed)
+            if unknown:
+                raise AccessError(
+                    f"Aggregation {agg!r} takes the settings {sorted(allowed) or 'none'}, "
+                    f"not {unknown}."
+                )
+            if isinstance(settings.get("values"), str):
+                settings["values"] = [settings["values"]]
+            transformation.update(settings)
+    if col.get("alias"):
+        transformation["entry_alias"] = col["alias"]
+    return transformation
+
+
+def _table_def_from_columns(ident, cohort_def: list, columns: list[dict]) -> dict:
+    """Turn a plain column list into a real table_def via Chiron's own transformations."""
     cu = identity.checked_chironuser(ident)
     table_def: dict = {}
     for col in columns:
-        transformation = {
-            "type": "add_entry",
-            "concept_id": col["concept_id"],
-            "aggregate": col.get("aggregate", False),
-            "aggregation_method": col.get("aggregation_method"),
-        }
-        if col.get("alias"):
-            transformation["alias"] = col["alias"]
-        result = td_utils.transformation_function_lookup["add_entry"](
-            cu, table_def, transformation
-        )
-        if not result.get("transformation_successful"):
-            raise AccessError(
-                f"Could not add column {col['concept_id']!r}: "
-                f"{result.get('transformation_errors')}"
-            )
-        table_def = result["table_def"]
+        oConcept = _concept(ident, col["concept_id"])
+        table_def = _apply_td(cu, table_def, _column_transformation(cu, oConcept, col))
     return table_def
+
+
+def _column_name(entry: dict) -> str:
+    """A column's label: its alias, else the variable's name, with its collection when that
+    is not the patient record ("medication description" and "condition description" are
+    both just "description" in Chiron)."""
+    from chiron import models
+
+    if entry.get("alias"):
+        return entry["alias"]
+    oConcept = models.Concept.objects.filter(
+        permanent_id=entry.get("concept_id")).select_related("collection").first()
+    if not oConcept:
+        return entry.get("concept_id")
+    coll = oConcept.collection
+    if coll.is_root_collection:
+        return oConcept.name
+    return f"{coll.permanent_id.split('__')[-1]} {oConcept.name}"
+
+
+def _describe_columns(table_def: dict) -> tuple[list[dict], list[dict]]:
+    """The columns and sort of a table_def, in the terms the tools take."""
+    columns = [{
+        "entry_id": f.get("entry_id"),
+        "concept_id": f.get("concept_id"),
+        "name": _column_name(f),
+        "aggregation": f.get("aggregation_method") if f.get("aggregate") else "stack",
+        "settings": f.get("aggregation_settings") or {},
+    } for f in (table_def or {}).get("fields") or []]
+    by_id = {c["entry_id"]: c["name"] for c in columns}
+    sort = [{"column": by_id.get(s.get("entry_id"), s.get("entry_id")),
+             "entry_id": s.get("entry_id"),
+             "direction": "desc" if s.get("direction") == -1 else "asc"}
+            for s in (table_def or {}).get("sort") or []]
+    return columns, sort
+
+
+def _find_entry(table_def: dict, ref: str) -> dict:
+    """A column by entry_id or concept_id (or its name), refusing anything ambiguous."""
+    fields = (table_def or {}).get("fields") or []
+    want = str(ref).strip().lower()
+    hits = [f for f in fields if f.get("entry_id") == ref] \
+        or [f for f in fields if f.get("concept_id") == ref] \
+        or [f for f in fields if _column_name(f).lower() == want] \
+        or [f for f in fields if _column_name(f).lower().split(" ", 1)[-1] == want]
+    if not hits:
+        names = ", ".join(f"{_column_name(f)} ({f.get('entry_id')})" for f in fields) or "none"
+        raise AccessError(f"There is no column {ref!r}. The columns are: {names}.")
+    if len(hits) > 1:
+        raise AccessError(f"{ref!r} matches {len(hits)} columns; pass one entry_id: "
+                          + ", ".join(f.get("entry_id") for f in hits))
+    return hits[0]
+
+
+def _edit_columns(ident, table_def: dict, add=None, remove=None, aggregation=None,
+                  order=None, sort=None) -> tuple[dict, list[str]]:
+    """Apply column changes to a table_def, the same transformations the UI applies.
+
+    add: column specs. remove: columns (entry_id, concept_id or name).
+    aggregation: [{"column", "aggregation", "settings"?}]. order: columns, first first;
+    the rest keep their order after them. sort: [{"column", "direction": asc|desc}],
+    replacing the current sort ([] clears it).
+    """
+    cu = identity.checked_chironuser(ident)
+    td = copy.deepcopy(table_def or {})
+    td.setdefault("fields", [])
+    changed: list[str] = []
+    for ref in remove or []:
+        entry = _find_entry(td, ref)
+        td = _apply_td(cu, td, {"type": "delete_entry", "entry_id": entry["entry_id"]})
+        changed.append(f"removed {_column_name(entry)}")
+    for col in add or []:
+        oConcept = _concept(ident, col["concept_id"])
+        td = _apply_td(cu, td, _column_transformation(cu, oConcept, col))
+        changed.append(f"added {oConcept.name}")
+    for change in aggregation or []:
+        entry = _find_entry(td, change.get("column", ""))
+        oConcept = _concept(ident, entry["concept_id"])
+        spec = {"concept_id": entry["concept_id"], "aggregation": change.get("aggregation"),
+                "settings": change.get("settings"), "alias": entry.get("alias")}
+        if _aggregation_id(spec) is None:
+            raise AccessError("Each aggregation change needs an \"aggregation\".")
+        transformation = _column_transformation(cu, oConcept, spec)
+        transformation["entry_id"] = entry["entry_id"]
+        td = _apply_td(cu, td, transformation)
+        changed.append(f"{_column_name(entry)} shown as {_aggregation_id(spec)}")
+    if order:
+        first = [_find_entry(td, ref)["entry_id"] for ref in order]
+        rest = [f["entry_id"] for f in td["fields"] if f["entry_id"] not in first]
+        td = _apply_td(cu, td, {"type": "resort_columns", "entry_ids": first + rest})
+        changed.append("column order")
+    if sort is not None:
+        td = _apply_td(cu, td, {"type": "clear_sort_entries"})
+        for item in sort:
+            entry = _find_entry(td, item.get("column", ""))
+            td = _apply_td(cu, td, {"type": "add_sort_entry", "entry_id": entry["entry_id"]})
+            if str(item.get("direction", "asc")).lower().startswith("desc"):
+                # Chiron reverses a column's sort when it is added a second time.
+                td = _apply_td(cu, td, {"type": "add_sort_entry", "entry_id": entry["entry_id"]})
+        changed.append("sort")
+    return td, changed
+
+
+def _plain_filters(ident, cohort_def: list) -> str:
+    """Chiron's description of the filters, without its HTML."""
+    import re as _re
+
+    if not cohort_def:
+        return "no filters: the whole dataset"
+    text = _re.sub(r"<[^>]+>", " ", str(cohort_describe(ident, cohort_def)))
+    return " ".join(text.split())
+
+
+def _preview(cu, cohort_def: list, table_def: dict, rows: int = 5) -> dict:
+    """The first rows of a table, with Chiron's own row and patient counts."""
+    from chiron import query_definition as qdef
+    from chiron.api.utils.export import get_paginated_preview
+
+    if not (table_def or {}).get("fields"):
+        return {"header": [], "rows": [], "record_count": 0, "subject_count": None}
+    response = get_paginated_preview(
+        cohort_def, table_def, cu,
+        {"page": 1, "records_per_page": max(1, min(int(rows), 50)), "output_type": "json"},
+    )
+    if response.get("preview_failed"):
+        raise AccessError(f"Chiron could not run this table: {response.get('errors')}")
+    table = qdef.Table(cu, cohort_def, table_def)
+    return {
+        "header": _header_from(table),
+        "rows": response.get("data"),
+        "record_count": response.get("record_count"),
+        "subject_count": response.get("subject_count"),
+    }
 
 
 def _header_from(table) -> list[str]:
@@ -920,6 +1111,9 @@ def chiron_saved_reports(
                 "mine": oReport.creator_id == cu.pk,
                 "cohort_def": definition.get("cohort_def"),
                 "table_def": definition.get("table_def"),
+                # the columns as chiron_update_report names and changes them
+                "columns": _describe_columns(definition.get("table_def") or {})[0],
+                "sort": _describe_columns(definition.get("table_def") or {})[1],
             }
 
         out = []
@@ -1023,9 +1217,22 @@ def chiron_update_report(
     cohort_def: list | None = None,
     columns: list[dict] | None = None,
     public: bool | None = None,
+    add_columns: list[dict] | None = None,
+    remove_columns: list[str] | None = None,
+    set_aggregation: list[dict] | None = None,
+    order: list[str] | None = None,
+    sort: list[dict] | None = None,
 ) -> dict:
-    """Change a report you created: rename it, reword it, replace its filters or columns,
-    or make it public or private. Only the fields you pass change.
+    """Change a report you created: rename it, reword it, change its filters, its
+    columns or how each column is shown, or make it public or private. Only what you pass
+    changes.
+
+    Columns, the same as for chiron_update_results: `columns` replaces them all;
+    `add_columns` [{concept_id, aggregation?, settings?}], `remove_columns` [column],
+    `set_aggregation` [{column, aggregation, settings?}], `order` [column, ...] and
+    `sort` [{column, direction: asc|desc}] edit the current ones. A column is named by its
+    entry_id, concept_id or name (chiron_saved_reports lists them). Aggregation is
+    "stack" (a row per value) or a method from chiron_column_options.
 
     To change a report's filters, read its cohort_def with
     chiron_saved_reports(report_id=...), modify it with chiron_edit_cohort, and pass the
@@ -1069,18 +1276,27 @@ def chiron_update_report(
             changed.append("columns")
         elif cohort_def is not None and not (td.get("fields")):
             td = _table_def_from_columns(ident, cd, _columns_or_default(ident, cd, None))
+        if any(x is not None for x in (add_columns, remove_columns, set_aggregation, order, sort)):
+            td, column_changes = _edit_columns(ident, td, add_columns, remove_columns,
+                                               set_aggregation, order, sort)
+            changed.extend(column_changes)
 
         if not changed:
             raise AccessError("Nothing to change: pass a name, description, filters, "
                               "columns or public.")
+        cu = identity.checked_chironuser(ident)
+        _preview(cu, cd, td, 1)  # never save a table Chiron cannot run
         oReport.definition = _json.dumps({**definition, "cohort_def": cd, "table_def": td})
         oReport.save()
 
+        report_columns, report_sort = _describe_columns(td)
         return {
             "report_id": oReport.pk,
             "name": oReport.name,
             "public": oReport.public,
             "changed": changed,
+            "columns": report_columns,
+            "sort": report_sort,
             "subject_count": _count(ident, cd),
             "mode": "report",
             "url": f"{CONFIG.ui_url}/{ident.dataset_id}/reports/{oReport.pk}",
@@ -1118,6 +1334,153 @@ def chiron_delete_report(dataset_id: str, report_id: int, confirm_name: str) -> 
 
 
 @mcp.tool()
+def chiron_column_options(dataset_id: str, concept_id: str) -> dict:
+    """How a variable can be shown as a column in Results or a report.
+
+    "stack" gives a row per value, and rows are grouped by the stacked columns. Every
+    other option combines values within a row: list_distinct, count_distinct, list_all,
+    count_all, most_frequent, has_value (pick values; true/false or a count), and for
+    numbers average, median, std_dev, min, max and sum; for dates min_date and max_date.
+    Each option lists the settings it takes. `default` is what Chiron uses if you say
+    nothing.
+    """
+    try:
+        ident = identity.resolve(dataset_id)
+        identity.require_workspace(ident)
+        cu = identity.checked_chironuser(ident)
+        oConcept = _concept(ident, concept_id)
+        dp = oConcept.get_display_processor(cu)
+        if dp is None:
+            raise AccessError(f"{concept_id!r} cannot be shown as a column.")
+        default = dp.get_default_aggregation_settings()
+        options = [{"id": "stack", "label": "stack: one row per value", "settings": []}]
+        for m in dp.aggregation_methods:
+            settings = []
+            for i in m.get_inputs(cu, {"concept_id": oConcept.permanent_id}):
+                opts = [o[0] if isinstance(o, (list, tuple)) else o for o in i.get("options") or []]
+                settings.append({"id": i["id"], "label": i.get("label"), "type": i.get("type"),
+                                 "choices": opts[:40], "more_choices": max(0, len(opts) - 40),
+                                 "default": i.get("selected")})
+            options.append({"id": m.id, "label": m.label, "settings": settings})
+        return {
+            "dataset_id": dataset_id,
+            "concept_id": oConcept.permanent_id,
+            "name": oConcept.name,
+            "default": default["aggregation_method"] if default["aggregate"] else "stack",
+            "options": options,
+        }
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
+@mcp.tool()
+def chiron_results(dataset_id: str, rows: int = 5) -> dict:
+    """What the user's Results tab shows right now.
+
+    The filters open in their query builder, the columns (each with its aggregation),
+    the sort, how many rows and patients, and the first `rows` rows. Rows are grouped by
+    the stacked columns, so record_count can be far below subject_count.
+    """
+    from chiron import models
+
+    try:
+        ident = identity.resolve(dataset_id)
+        identity.require_workspace(ident)
+        identity.require_subject_level(ident)
+        cu = identity.checked_chironuser(ident)
+        cohort_def = models.CohortDefSnapshot.get_active_cohort_def(cu) or []
+        cohort = _validated_cohort(ident, cohort_def)
+        table_def = models.TableDefSnapshot.get_active_table_def(cu)
+        columns, sort = _describe_columns(table_def)
+        return {
+            "dataset_id": dataset_id,
+            "url": f"{CONFIG.ui_url}/{ident.dataset_id}/results",
+            "filters": _plain_filters(ident, cohort.cohort_def),
+            "cohort_def": cohort.cohort_def,
+            "columns": columns,
+            "sort": sort,
+            **_preview(cu, cohort.cohort_def, table_def, rows),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
+@mcp.tool()
+def chiron_update_results(
+    dataset_id: str,
+    cohort_def: list | None = None,
+    columns: list[dict] | None = None,
+    add_columns: list[dict] | None = None,
+    remove_columns: list[str] | None = None,
+    set_aggregation: list[dict] | None = None,
+    order: list[str] | None = None,
+    sort: list[dict] | None = None,
+) -> dict:
+    """Change the user's Results tab, the way they would in Chiron.
+
+    `cohort_def` replaces the filters open in their query builder (and so the patients
+    in Results). `columns` replaces all columns; `add_columns` [{concept_id,
+    aggregation?, settings?}], `remove_columns` [column], `set_aggregation` [{column,
+    aggregation, settings?}], `order` [column, ...] and `sort` [{column, direction:
+    asc|desc}] edit the current ones. A column is named by its entry_id, concept_id or
+    name (chiron_results lists them). Aggregation is "stack" or a method from
+    chiron_column_options. Every change is saved as a new step in Chiron's history, so
+    the user's undo still works. Requires CHIRON_MCP_ALLOW_SAVE=1.
+    """
+    from chiron import models
+
+    try:
+        if not CONFIG.allow_save:
+            raise AccessError("Writing to Chiron is disabled (CHIRON_MCP_ALLOW_SAVE).")
+        ident = identity.resolve(dataset_id)
+        identity.require_workspace(ident)
+        identity.require_subject_level(ident)
+        cu = identity.checked_chironuser(ident)
+
+        current_cd = models.CohortDefSnapshot.get_active_cohort_def(cu) or []
+        cd = _validated_cohort(ident, current_cd).cohort_def
+        td = models.TableDefSnapshot.get_active_table_def(cu)
+        changed: list[str] = []
+        if cohort_def is not None:
+            cd = _validated_cohort(ident, cohort_def).cohort_def
+            changed.append("filters")
+        if columns is not None:
+            td = _table_def_from_columns(ident, cd, _columns_or_default(ident, cd, columns))
+            changed.append("columns")
+        elif cohort_def is not None and not td.get("fields"):
+            td = _table_def_from_columns(ident, cd, _columns_or_default(ident, cd, None))
+        if any(x is not None for x in (add_columns, remove_columns, set_aggregation, order, sort)):
+            td, column_changes = _edit_columns(ident, td, add_columns, remove_columns,
+                                               set_aggregation, order, sort)
+            changed.extend(column_changes)
+        if not changed:
+            raise AccessError("Nothing to change: pass filters, columns, column changes or a sort.")
+
+        preview = _preview(cu, cd, td)  # run it before saving, so a broken table never lands
+        if cohort_def is not None:
+            oCohort = models.CohortDefSnapshot(chironuser=cu)
+            oCohort.set_cohort_def(cd)
+            oCohort.save()  # a new step: Chiron keeps the earlier ones for undo
+        oTable = models.TableDefSnapshot(chironuser=cu)
+        oTable.set_table_def(td)
+        oTable.save()
+
+        result_columns, result_sort = _describe_columns(td)
+        return {
+            "dataset_id": dataset_id,
+            "mode": "results",
+            "url": f"{CONFIG.ui_url}/{ident.dataset_id}/results",
+            "changed": changed,
+            "filters": _plain_filters(ident, cd),
+            "columns": result_columns,
+            "sort": result_sort,
+            **preview,
+        }
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
+@mcp.tool()
 def chiron_open_in_ui(
     dataset_id: str,
     cohort_def: list,
@@ -1125,6 +1488,7 @@ def chiron_open_in_ui(
     name: str | None = None,
     mode: str = "report",
     description: str | None = None,
+    sort: list[dict] | None = None,
 ) -> dict:
     """Hand a cohort built here over to the real Chiron web UI, and return a link.
 
@@ -1142,9 +1506,13 @@ def chiron_open_in_ui(
       undo history, exactly as Chiron's own "load report as active" does. Ask the user
       before using it.
 
+    `columns` take an aggregation and settings as in chiron_update_results, and `sort`
+    [{column, direction: asc|desc}] orders the rows; to save what is in Results, pass the
+    columns and sort chiron_results gives.
+
     Requires CHIRON_MCP_ALLOW_SAVE=1, because both modes write to Chiron.
     """
-    return open_in_ui(dataset_id, cohort_def, columns, name, mode, description)
+    return open_in_ui(dataset_id, cohort_def, columns, name, mode, description, sort)
 
 
 def _columns_or_default(ident, cohort_def: list, columns: list[dict] | None) -> list[dict]:
@@ -1185,6 +1553,7 @@ def open_in_ui(
     name: str | None = None,
     mode: str = "report",
     description: str | None = None,
+    sort: list[dict] | None = None,
     *,
     username: str | None = None,
     allow_superuser: bool = False,
@@ -1224,6 +1593,8 @@ def open_in_ui(
         table_def = _table_def_from_columns(
             ident, cohort.cohort_def, _columns_or_default(ident, cohort.cohort_def, columns)
         )
+        if sort:
+            table_def, _ = _edit_columns(ident, table_def, sort=sort)
 
         base = f"{CONFIG.ui_url}/{ident.dataset_id}"
         subject_count = None

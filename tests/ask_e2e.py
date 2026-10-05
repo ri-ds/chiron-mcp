@@ -16,6 +16,7 @@ Run against the synthea-10k deployment:
     .venv/bin/python tests/ask_e2e.py            # all cases, 4 at a time
     .venv/bin/python tests/ask_e2e.py asthma     # cases whose id contains "asthma"
     .venv/bin/python tests/ask_e2e.py --suggestions   # every starter question in the pool
+    .venv/bin/python tests/ask_e2e.py --suggestions results columns   # only those features
 
 Needs the Ask server on :8900 (CHIRON_MCP_ALLOW_SAVE=1) and Chiron's API on :8000.
 Exit code 0 means every case passed.
@@ -321,7 +322,7 @@ def workspace_lock(user: str) -> threading.Lock:
 def run(case: Case, cookie: str, truth: dict) -> Result:
     try:
         # every kind whose checks load a cohort into the user's workspace
-        if case.kind in ("count", "workspace", "breakdown"):
+        if case.kind in ("count", "workspace", "breakdown", "results_flow"):
             with workspace_lock(case.user):
                 return _run(case, cookie, truth)
         return _run(case, cookie, truth)
@@ -340,6 +341,10 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
         hijack(r, case, cookie, truth)
     elif case.kind == "delete_refused":
         delete_refused(r, case, cookie)
+    elif case.kind == "results_flow":
+        results_flow(r, case, cookie, truth)
+    elif case.kind == "report_columns":
+        report_columns_flow(r, case, cookie, truth)
     else:
         thread = None
         for i, turn in enumerate([case] + case.turns):
@@ -626,6 +631,137 @@ def hijack(r: Result, case: Case, cookie: str, truth: dict) -> None:
         r.ok_note("intruder got a fresh conversation with no prior cohort")
 
 
+def _turn(r: Result, state: dict, case: Case, cookie: str, label: str, q: str) -> dict:
+    """One question in a running conversation, recorded on the result."""
+    r.prefix = f"[{label}] "
+    ev = ask(q, cookie, case.dataset, state.get("thread"))
+    if state.get("thread") and ev.get("thread") != state["thread"]:
+        r.fail("started a new conversation instead of continuing")
+    state["thread"] = ev.get("thread")
+    r.steps += ev.get("step", [])
+    r.answer = ev.get("answer") or ""
+    if "error" in ev:
+        r.fail(f"error event: {str(ev['error'])[:140]}")
+    return ev
+
+
+def results_flow(r: Result, case: Case, cookie: str, truth: dict) -> None:
+    """Change the Results tab by asking, checking Chiron's own Results API each time."""
+    state: dict = {}
+    api = lambda path: get_json(f"{API}/api/v2/{case.dataset}/{path}", cookie)
+
+    def columns():
+        td = api("table_def/")["table_def"]
+        by_id = {f["entry_id"]: f for f in td.get("fields") or []}
+        cols = [(f["concept_id"].split("__", 1)[-1], f.get("aggregation_method") or "stack")
+                for f in td.get("fields") or []]
+        sort = [(by_id.get(x["entry_id"], {}).get("concept_id", "").split("__", 1)[-1],
+                 x.get("direction")) for x in td.get("sort") or []]
+        return cols, sort
+
+    _turn(r, state, case, cookie, "load", "Load patients with asthma into my query")
+    want = truth["asthma"]["right"]
+    pv = api("query_tools/preview/?page=1&records_per_page=1")
+    if pv.get("subject_count") != want:
+        r.fail(f"Results has {pv.get('subject_count')} patients, expected {want}")
+
+    ev = _turn(r, state, case, cookie, "add", "Add birthdate and city columns to my results")
+    cols, _ = columns()
+    names = [c for c, _ in cols]
+    if not {"subject__birthdate", "subject__city"} <= set(names):
+        r.fail(f"Results columns are {cols}")
+    else:
+        r.ok_note(f"Results columns {names}")
+    if (ev.get("link") or {}).get("label") != "Results":
+        r.fail(f"no Results button (link: {ev.get('link')})")
+    pv = api("query_tools/preview/?page=1&records_per_page=1")
+    if pv.get("subject_count") != want:
+        r.fail(f"after adding columns Results has {pv.get('subject_count')} patients")
+    elif (pv.get("record_count") or 0) < want * 0.9:
+        r.fail(f"birthdate and city should give about one row per patient, got "
+               f"{pv.get('record_count')} rows")
+    else:
+        r.ok_note(f"{pv.get('record_count')} rows for {pv.get('subject_count')} patients")
+
+    _turn(r, state, case, cookie, "aggregate",
+          "In my results, show the condition description column as a count instead of a list")
+    cols, _ = columns()
+    agg = dict(cols).get("condition__description")
+    if agg not in ("count_all", "count_distinct"):
+        r.fail(f"condition description is shown as {agg!r}")
+    else:
+        r.ok_note(f"condition description shown as {agg}")
+
+    _turn(r, state, case, cookie, "sort", "Sort my results by birthdate, newest first")
+    _, sort = columns()
+    if not sort or sort[0] != ("subject__birthdate", -1):
+        r.fail(f"sort is {sort}")
+    else:
+        r.ok_note("sorted by birthdate, newest first")
+
+    _turn(r, state, case, cookie, "read", "What columns are in my results right now?")
+    low = r.answer.lower()
+    if not ("birthdate" in low and "city" in low):
+        r.fail("the answer does not list the Results columns")
+
+    want_cols, want_sort = columns()
+    ev = _turn(r, state, case, cookie, "save", "Save my results as a report called 'E2E results copy'")
+    m = re.search(r"/reports/(\d+)", (ev.get("link") or {}).get("url", ""))
+    if not m:
+        r.fail(f"no Report button (link: {ev.get('link')})")
+        return
+    r.created.append(int(m.group(1)))
+    etd = get_json(f"{API}/api/v2/{case.dataset}/reports/get_report/?report_id={m.group(1)}",
+                   cookie)["extended_table_def"]
+    by_id = {f["entry_id"]: f for f in etd.get("fields") or []}
+    got_cols = [(f["concept_id"].split("__", 1)[-1], f.get("aggregation_method") or "stack")
+                for f in etd.get("fields") or []]
+    got_sort = [(by_id.get(x["entry_id"], {}).get("concept_id", "").split("__", 1)[-1],
+                 x.get("direction")) for x in etd.get("sort") or []]
+    if sorted(got_cols) != sorted(want_cols) or got_sort != want_sort:
+        r.fail(f"the report has {got_cols} sorted {got_sort}; Results had {want_cols} "
+               f"sorted {want_sort}")
+    else:
+        r.ok_note("the saved report matches Results: columns, aggregations and sort")
+
+
+def report_columns_flow(r: Result, case: Case, cookie: str, truth: dict) -> None:
+    """Change how a report's columns are shown, checked in Chiron's report API."""
+    state: dict = {}
+    ev = _turn(r, state, case, cookie, "save",
+               "Save patients with asthma as a report called 'E2E columns', with gender and "
+               "medication description columns")
+    m = re.search(r"/reports/(\d+)", (ev.get("link") or {}).get("url", ""))
+    if not m:
+        r.fail(f"no Report button (link: {ev.get('link')})")
+        return
+    rid = m.group(1)
+    r.created.append(int(rid))
+
+    def fields():
+        d = get_json(f"{API}/api/v2/{case.dataset}/reports/get_report/?report_id={rid}", cookie)
+        return {f["concept_id"].split("__", 1)[-1]: f for f in d["extended_table_def"]["fields"]}
+
+    if "medication__description" not in fields():
+        r.fail(f"the report's columns are {list(fields())}")
+        return
+    _turn(r, state, case, cookie, "has value",
+          "In that report, show the medication column as whether they take albuterol, "
+          "true or false")
+    f = fields().get("medication__description") or {}
+    values = (f.get("aggregation_settings") or {}).get("values") or []
+    if f.get("aggregation_method") != "has_value" or not any("lbuterol" in v for v in values):
+        r.fail(f"medication column is {f.get('aggregation_method')} {values}")
+    else:
+        r.ok_note(f"medication column: has value {values}")
+    pv = get_json(f"{API}/api/v2/{case.dataset}/report_tools/{rid}/preview/"
+                  "?page=1&records_per_page=3", cookie)
+    if pv.get("errors") or pv.get("subject_count") != truth["asthma"]["right"]:
+        r.fail(f"report preview: {pv.get('errors')} {pv.get('subject_count')} patients")
+    else:
+        r.ok_note(f"report runs: {pv.get('record_count')} rows, {pv.get('subject_count')} patients")
+
+
 SHARED_REPORT = "Team asthma cohort (shared)"
 
 
@@ -759,6 +895,9 @@ CASES = [
     # --- report lifecycle, verified against Chiron's API after each step
     Case("report_flow", "", "report_flow"),
     Case("delete_refused", "", "delete_refused"),
+    # --- the Results tab and report columns, checked in Chiron's own API
+    Case("results_flow", "", "results_flow"),
+    Case("report_columns", "", "report_columns"),
     # --- identity and permissions
     Case("hijack", "", "hijack"),
     Case("no_access", "How many patients are in dataset2_stored?", "refuse"),
@@ -768,17 +907,19 @@ CASES = [
 ]
 
 
-def run_suggestions() -> int:
+def run_suggestions(features: list[str]) -> int:
     """Every starter question in the pool the page picks from must give a real answer.
 
     The pool is built from the dataset's own values, so a starter could name something
     the tools cannot answer. Checked for each: no error or refusal, a figure, table or
-    chart, the button its feature promises (Report, or the Query hand-off), a Query
+    chart, the button its feature promises (Report, Results, or the Query hand-off), a Query
     button that loads, and at most three sane follow-ups.
     """
     cookie = mint_session("demouser")
     SESSIONS["demouser"] = cookie
     pool = get_json(f"{ASK}/datasets?dataset={DS}", cookie).get("pool") or []
+    if features:
+        pool = [p for p in pool if p["feature"] in features]
     print(f"running {len(pool)} starter questions against {ASK} ...\n")
 
     def one(item):
@@ -806,7 +947,7 @@ def run_suggestions() -> int:
         for phrase in CLUTTER:
             if phrase in low:
                 r.fail(f"clutter: {phrase!r}")
-        if item["feature"] == "report":
+        if item["feature"] in ("report", "columns"):
             m = re.search(r"/reports/(\d+)", (link or {}).get("url", ""))
             if not m:
                 r.fail(f"no Report button (link: {link})")
@@ -814,6 +955,8 @@ def run_suggestions() -> int:
                 r.created.append(int(m.group(1)))
         if item["feature"] == "query" and (not link or link.get("label") != "Query"):
             r.fail(f"no Query hand-off (link: {link})")
+        if item["feature"] == "results" and (not link or link.get("label") != "Results"):
+            r.fail(f"no Results button (link: {link})")
         if item["feature"] == "ranking" and "```chart" not in answer and not has_table \
                 and "chart" in item["q"].lower():
             r.fail("asked for a chart, got none")
@@ -842,7 +985,7 @@ def run_suggestions() -> int:
 
 def main() -> int:
     if "--suggestions" in sys.argv:
-        return run_suggestions()
+        return run_suggestions([a for a in sys.argv[1:] if a != "--suggestions"])
     only = sys.argv[1:] and sys.argv[1]
     cases = [c for c in CASES if not only or only in c.id]
     print(f"computing ground truth from {SCHEMA} ...")

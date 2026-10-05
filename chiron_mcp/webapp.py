@@ -50,6 +50,9 @@ TOOLS = [
     "chiron_open_in_ui",
     "chiron_update_report",
     "chiron_delete_report",
+    "chiron_results",
+    "chiron_update_results",
+    "chiron_column_options",
 ]
 
 SYSTEM_PROMPT = """You are a research data analyst answering questions about one Chiron dataset.
@@ -104,6 +107,25 @@ chiron_update_report (to change filters, fetch its cohort_def first and edit it 
 chiron_edit_cohort). Only call chiron_delete_report when the user explicitly asks to
 delete a specific report, passing its exact current name as confirm_name, and say
 plainly afterwards that it is gone. Never delete to "tidy up".
+
+Results tab: Chiron's Results tab shows the user's open query (the filters in their query
+builder) as a table. chiron_results shows what is there now; chiron_update_results
+changes it. Use them when the user asks to see something in Results, add or remove
+columns, change how a column is shown, reorder or sort. To put a cohort from this
+conversation into Results, pass its cohort_def; that replaces the filters open in their
+query builder, so only do it when they ask for it in Results or their query. Rows are
+grouped by the stacked columns: with only gender stacked there is one row per gender and
+every other column is combined within it; to list patients one per row, stack
+patient-level columns such as birthdate and city. A column's aggregation is "stack" or a
+method from chiron_column_options: list_distinct, count_all, count_distinct,
+most_frequent, has_value (with the values to look for, returning true/false or a count),
+and for numbers sum, average, median, min, max, for dates min_date, max_date. Name
+columns by concept_id, or by the label chiron_results gives ("medication description").
+Reports take exactly the same column changes through chiron_update_report. To save
+what is in Results as a report, pass chiron_open_in_ui the cohort_def, columns (with
+their aggregation and settings) and sort that chiron_results gives. After a
+change, say in one sentence what the table now shows and how many rows and patients it
+has; the page adds a Results button.
 
 Follow-up questions: this may be a continuing conversation. The cohorts you built and
 counted earlier are in your context. When the user says "them", "those patients", "that
@@ -243,7 +265,8 @@ FEATURES = {
     "date": "Dates", "negation": "Without", "compare": "Compare", "breakdown": "Breakdown",
     "breakdown2": "Two-way breakdown", "ranking": "Top list and chart", "visits": "Visits",
     "medications": "Medications", "rows": "Patient list", "report": "Save a report",
-    "query": "Open in Chiron", "filters": "What is here",
+    "query": "Open in Chiron", "results": "Results table", "columns": "Report columns",
+    "filters": "What is here",
 }
 
 # Long or clinical names that read badly in a question, and a plainer form the model
@@ -338,6 +361,11 @@ def suggestion_pool(dataset: str, username: str, allow_superuser: bool,
             add("report", f"Save patients with {c} as a report")
             add("query", f"Load patients with {c} into my query")
             add("rows", f"Show 10 patients with {c}, with their city and birthdate")
+            add("results", f"Show patients with {c} in my results, with their birthdate and city")
+            m = _PAIRS.get(c.lower())
+            if m and "medication__description" in have:
+                add("columns", f"Save patients with {c} as a report with their birthdate, "
+                               f"city and whether they take {m}")
         for c in conds[:5]:
             add("combine", f"How many men have {c}?")
         for a, b in pairs[:6]:
@@ -501,6 +529,8 @@ class _CohortTracker:
 
         # A saved or updated report gets its button whether or not this call carried a
         # cohort (a rename does not), so take the link before looking for one.
+        if name == "chiron_update_results" and data.get("url"):
+            self.link = {"label": "Results", "url": data["url"], "mode": "results"}
         if name in ("chiron_open_in_ui", "chiron_update_report") and data.get("url"):
             self.link = {
                 "label": "Report" if data.get("mode") == "report" else "Query",
@@ -864,7 +894,7 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                     yield "link", tracker.link
                 # A workspace hand-off has already loaded the query, and its link says
                 # so; a second Query button for the same cohort would just repeat it.
-                if not (tracker.link and tracker.link.get("mode") == "workspace"):
+                if not (tracker.link and tracker.link.get("mode") in ("workspace", "results")):
                     state = tracker.final() or inherited
                     verified = state and verify_cohort(state, username, allow_superuser)
                     # The button is labelled with its count; offer it only when that is

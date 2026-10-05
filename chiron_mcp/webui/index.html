@@ -336,6 +336,8 @@ const STEP_LABELS = {
   crosstab: 'Cross-tabulating', breakdown: 'Breaking down', saved_reports: 'Reading reports',
   run_saved_report: 'Running a report', open_in_ui: 'Saving to Chiron',
   update_report: 'Updating the report', delete_report: 'Deleting the report',
+  results: 'Reading your results', update_results: 'Updating your results',
+  column_options: 'Checking column options',
 };
 const MAX_CHATS = 50, MAX_TURNS = 40;
 
@@ -574,7 +576,7 @@ function hero() {
     'Plain-English questions, exact answers from Chiron. Ask follow-ups, break results down, ' +
     'chart them, and hand any cohort to Chiron in one click.'));
   const caps = el('div', 'caps');
-  ['Counts', 'Follow-ups', 'Breakdowns', 'Charts', 'Reports', 'Query in Chiron'].forEach(c => caps.appendChild(el('span', 'cap', c)));
+  ['Counts', 'Follow-ups', 'Breakdowns', 'Charts', 'Results', 'Reports'].forEach(c => caps.appendChild(el('span', 'cap', c)));
   h.appendChild(caps);
   if (STARTERS.length) {
     const cards = el('div', 'cards');
