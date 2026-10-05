@@ -345,6 +345,8 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
         results_flow(r, case, cookie, truth)
     elif case.kind == "report_columns":
         report_columns_flow(r, case, cookie, truth)
+    elif case.kind == "abandon":
+        abandon(r, case, cookie, truth)
     else:
         thread = None
         for i, turn in enumerate([case] + case.turns):
@@ -762,6 +764,68 @@ def report_columns_flow(r: Result, case: Case, cookie: str, truth: dict) -> None
         r.ok_note(f"report runs: {pv.get('record_count')} rows, {pv.get('subject_count')} patients")
 
 
+def _open_stream(q: str, cookie: str, dataset: str, thread: str) -> "socket.socket":
+    """Start a question the way the page does, without reading the answer."""
+    import socket
+
+    host, port = urllib.parse.urlparse(ASK).hostname, urllib.parse.urlparse(ASK).port or 80
+    query = urllib.parse.urlencode({"q": q, "dataset": dataset, "thread": thread})
+    s = socket.create_connection((host, port))
+    s.sendall(f"GET /ask?{query} HTTP/1.1\r\nHost: {host}\r\n"
+              f"Cookie: sessionid={cookie}\r\n\r\n".encode())
+    return s
+
+
+def abandon(r: Result, case: Case, cookie: str, truth: dict) -> None:
+    """An answer the page gave up on must never lock its conversation.
+
+    The page is reloaded mid-answer (the stream drops), then a newer question arrives
+    while another is still running: both times the conversation must go on, with its
+    earlier cohort, instead of answering "Still answering your previous question".
+    """
+    r.prefix = "[start] "
+    ev = ask("How many patients have asthma?", cookie, case.dataset)
+    tid = ev.get("thread")
+    if not tid:
+        r.fail("no conversation id")
+        return
+
+    r.prefix = "[reload] "
+    s = _open_stream("Break those patients down by race and gender", cookie, case.dataset, tid)
+    time.sleep(4)
+    s.close()
+    t0 = time.time()
+    ev = ask("How many of them are women?", cookie, case.dataset, tid)
+    if ev.get("error") or ev.get("thread") != tid:
+        r.fail(f"after a reload the conversation did not continue: {ev.get('error')}")
+    elif truth["female_asthma"]["right"] not in numbers(ev.get("answer") or ""):
+        r.fail("after a reload the answer lost the asthma cohort")
+    else:
+        r.ok_note(f"continued after a reload ({time.time() - t0:.0f}s)")
+
+    r.prefix = "[replace] "
+    s = _open_stream("Break those women down by race", cookie, case.dataset, tid)
+    time.sleep(3)
+    ev = ask("How many patients have COPD?", cookie, case.dataset, tid)
+    s.settimeout(10)
+    said = b""
+    try:
+        while chunk := s.recv(65536):
+            said += chunk
+    except OSError:
+        pass
+    s.close()
+    if ev.get("error") or ev.get("thread") != tid:
+        r.fail(f"a newer question was refused: {ev.get('error')}")
+    elif truth["copd"]["right"] not in numbers(ev.get("answer") or ""):
+        r.fail("the newer question was not answered")
+    else:
+        r.ok_note("a newer question replaced the running one")
+    if b"Stopped" not in said:
+        r.fail("the replaced answer was not told it was stopped")
+    r.answer = ev.get("answer") or ""
+
+
 SHARED_REPORT = "Team asthma cohort (shared)"
 
 
@@ -898,6 +962,8 @@ CASES = [
     # --- the Results tab and report columns, checked in Chiron's own API
     Case("results_flow", "", "results_flow"),
     Case("report_columns", "", "report_columns"),
+    # --- an abandoned answer never locks its conversation
+    Case("abandon", "", "abandon"),
     # --- identity and permissions
     Case("hijack", "", "hijack"),
     Case("no_access", "How many patients are in dataset2_stored?", "refuse"),

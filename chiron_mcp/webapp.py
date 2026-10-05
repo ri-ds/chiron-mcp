@@ -710,6 +710,7 @@ class _Threads:
         self._path = _state_dir() / "threads.json"
         self._guard = threading.Lock()
         self._locks: dict[str, threading.Lock] = {}
+        self._running: dict[str, tuple] = {}  # tid -> (claude process, its outcome)
         try:
             self._data = json.loads(self._path.read_text())
         except (OSError, ValueError):
@@ -754,6 +755,27 @@ class _Threads:
     def lock(self, tid: str) -> threading.Lock:
         with self._guard:
             return self._locks.setdefault(tid, threading.Lock())
+
+    def started(self, tid: str, proc, outcome: dict) -> None:
+        with self._guard:
+            self._running[tid] = (proc, outcome)
+
+    def finished(self, tid: str, proc) -> None:
+        with self._guard:
+            if self._running.get(tid, (None,))[0] is proc:
+                self._running.pop(tid, None)
+
+    def stop(self, tid: str) -> bool:
+        """Stop the answer running in a conversation, for a newer question in it."""
+        with self._guard:
+            entry = self._running.get(tid)
+        if not entry:
+            return False
+        proc, outcome = entry
+        outcome["cancelled"] = True
+        if proc.poll() is None:
+            proc.kill()
+        return True
 
     @staticmethod
     def _delete_transcript(tid: str) -> None:
@@ -837,8 +859,22 @@ def explain_claude_error(text: str) -> str:
     return text
 
 
+# How long one answer may take, and how often to show the browser the stream is alive.
+TURN_SECONDS = int(os.environ.get("CHIRON_MCP_TURN_SECONDS", "240"))
+PING_SECONDS = 10
+
+
+def _pump(stream, lines: "queue.Queue") -> None:
+    """Copy the CLI's output into a queue, so waiting for it can time out."""
+    try:
+        for line in stream:
+            lines.put(line)
+    finally:
+        lines.put(None)
+
+
 def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: dict,
-                 inherited: dict | None = None):
+                 inherited: dict | None = None, tid: str = ""):
     """One headless Claude run, translated into page events.
 
     `inherited` is the cohort behind the conversation's previous Query button. A
@@ -847,15 +883,42 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
 
     Sets outcome["answered"], outcome["rc"], outcome["stderr"] and outcome["cohort"]
     (the state behind any Query button offered) for the caller.
+
+    While Claude is quiet (thinking, or retrying a busy API) this yields "ping" every
+    PING_SECONDS. The write fails once the browser has gone (reloaded, closed, or
+    stopped), and that ends the run, so an abandoned answer never keeps its
+    conversation locked. A run is stopped after TURN_SECONDS.
     """
+    import queue
+    import time
+
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         stdin=subprocess.DEVNULL, text=True, bufsize=1, cwd=_neutral_dir(),
     )
     tracker = _CohortTracker()
     outcome.update(answered=False, rc=None, stderr="")
+    THREADS.started(tid, proc, outcome)
+    lines: queue.Queue = queue.Queue()
+    threading.Thread(target=_pump, args=(proc.stdout, lines), daemon=True).start()
+    deadline = time.monotonic() + TURN_SECONDS
     try:
-        for line in proc.stdout:
+        while True:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                proc.kill()
+                outcome["answered"] = True
+                took = (f"{TURN_SECONDS // 60} minutes" if TURN_SECONDS >= 120
+                        else f"{TURN_SECONDS} seconds")
+                yield "error", f"No answer after {took}, so it was stopped. Claude may be busy; ask again."
+                break
+            try:
+                line = lines.get(timeout=min(PING_SECONDS, left))
+            except queue.Empty:
+                yield "ping", None
+                continue
+            if line is None:
+                break
             line = line.strip()
             if not line:
                 continue
@@ -865,7 +928,11 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 continue
 
             kind = ev.get("type")
-            if kind == "assistant":
+            if kind == "system" and ev.get("subtype") == "api_retry":
+                # The CLI retries a busy or unresponsive API by itself, sometimes for
+                # minutes; say so rather than look frozen.
+                yield "step", "retrying"
+            elif kind == "assistant":
                 for block in ev.get("message", {}).get("content", []):
                     if block.get("type") == "tool_use":
                         raw = block.get("name", "")
@@ -920,6 +987,7 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
         outcome["rc"] = proc.returncode
         outcome["stderr"] = (proc.stderr.read() or "").strip()
     finally:
+        THREADS.finished(tid, proc)
         if proc.poll() is None:
             proc.kill()
 
@@ -948,8 +1016,13 @@ def ask_stream(
     tid = thread if resume else str(uuid.uuid4())
     lock = THREADS.lock(tid)
     if not lock.acquire(blocking=False):
-        yield "error", "Still answering your previous question in this conversation."
-        return
+        # The page asks one question at a time, so another one in the same conversation
+        # (only its owner can resume it) means the earlier answer was abandoned: the
+        # page was reloaded or stopped while it was stuck. Stop it and go on.
+        THREADS.stop(tid)
+        if not lock.acquire(timeout=20):
+            yield "error", "Still answering your previous question in this conversation."
+            return
 
     cfg = _mcp_config(username, allow_superuser)
     try:
@@ -991,8 +1064,11 @@ def ask_stream(
             ]
             outcome: dict = {}
             inherited = THREADS.cohort(tid) if resume else None
-            yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited)
+            yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid)
 
+            if outcome.get("cancelled"):
+                yield "error", "Stopped, because a newer question in this conversation replaced it."
+                break
             if outcome.get("answered"):
                 break
             if resume:
@@ -1250,7 +1326,10 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
         def send(event, data):
-            chunk = f"event: {event}\ndata: {json.dumps(data)}\n\n"
+            # A ping is an SSE comment: the page ignores it, but writing it shows
+            # whether the browser is still there.
+            chunk = ": ping\n\n" if event == "ping" else \
+                f"event: {event}\ndata: {json.dumps(data)}\n\n"
             self.wfile.write(chunk.encode())
             self.wfile.flush()
 
@@ -1260,12 +1339,15 @@ class Handler(BaseHTTPRequestHandler):
             send("done", "")
             return
         thread = (params.get("thread") or [None])[0]
+        stream = ask_stream(question, dataset, who, allow_su, thread)
         try:
-            for event, payload in ask_stream(question, dataset, who, allow_su, thread):
+            for event, payload in stream:
                 send(event, payload)
             send("done", "")
         except (BrokenPipeError, ConnectionResetError):
             pass  # the browser navigated away
+        finally:
+            stream.close()  # stops Claude and frees the conversation if it is still running
 
 
 def main() -> int:

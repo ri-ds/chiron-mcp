@@ -250,6 +250,8 @@
   }
   .send:hover { background: var(--accent-strong); }
   .send:disabled { background: #cfd6db; cursor: default; }
+  .send.stop { background: var(--ink, #1f2a30); }
+  .send.stop:hover { background: #000; }
 
   .scrim { display: none; }
 
@@ -337,8 +339,10 @@ const STEP_LABELS = {
   run_saved_report: 'Running a report', open_in_ui: 'Saving to Chiron',
   update_report: 'Updating the report', delete_report: 'Deleting the report',
   results: 'Reading your results', update_results: 'Updating your results',
-  column_options: 'Checking column options',
+  column_options: 'Checking column options', retrying: 'Claude is busy, retrying',
 };
+const SEND_ICON = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+const STOP_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>';
 const MAX_CHATS = 50, MAX_TURNS = 40;
 
 function el(tag, cls, text) {
@@ -385,7 +389,7 @@ function load() {
   migrateV1();
   // An answer that was still streaming when the page went away is gone.
   chats.forEach(c => c.turns.forEach(t => {
-    if (t.pending) { t.pending = false; t.error = t.error || 'This answer was interrupted. Ask again.'; }
+    if (t.pending) { t.pending = false; t.error = t.error || 'This answer was interrupted by leaving the page. Ask again.'; }
   }));
   if (!activeChat()) activeId = null;
 }
@@ -658,7 +662,14 @@ function repaint(turn, follow) {
 
 // --- asking ------------------------------------------------------------------------
 function updateComposer() {
-  sendBtn.disabled = !qBox.value.trim() || !!busy;
+  // While this chat's answer is coming, the button stops it.
+  const stoppable = !!busy && busy.chatId === activeId && !!busy.stop;
+  sendBtn.classList.toggle('stop', stoppable);
+  sendBtn.setAttribute('aria-label', stoppable ? 'Stop' : 'Send');
+  sendBtn.title = stoppable ? 'Stop this answer' : '';
+  const icon = stoppable ? STOP_ICON : SEND_ICON;
+  if (sendBtn.dataset.icon !== icon) { sendBtn.innerHTML = icon; sendBtn.dataset.icon = icon; }
+  sendBtn.disabled = stoppable ? false : (!qBox.value.trim() || !!busy);
   // One answer at a time; if it is streaming in another chat, say so rather than
   // leaving the box mysteriously disabled.
   qBox.placeholder = !busy ? (activeChat() ? 'Ask a follow-up…' : 'Ask about this dataset…')
@@ -669,7 +680,10 @@ qBox.addEventListener('input', () => { autosize(); updateComposer(); });
 qBox.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); ask(); }
 });
-$('composer').addEventListener('submit', e => { e.preventDefault(); ask(); });
+$('composer').addEventListener('submit', e => {
+  e.preventDefault();
+  if (busy && busy.chatId === activeId && busy.stop) busy.stop(); else ask();
+});
 
 function ask(text) {
   const q = (text !== undefined ? text : qBox.value).trim();
@@ -751,6 +765,18 @@ function ask(text) {
     }
     finish();
   };
+  // Closing the stream is enough: the server notices within seconds and stops Claude.
+  busy.stop = () => {
+    src.close();
+    if (turn.pending) {
+      turn.pending = false;
+      turn.error = 'Stopped.';
+      save();
+      repaint(turn, true);
+    }
+    finish();
+  };
+  updateComposer();
   function finish() {
     busy = null;
     chat.updated = Date.now();

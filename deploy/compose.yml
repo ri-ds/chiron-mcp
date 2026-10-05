@@ -67,6 +67,7 @@ services:
       CHIRON_MCP_REQUIRE_SESSION: "1"
       CHIRON_MCP_MAX_ACCESS_LEVEL: ${ASK_MAX_ACCESS_LEVEL:-deid}
       CHIRON_MCP_THREAD_TTL_HOURS: ${ASK_THREAD_TTL_HOURS:-12}
+      CHIRON_MCP_TURN_SECONDS: ${ASK_TURN_SECONDS:-240}
     volumes:
       # The Claude login (made once with: docker compose exec -it ask claude) and the
       # Ask server's conversation state live in this home directory.

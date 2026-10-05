@@ -86,7 +86,8 @@ Two gotchas worth knowing:
   Chiron's own count for them, recounted as the clicking user before the button appears.
 - **Report** under an answer that saved or changed a report, and **Results** under one
   that changed the Results tab, opening it in Chiron.
-- Live progress: each Chiron tool call appears as a chip while it works
+- Live progress: each Chiron tool call appears as a chip while it works, and the send
+  button becomes **Stop** while an answer is coming
 
 A question takes roughly 10 to 40 seconds, because the model makes several tool calls.
 
@@ -100,7 +101,15 @@ back as `thread=` with the next question.
 The server only resumes a conversation for the user who started it, on the dataset it
 started on, within `CHIRON_MCP_THREAD_TTL_HOURS` (12 by default) of its last question.
 Anyone else presenting the id gets a fresh conversation with no context. One question
-runs per conversation at a time; a second one sent meanwhile is told to wait.
+runs per conversation at a time.
+
+An answer never keeps its conversation stuck. While Claude is quiet the server sends a
+keep-alive every 10 seconds, so when the page is reloaded, closed or **Stop** is pressed
+it notices within seconds and stops Claude. A new question in a conversation whose
+answer is still running replaces that answer, and an answer still going after
+`CHIRON_MCP_TURN_SECONDS` (240 by default) is stopped with a message to ask again. When
+the Claude API is busy the CLI retries by itself, sometimes for minutes; the page shows
+"Claude is busy, retrying" while it does.
 
 Claude Code writes each conversation's transcript to
 `~/.claude/projects/<working-dir>/<id>.jsonl`. Transcripts contain tool results, which

@@ -442,6 +442,7 @@ The Ask server (`python -m chiron_mcp.webapp`) adds:
 | `CHIRON_MCP_WEB_PORT` | `8900` | Port for the chat page |
 | `CHIRON_MCP_ALLOW_SUPERUSER` | off | Lets a *logged-in* superuser use Ask as themselves. The fallback identity can never be a superuser |
 | `CHIRON_MCP_THREAD_TTL_HOURS` | `12` | How long a conversation can be continued. After that its transcript is deleted |
+| `CHIRON_MCP_TURN_SECONDS` | `240` | How long one answer may take before it is stopped and the page says to ask again |
 | `CHIRON_MCP_STATE_DIR` | `~/.cache/chiron-ask` | Conversation index and the neutral working directory Claude runs in |
 
 See `.env.example`. A superuser is refused in analyst mode; point it at a dedicated service user.
