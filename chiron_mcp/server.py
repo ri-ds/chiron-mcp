@@ -29,7 +29,15 @@ from chiron_mcp import filters, identity  # noqa: E402
 from chiron_mcp.config import CONFIG  # noqa: E402
 from chiron_mcp.identity import AccessError  # noqa: E402
 
-mcp = MCPServer("chiron")
+if CONFIG.oauth:
+    # The HTTP endpoint with a Chiron login in front of it: each caller is identified by
+    # their token and every tool acts as that person (chiron_mcp.oauth).
+    from chiron_mcp import oauth  # noqa: E402
+
+    mcp = MCPServer("chiron", **oauth.server_kwargs())
+    oauth.register_routes(mcp)
+else:
+    mcp = MCPServer("chiron")
 
 
 # --- helpers -----------------------------------------------------------------
@@ -364,8 +372,8 @@ def chiron_datasets(dataset_id: str | None = None) -> dict:
             out.append(row)
         if dataset_id and not out:
             return _err(AccessError(f"No dataset {dataset_id!r}."))
-        return {"identity": CONFIG.username, "access_ceiling": CONFIG.max_access_level,
-                "datasets": out}
+        return {"identity": identity.bound_username(),
+                "access_ceiling": CONFIG.max_access_level, "datasets": out}
     except Exception as exc:  # noqa: BLE001
         return _err(exc)
 
@@ -1783,18 +1791,39 @@ def chiron_explain_access(dataset_id: str, concept_id: str) -> dict:
 
 def main() -> None:
     CONFIG.validate()
-    # Fail fast on a bad identity rather than at the first tool call.
-    try:
-        identity._django_user()
-    except AccessError as exc:
-        print(f"chiron-mcp: {exc}", file=sys.stderr)
-        raise SystemExit(1)
+    if CONFIG.oauth:
+        who = "whoever signs in (OAuth)"
+    else:
+        # Fail fast on a bad identity rather than at the first tool call.
+        try:
+            identity._django_user()
+        except AccessError as exc:
+            print(f"chiron-mcp: {exc}", file=sys.stderr)
+            raise SystemExit(1)
+        who = repr(CONFIG.username)
     print(
-        f"chiron-mcp: bound to {CONFIG.username!r}, ceiling={CONFIG.max_access_level}, "
+        f"chiron-mcp: bound to {who}, ceiling={CONFIG.max_access_level}, "
         f"operator={CONFIG.operator}, save={CONFIG.allow_save}",
         file=sys.stderr,
     )
-    mcp.run()
+    if CONFIG.transport == "http":
+        from chiron_mcp.config import HTTP_HOST
+
+        # Loopback only, and the library's DNS-rebinding protection stays on (it is
+        # enabled by default for a loopback host), so a web page in the user's browser
+        # cannot reach this endpoint by pointing a hostname at 127.0.0.1.
+        auth = (
+            "sign in as a Chiron user (OAuth)" if CONFIG.oauth
+            else f"no authentication, every caller is {CONFIG.username!r}"
+        )
+        print(
+            f"chiron-mcp: streamable HTTP at http://localhost:{CONFIG.http_port}/mcp "
+            f"(loopback only; {auth})",
+            file=sys.stderr,
+        )
+        mcp.run("streamable-http", host=HTTP_HOST, port=CONFIG.http_port)
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":
