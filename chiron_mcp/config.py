@@ -19,6 +19,11 @@ AGG = "agg"
 # Ordered least -> most privileged, used for the ceiling comparison.
 ACCESS_ORDER = [AGG, DEID, PHI]
 
+TRANSPORTS = ["stdio", "http"]
+HTTP_AUTH_MODES = ["none", "oauth"]
+# The only address the HTTP endpoint ever binds.  See Config.transport.
+HTTP_HOST = "127.0.0.1"
+
 
 def _flag(name: str, default: bool = False) -> bool:
     raw = os.environ.get(name)
@@ -103,9 +108,34 @@ class Config:
         default_factory=lambda: int(os.environ.get("CHIRON_MCP_MAX_EXPORT_ROWS", "50000"))
     )
 
+    # --- transport ----------------------------------------------------------
+    # "stdio" (the default: an MCP client launches this server as a subprocess) or
+    # "http" (a long-running streamable-HTTP endpoint at /mcp).  The HTTP endpoint has
+    # no authentication, so it listens on the loopback interface only and there is
+    # deliberately no setting to change that: anyone who can reach it acts as
+    # CHIRON_MCP_USERNAME.
+    transport: str = field(
+        default_factory=lambda: os.environ.get("CHIRON_MCP_TRANSPORT", "stdio").strip().lower()
+    )
+    http_port: int = field(
+        default_factory=lambda: int(os.environ.get("CHIRON_MCP_HTTP_PORT", "8765"))
+    )
+    # "none": every caller of the HTTP endpoint acts as CHIRON_MCP_USERNAME.
+    # "oauth": a caller must log in as a Chiron user first, and each tool call then acts
+    # as that user, with their own access level and permission groups (chiron_mcp.oauth).
+    # Ignored on stdio, where the client that launched the process is the only caller.
+    http_auth: str = field(
+        default_factory=lambda: os.environ.get("CHIRON_MCP_HTTP_AUTH", "none").strip().lower()
+    )
+
     def __post_init__(self) -> None:
         if self.chiron_src and not self.project_dir:
             self.project_dir = str(Path(self.chiron_src) / "test_project")
+
+    @property
+    def oauth(self) -> bool:
+        """True when callers are identified by an OAuth login rather than by config."""
+        return self.transport == "http" and self.http_auth == "oauth"
 
     def validate(self) -> None:
         if not self.chiron_src:
@@ -127,7 +157,7 @@ class Config:
         if (self.metadata_db and "://" not in self.metadata_db
                 and not Path(self.metadata_db).exists()):
             raise SystemExit(f"CHIRON_MCP_METADATA_DB={self.metadata_db!r} does not exist.")
-        if not self.username:
+        if not self.username and not self.oauth:
             raise SystemExit(
                 "CHIRON_MCP_USERNAME is required. The server binds to exactly one Django "
                 "user and resolves that user's real ChironUser per dataset; there is no "
@@ -137,6 +167,14 @@ class Config:
             raise SystemExit(
                 f"CHIRON_MCP_MAX_ACCESS_LEVEL must be one of {ACCESS_ORDER}, "
                 f"got {self.max_access_level!r}"
+            )
+        if self.transport not in TRANSPORTS:
+            raise SystemExit(
+                f"CHIRON_MCP_TRANSPORT must be one of {TRANSPORTS}, got {self.transport!r}"
+            )
+        if self.http_auth not in HTTP_AUTH_MODES:
+            raise SystemExit(
+                f"CHIRON_MCP_HTTP_AUTH must be one of {HTTP_AUTH_MODES}, got {self.http_auth!r}"
             )
 
 

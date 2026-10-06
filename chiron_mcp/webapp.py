@@ -1090,41 +1090,8 @@ def ask_stream(
             pass
 
 
-def session_username(cookie_header: str | None) -> str | None:
-    """The Django user behind a browser's Chiron session cookie, if any.
-
-    Chiron and this server are reached on the same host (the UI proxies one and
-    iframes the other), and cookies ignore the port, so the browser sends Chiron's
-    `sessionid` here too.  Resolving it lets "use this as my query" land in the
-    workspace of the person who clicked rather than in CHIRON_MCP_USERNAME's.
-    """
-    if not cookie_header:
-        return None
-    from http.cookies import SimpleCookie
-
-    jar = SimpleCookie()
-    try:
-        jar.load(cookie_header)
-    except Exception:  # noqa: BLE001
-        return None
-    if "sessionid" not in jar:
-        return None
-    try:
-        from chiron_mcp import server as S  # noqa: F401  (boots Django)
-        from django.contrib.auth import get_user_model
-        from django.contrib.sessions.models import Session
-        from django.utils import timezone
-
-        sess = Session.objects.filter(
-            session_key=jar["sessionid"].value, expire_date__gt=timezone.now()
-        ).first()
-        if not sess:
-            return None
-        uid = sess.get_decoded().get("_auth_user_id")
-        user = get_user_model().objects.filter(pk=uid, is_active=True).first()
-        return user.username if user else None
-    except Exception:  # noqa: BLE001
-        return None
+# The session-cookie lookup lives in identity, shared with the OAuth login page.
+from chiron_mcp.identity import session_username  # noqa: E402,F401
 
 
 class Handler(BaseHTTPRequestHandler):

@@ -48,16 +48,82 @@ class Identity:
         return self.dataset.unique_id
 
 
+def bound_username() -> str:
+    """Who a tool call acts as when nobody passes a username.
+
+    Normally CHIRON_MCP_USERNAME.  On the HTTP endpoint with OAuth it is the Chiron user
+    who logged in to obtain the request's access token, and there is no fallback: a call
+    that somehow arrives without a token is refused rather than quietly served as a
+    configured service account.
+    """
+    if not CONFIG.oauth:
+        return CONFIG.username
+
+    from mcp.server.auth.middleware.auth_context import get_access_token
+
+    token = get_access_token()
+    if token is None or not token.subject:
+        raise AccessError(
+            "This request carries no authenticated Chiron user. The HTTP endpoint "
+            "requires an OAuth login; reconnect the MCP client and sign in."
+        )
+    return token.subject
+
+
+def session_username(cookie_header: str | None) -> str | None:
+    """The Django user behind a browser's Chiron session cookie, if any.
+
+    Chiron, the Ask server and the MCP HTTP endpoint are reached on the same host, and
+    cookies ignore the port, so the browser sends Chiron's `sessionid` to all of them.
+    Resolving it lets a request act as the person who is logged in to Chiron.
+    """
+    if not cookie_header:
+        return None
+    from http.cookies import SimpleCookie
+
+    jar = SimpleCookie()
+    try:
+        jar.load(cookie_header)
+    except Exception:  # noqa: BLE001
+        return None
+    if "sessionid" not in jar:
+        return None
+    try:
+        from chiron_mcp.bootstrap import ensure_django
+
+        ensure_django()
+        from django.contrib.auth import get_user_model
+        from django.contrib.sessions.models import Session
+        from django.utils import timezone
+
+        sess = Session.objects.filter(
+            session_key=jar["sessionid"].value, expire_date__gt=timezone.now()
+        ).first()
+        if not sess:
+            return None
+        uid = sess.get_decoded().get("_auth_user_id")
+        user = get_user_model().objects.filter(pk=uid, is_active=True).first()
+        return user.username if user else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _django_user(username: str | None = None, allow_superuser: bool = False):
     """The Django user this server acts as.
 
-    `username` overrides CHIRON_MCP_USERNAME.  It is never exposed to the model: the
-    only caller that passes it is the Ask web server, which uses it to act as the
-    person whose browser session it received (see chiron_mcp.webapp).
+    `username` overrides the bound identity.  It is never exposed to the model: the
+    callers that pass it are the Ask web server, which acts as the person whose browser
+    session it received (see chiron_mcp.webapp), and the OAuth login page.
     """
     from django.contrib.auth import get_user_model
 
-    name = username or CONFIG.username
+    if username is None and CONFIG.oauth:
+        # The name comes from a real login by that person, the same situation the Ask
+        # server relaxes the superuser refusal for: the refusal exists to stop a
+        # *service* being configured as a superuser, and a person who is one already
+        # has that access in Chiron's own UI.  The access ceiling still applies.
+        allow_superuser = True
+    name = username or bound_username()
     User = get_user_model()
     user = User.objects.filter(username=name).first()
     if not user:
@@ -198,7 +264,7 @@ def require_operator() -> None:
     user = _django_user()
     if not user.is_staff:
         raise AccessError(
-            f"Django user {CONFIG.username!r} is not staff; operations tools require it."
+            f"Django user {user.username!r} is not staff; operations tools require it."
         )
 
 

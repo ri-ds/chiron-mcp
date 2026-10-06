@@ -59,6 +59,7 @@ After that it starts in seconds.
 | **http://localhost:5173** | **Chiron UI with the Ask tab**, start here |
 | http://localhost:8001 | Chiron itself (server-rendered pages, admin) |
 | http://localhost:8900 | The Ask chat page on its own |
+| http://localhost:8765/mcp | The MCP tools over HTTP, for MCP clients on this machine |
 
 In the UI, **Ask** sits in the header beside Aggregate. Type a question and you get an
 answer with real figures, markdown tables, charts, and a button through to Chiron's
@@ -434,6 +435,95 @@ Every setting is an environment variable. Defaults are the conservative end of e
 | `CHIRON_MCP_METADATA_DB` | *(host project's)* | Metadata database: a SQLite file path, or a `postgresql://` URL |
 | `CHIRON_MCP_WAREHOUSE_URL` | *(host project's)* | SQLAlchemy warehouse URL |
 | `CHIRON_MCP_UI_URL` | `http://localhost:3000` | Where Query and Report links point |
+| `CHIRON_MCP_TRANSPORT` | `stdio` | `stdio`, or `http` for a streamable-HTTP endpoint at `/mcp`. See [HTTP endpoint](#http-endpoint) |
+| `CHIRON_MCP_HTTP_PORT` | `8765` | Port for the HTTP endpoint. The address is always `127.0.0.1` |
+| `CHIRON_MCP_HTTP_AUTH` | `none` | `oauth` makes callers of the HTTP endpoint sign in as a Chiron user; each call then acts as that user. `CHIRON_MCP_USERNAME` is not needed in that mode |
+| `CHIRON_MCP_OAUTH_SECRET` | *(generated)* | Key that signs OAuth tokens. Unset, a random one is kept in `CHIRON_MCP_STATE_DIR` (default `~/.cache/chiron-mcp/oauth.key`) |
+
+### HTTP endpoint
+
+By default an MCP client launches `chiron-mcp` itself and talks to it over stdio. Set
+`CHIRON_MCP_TRANSPORT=http` to run it as a long-lived server instead, with the same tools
+at `http://127.0.0.1:8765/mcp` (streamable HTTP):
+
+```bash
+CHIRON_MCP_TRANSPORT=http CHIRON_MCP_USERNAME=<user> .venv/bin/chiron-mcp
+```
+
+`scripts/run_all.sh` starts it alongside the other servers. Point a client at it by URL:
+
+```bash
+claude mcp add --transport http chiron http://localhost:8765/mcp
+```
+
+```json
+{ "mcpServers": { "chiron": { "type": "http", "url": "http://localhost:8765/mcp" } } }
+```
+
+It is bound to `127.0.0.1` and there is no setting to change that. Requests whose
+`Host` header is not local are refused, which stops a web page from reaching it through
+DNS rebinding.
+
+**By default it has no authentication**: every caller acts as `CHIRON_MCP_USERNAME`, with
+whatever that user can see and, if `CHIRON_MCP_ALLOW_SAVE` is on, change. Check it with:
+
+```bash
+CHIRON_MCP_USERNAME=<user> .venv/bin/python -m tests.protocol_http
+```
+
+#### Signing in as a Chiron user (OAuth)
+
+Set `CHIRON_MCP_HTTP_AUTH=oauth` and the endpoint stops being one shared identity. A
+client must sign in, and every tool call then runs as the person who did, with their own
+access level and permission groups on each dataset. `scripts/run_all.sh` turns this on.
+
+```bash
+CHIRON_MCP_TRANSPORT=http CHIRON_MCP_HTTP_AUTH=oauth .venv/bin/chiron-mcp
+```
+
+The server is its own small OAuth 2.1 authorization server (dynamic client registration,
+authorization code with PKCE, refresh tokens), which MCP clients already speak. Nothing
+changes in how you add it; the client notices the `401` and opens a browser. In Claude
+Code that is `/mcp`, then the server, then **Authenticate**.
+
+The browser lands on a sign-in page served by this server, which turns an identity into a
+Chiron user in one of two ways:
+
+- **Continue as *name***, if that browser is already logged in to Chiron. The page reads
+  Chiron's own session cookie, so whatever Chiron uses to log people in (including SSO)
+  is what authenticated them, and no password is typed here.
+- **A Chiron username and password**, checked by Django's `authenticate()`, so the
+  deployment's own authentication backends decide.
+
+Either way the result is an existing, active Django user, and that username is the
+token's subject. From there the rules are the ones in
+[Access model and safety](#access-model-and-safety), per person:
+
+- The user's own `ChironUser` on each dataset decides what they see. Nobody is
+  provisioned: someone with no access record on a dataset is refused, as on stdio.
+- `CHIRON_MCP_MAX_ACCESS_LEVEL` still clamps everyone, so PHI stays opt-in.
+- An aggregate-only user is refused row-level tools; the operations tools need
+  `CHIRON_MCP_OPERATOR` and a staff account; saves land in the signed-in user's own
+  workspace and reports.
+- A superuser may sign in as themselves, as in the Ask tab: the superuser refusal is
+  about a *service* being configured as one.
+
+What it keeps, and for how long:
+
+- **One signing key and nothing else.** Tokens and client registrations are signed
+  blobs the server verifies rather than stores, so they survive a restart. The key is
+  not Django's `SECRET_KEY` (the bundled demo project ships a public one). Delete the key
+  file to sign everyone out.
+- Access tokens last an hour and refresh tokens thirty days. A token stops working at
+  once if its user is deactivated or changes password.
+- Signed tokens cannot be revoked one at a time, so there is no revocation endpoint.
+- Clients may register loopback redirect URIs only, matching the loopback-only endpoint.
+
+Check the whole flow, as two users with different access:
+
+```bash
+.venv/bin/python -m tests.protocol_oauth
+```
 
 The Ask server (`python -m chiron_mcp.webapp`) adds:
 
@@ -664,6 +754,8 @@ the DRF class, and only the DRF class.
 ```bash
 CHIRON_MCP_USERNAME=<deid-user> .venv/bin/python tests/safety.py   # invariants
 CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusals
+.venv/bin/python -m tests.protocol_http                            # HTTP endpoint, loopback only
+.venv/bin/python -m tests.protocol_oauth                           # HTTP endpoint, OAuth login per user
 .venv/bin/python tests/ask_e2e.py                                  # the Ask tab, end to end
 .venv/bin/python -m tests.protocol                                 # real MCP stdio handshake
 ```
@@ -730,9 +822,11 @@ Point it at a Chiron that shares file locking with the Ask server (`CHIRON_API`,
 - **Ask conversations are stored as Claude Code transcripts**, which contain patient data.
   They are deleted when you delete the conversation or after `CHIRON_MCP_THREAD_TTL_HOURS`; see
   `docs/chiron-ui-integration.md` for the details and a cleanup command for older ones.
-- **Remote deployment is not supported.** The transport is stdio and execution is in-process, so
-  the server must run where it can reach both databases. Serving it remotely would need HTTP
-  transport plus an authentication story Chiron does not currently have.
+- **Remote deployment is not supported.** Execution is in-process, so the server must run
+  where it can reach both databases, and the [HTTP endpoint](#http-endpoint) listens on
+  the loopback interface only. Its OAuth login identifies each caller as a Chiron user,
+  which is the authentication a remote endpoint would need, but serving it beyond this
+  machine also needs TLS and non-loopback redirect URIs, and neither is built.
 
 ## A Chiron bug this project found
 
@@ -768,6 +862,7 @@ chiron_mcp/
   bootstrap.py        starts Django in-process, keeping stdout clean for the protocol
   django_settings.py  inherits the host project's settings, overrides only the databases
   identity.py         identity resolution and the re-implemented permission gates
+  oauth.py            OAuth login for the HTTP endpoint: sign in as a Chiron user
   filters.py          cohort filter input schemas, transcribed from validate_form()
   server.py           the 23 tools
   webapp.py           the Ask chat server embedded in the Chiron UI
@@ -781,6 +876,8 @@ tests/
   safety.py           permission and whole-dataset invariants
   smoke.py            end-to-end tool exercise
   protocol.py         real MCP stdio handshake
+  protocol_http.py    the same over the HTTP endpoint, plus its loopback-only checks
+  protocol_oauth.py   the HTTP endpoint's OAuth login, as two users with different access
   ask_e2e.py          the Ask tab end to end, checked against raw SQL and Chiron's API
 ```
 
