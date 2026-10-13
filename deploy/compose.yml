@@ -44,6 +44,9 @@ services:
     command: ["/app/deploy/entrypoint-chiron.sh"]
     environment:
       <<: *app-env
+      # admin's own password; the demo accounts keep the published one (setup.sh
+      # makes it). Only this container sets passwords, so only it gets this.
+      CHIRON_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run ./setup.sh first}
     volumes:
       - static:/app/static
     depends_on:

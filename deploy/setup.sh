@@ -58,6 +58,8 @@ secret() { openssl rand -hex 32; }
 
 [ -n "$(get_key POSTGRES_PASSWORD)" ] || set_key POSTGRES_PASSWORD "$(secret)"
 [ -n "$(get_key DJANGO_SECRET_KEY)" ] || set_key DJANGO_SECRET_KEY "$(secret)"
+# admin signs in with this, not the public demo password (read it: grep ADMIN_PASSWORD .env)
+[ -n "$(get_key ADMIN_PASSWORD)" ] || set_key ADMIN_PASSWORD "$(openssl rand -base64 18 | tr -d '/+=')"
 case "$mode" in
   https)
     set_key SITE_ADDRESS "$domain"
@@ -156,7 +158,8 @@ echo "Open:        $url"
 if [ "$gate" = 1 ]; then
   echo "Site login:  $(sed -n 's/^user: //p' .gate-password) / $(sed -n 's/^password: //p' .gate-password)   (saved in deploy/.gate-password)"
 fi
-echo "Then click a demo login button on Chiron's login page."
+echo "Then click a demo login button on Chiron's login page. admin signs in with its own"
+echo "password, ADMIN_PASSWORD in $(pwd)/.env."
 echo
 echo "One step left for the Ask tab: log the server in to Claude, yourself:"
 echo "  cd $(pwd) && docker compose exec -it ask claude"

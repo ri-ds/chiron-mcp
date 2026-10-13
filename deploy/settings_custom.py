@@ -64,5 +64,24 @@ if PUBLIC_URL.startswith("https://"):
 # collectstatic writes here; the proxy serves the files from a shared volume.
 STATIC_ROOT = "/app/static"
 
+# The deployment's own templates come first: its login page has no one-click admin
+# button (admin's password is ADMIN_PASSWORD, not the published demo one). The rest is
+# test_project's TEMPLATES as it stands, restated because a star-import replaces it.
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": ["/app/deploy/templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
 CHIRON_SITE_TITLE = os.environ.get("CHIRON_SITE_TITLE", "Chiron")
 CHIRON_INFOBAR = os.environ.get("CHIRON_INFOBAR", "Synthetic demo data only")

@@ -44,6 +44,7 @@ COPY pyproject.toml README.md /app/
 COPY chiron_mcp /app/chiron_mcp
 COPY scripts /app/scripts
 COPY tests /app/tests
+COPY deploy/templates /app/deploy/templates
 COPY deploy/entrypoint-chiron.sh deploy/mint_session.py deploy/import_dataset.py \
      deploy/count_subjects.py /app/deploy/
 # Chiron's settings.py ends with `from .settings_custom import *`; this is how the
