@@ -65,23 +65,17 @@ if PUBLIC_URL.startswith("https://"):
 STATIC_ROOT = "/app/static"
 
 # The deployment's own templates come first: its login page has no one-click admin
-# button (admin's password is ADMIN_PASSWORD, not the published demo one). The rest is
-# test_project's TEMPLATES as it stands, restated because a star-import replaces it.
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": ["/app/deploy/templates"],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
-]
+# button (admin's password is ADMIN_PASSWORD, not the published demo one). Added to
+# Chiron's TEMPLATES in place, not restated: settings.py appends its own context
+# processor (chiron_globals) after defining them, and star-imports this file last, so
+# the list is complete by now and a copy here would silently drop that processor.
+import sys as _sys
+
+_parent = _sys.modules.get(__name__.rpartition(".")[0] + ".settings")
+if _parent is not None and getattr(_parent, "TEMPLATES", None):
+    _dirs = _parent.TEMPLATES[0].setdefault("DIRS", [])
+    if "/app/deploy/templates" not in _dirs:
+        _dirs.insert(0, "/app/deploy/templates")
 
 CHIRON_SITE_TITLE = os.environ.get("CHIRON_SITE_TITLE", "Chiron")
 CHIRON_INFOBAR = os.environ.get("CHIRON_INFOBAR", "Synthetic demo data only")
