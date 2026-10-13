@@ -91,11 +91,22 @@ _LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 
 
 def issuer_url() -> str:
+    # Hosted, the sign-in lives beside the endpoint under the public address (the proxy
+    # strips <public path>/mcp before this app sees it); locally, at the port's root.
+    if CONFIG.hosted:
+        return f"{CONFIG.public_url}/mcp"
     return f"http://localhost:{CONFIG.http_port}"
 
 
 def resource_url() -> str:
+    if CONFIG.hosted:
+        return f"{CONFIG.public_url}/mcp"
     return f"{issuer_url()}/mcp"
+
+
+def _login_action() -> str:
+    """The sign-in form's target, as the browser sees it (under the issuer's path)."""
+    return urlsplit(issuer_url()).path.rstrip("/") + LOGIN_PATH
 
 
 # --- signing -----------------------------------------------------------------
@@ -221,6 +232,8 @@ def _is_loopback_redirect(uri) -> bool:
 
 def _same_resource(requested: str) -> bool:
     """Is `requested` this endpoint, under either spelling of the loopback host?"""
+    if CONFIG.hosted:
+        return requested.rstrip("/") == resource_url()
     try:
         parts = urlsplit(requested)
         return (
@@ -589,7 +602,7 @@ def _login_form(txn: str, entry: dict, session_user: str | None, error: str | No
         parts.append(_error(error))
     hidden = f'<input type="hidden" name="txn" value="{e(txn)}">'
     password_form = (
-        f'<form method="post" action="{LOGIN_PATH}" autocomplete="off">{hidden}'
+        f'<form method="post" action="{_login_action()}" autocomplete="off">{hidden}'
         '<input type="hidden" name="action" value="password">'
         '<label for="u">Chiron username</label>'
         '<input id="u" type="text" name="username" autocapitalize="none" '
@@ -601,7 +614,7 @@ def _login_form(txn: str, entry: dict, session_user: str | None, error: str | No
     if session_user:
         name = e(session_user)
         parts.append(
-            f'<form method="post" action="{LOGIN_PATH}">{hidden}'
+            f'<form method="post" action="{_login_action()}">{hidden}'
             '<input type="hidden" name="action" value="session">'
             '<button type="submit"><span class="avatar" aria-hidden="true">'
             f"{e(session_user[:1])}</span>"
@@ -613,7 +626,7 @@ def _login_form(txn: str, entry: dict, session_user: str | None, error: str | No
     else:
         parts.append(password_form)
     parts.append(
-        f'<form method="post" action="{LOGIN_PATH}">{hidden}'
+        f'<form method="post" action="{_login_action()}">{hidden}'
         '<input type="hidden" name="action" value="deny">'
         '<button type="submit" class="plain">Cancel</button></form>'
         f'<p class="muted fine">The sign-in goes back to <code>{e(target.netloc)}</code> on '
@@ -631,6 +644,20 @@ def _local(request: Request) -> bool:
     """
     raw_host = request.headers.get("host", "")
     origin = request.headers.get("origin")
+    if CONFIG.hosted:
+        # Behind a proxy the Host is whatever the proxy sends, and DNS rebinding onto a
+        # loopback port is not the threat for a server on another machine. What still
+        # matters is that only the page itself posts the form: Origin, when a browser
+        # sends one, must be the public address's origin ("null" never is).
+        public = urlsplit(CONFIG.public_url)
+        ok = origin is None or origin == f"{public.scheme}://{public.netloc}"
+        if not ok:
+            print(
+                f"chiron-mcp: sign-in page refused {request.method} with Origin={origin!r}; "
+                f"expected {public.scheme}://{public.netloc}",
+                file=sys.stderr,
+            )
+        return ok
     ok = False
     try:
         host = urlsplit(f"//{raw_host}")

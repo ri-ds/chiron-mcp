@@ -1,0 +1,12 @@
+# OAuth discovery for the MCP endpoint. RFC 9728 and RFC 8414 put these documents at
+# the site root, with the endpoint's path inserted after /.well-known, so they sit
+# outside BASE_PATH; a web server in front must forward these two paths here as well.
+# Imported by Caddyfile and Caddyfile.subpath at the site level.
+handle /.well-known/oauth-protected-resource{$BASE_PATH}/mcp {
+	reverse_proxy mcp:8765
+}
+handle /.well-known/oauth-authorization-server{$BASE_PATH}/mcp {
+	# chiron-mcp serves its metadata at its own root; the issuer is <site>/mcp
+	rewrite * /.well-known/oauth-authorization-server
+	reverse_proxy mcp:8765
+}

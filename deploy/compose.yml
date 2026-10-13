@@ -87,6 +87,33 @@ services:
       retries: 6
     restart: unless-stopped
 
+  # The MCP tools over HTTP, for people's own MCP clients (Claude Code, ...). Each caller
+  # signs in as their own Chiron user (OAuth) and acts with that account's permissions.
+  # Published by web at <PUBLIC_URL>/mcp. Off unless the "mcp" profile is on
+  # (COMPOSE_PROFILES=mcp in .env): it needs MCP_PUBLIC_URL to be HTTPS, and chiron-mcp
+  # refuses to start otherwise. See "Connect your own Claude" in README.md.
+  mcp:
+    image: chiron-ask-app:latest
+    pull_policy: never
+    profiles: ["mcp"]
+    command: ["chiron-mcp"]
+    environment:
+      <<: *app-env
+      CHIRON_MCP_TRANSPORT: http
+      CHIRON_MCP_HTTP_AUTH: oauth
+      # only the web service can reach this port, inside Docker
+      CHIRON_MCP_HTTP_HOST: 0.0.0.0
+      CHIRON_MCP_HTTP_PORT: "8765"
+      CHIRON_MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-}
+      # signs tokens; from .env so sign-ins survive a restart (setup.sh makes it)
+      CHIRON_MCP_OAUTH_SECRET: ${MCP_OAUTH_SECRET:-}
+      CHIRON_MCP_ALLOW_SAVE: "1"
+      CHIRON_MCP_MAX_ACCESS_LEVEL: ${MCP_MAX_ACCESS_LEVEL:-deid}
+    depends_on:
+      chiron:
+        condition: service_healthy
+    restart: unless-stopped
+
   web:
     build:
       context: ..

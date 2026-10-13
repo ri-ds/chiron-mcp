@@ -1807,21 +1807,43 @@ def main() -> None:
         file=sys.stderr,
     )
     if CONFIG.transport == "http":
-        from chiron_mcp.config import HTTP_HOST
-
-        # Loopback only, and the library's DNS-rebinding protection stays on (it is
-        # enabled by default for a loopback host), so a web page in the user's browser
-        # cannot reach this endpoint by pointing a hostname at 127.0.0.1.
         auth = (
             "sign in as a Chiron user (OAuth)" if CONFIG.oauth
             else f"no authentication, every caller is {CONFIG.username!r}"
         )
+        if CONFIG.hosted:
+            import os
+            from urllib.parse import urlsplit
+
+            from mcp.server.transport_security import TransportSecuritySettings
+
+            # Published by a proxy (validate() has required OAuth and HTTPS). The library's
+            # Host/Origin checks stay on, admitting the public name and the hops a proxy
+            # in front uses to reach this port; extend them with CHIRON_MCP_ALLOWED_HOSTS.
+            public = urlsplit(CONFIG.public_url)
+            extra = [h.strip() for h in os.environ.get("CHIRON_MCP_ALLOWED_HOSTS", "").split(",")]
+            security = TransportSecuritySettings(
+                enable_dns_rebinding_protection=True,
+                allowed_hosts=[public.netloc, "localhost:*", "127.0.0.1:*", *filter(None, extra)],
+                allowed_origins=[f"{public.scheme}://{public.netloc}"],
+            )
+            print(
+                f"chiron-mcp: streamable HTTP published at {oauth.resource_url()} "
+                f"(listening on {CONFIG.http_host}:{CONFIG.http_port}; {auth})",
+                file=sys.stderr,
+            )
+            mcp.run("streamable-http", host=CONFIG.http_host, port=CONFIG.http_port,
+                    transport_security=security)
+            return
+        # Loopback only, and the library's DNS-rebinding protection stays on (it is
+        # enabled by default for a loopback host), so a web page in the user's browser
+        # cannot reach this endpoint by pointing a hostname at 127.0.0.1.
         print(
             f"chiron-mcp: streamable HTTP at http://localhost:{CONFIG.http_port}/mcp "
             f"(loopback only; {auth})",
             file=sys.stderr,
         )
-        mcp.run("streamable-http", host=HTTP_HOST, port=CONFIG.http_port)
+        mcp.run("streamable-http", host=CONFIG.http_host, port=CONFIG.http_port)
     else:
         mcp.run()
 
