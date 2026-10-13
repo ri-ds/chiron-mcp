@@ -435,38 +435,107 @@ def server_kwargs() -> dict:
 
 # --- the login page ----------------------------------------------------------
 
+# The page may load nothing (Content-Security-Policy: default-src 'none'), so it is
+# self-contained: system fonts, inline CSS, and icons drawn as inline SVG markup.
 _PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Sign in to Chiron</title>
 <style>
-  body {{ margin: 0; background: #f5f5f5; color: #212121;
-         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }}
-  main {{ max-width: 420px; margin: 9vh auto; padding: 28px 30px; background: #fff;
-         border: 1px solid #e0e0e0; border-radius: 6px; }}
-  h1 {{ margin: 0 0 6px; font-size: 1.25rem; font-weight: 500; color: #4a148c; }}
-  p {{ margin: 0 0 14px; }}
-  .muted {{ color: #757575; font-size: 13px; }}
-  .err {{ background: #fdecea; color: #b3261e; border-left: 3px solid #b3261e;
-          padding: 9px 12px; border-radius: 3px; font-size: 14px; }}
-  label {{ display: block; font-size: 13px; color: #424242; margin: 10px 0 4px; }}
-  input[type=text], input[type=password] {{ width: 100%; box-sizing: border-box;
-          font: inherit; padding: 9px 11px; border: 1px solid #bdbdbd; border-radius: 4px; }}
-  button {{ font: inherit; font-weight: 500; padding: 9px 18px; border-radius: 4px;
-           cursor: pointer; border: 1px solid #00796b; background: #00796b; color: #fff; }}
-  button.plain {{ background: #fff; color: #424242; border-color: #bdbdbd; }}
-  .row {{ display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }}
-  details {{ margin-top: 18px; }} summary {{ cursor: pointer; color: #00695c; font-size: 14px; }}
-  code {{ font-size: 13px; background: #f5f5f5; padding: 1px 5px; border-radius: 3px; }}
+  :root { --bg: #f4f2f8; --card: #fff; --text: #1f1d24; --muted: #6b6775;
+          --line: #e5e1ec; --field: #fbfaff; --brand: #5b2a86; --brand-hi: #4a2170;
+          --brand-soft: #f1eaf8; --on-brand: #fff; --bad: #b3261e; --bad-soft: #fdecea;
+          --ring: rgba(91, 42, 134, .28); --shadow: 0 1px 2px rgba(31, 29, 36, .06),
+          0 12px 32px -12px rgba(31, 29, 36, .18); }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #131118; --card: #1d1a23; --text: #ece9f1; --muted: #a39fae;
+            --line: #322d3b; --field: #17151c; --brand: #b48ee0; --brand-hi: #c7a6ea;
+            --brand-soft: #2a2236; --on-brand: #1d1a23; --bad: #f2b8b5; --bad-soft: #3b1f1f;
+            --ring: rgba(180, 142, 224, .35); --shadow: 0 12px 32px -12px rgba(0, 0, 0, .6); }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+         justify-content: center; gap: 18px; padding: 32px 16px; background: var(--bg);
+         color: var(--text);
+         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--line);
+         border-radius: 14px; padding: 30px 30px 26px; box-shadow: var(--shadow); }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px;
+           font-weight: 600; font-size: 17px; letter-spacing: .2px; }
+  .brand svg rect { fill: var(--brand); }
+  .brand svg path, .brand svg circle { stroke: var(--on-brand); }
+  .brand svg circle { fill: var(--on-brand); }
+  h1 { margin: 0 0 14px; font-size: 22px; line-height: 1.25; font-weight: 650; }
+  p { margin: 0 0 14px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .link { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+          padding: 5px 11px; border-radius: 999px; background: var(--brand-soft);
+          color: var(--brand); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+  .chip svg, .perms svg, .err svg { flex: none; }
+  .arrow { color: var(--muted); }
+  .perms { list-style: none; margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--line);
+           border-radius: 10px; display: grid; gap: 9px; font-size: 14px; }
+  .perms li { display: flex; gap: 10px; align-items: flex-start; }
+  .perms svg { margin-top: 2px; color: var(--brand); }
+  .err { display: flex; gap: 9px; align-items: flex-start; background: var(--bad-soft);
+         color: var(--bad); padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+  .err svg { margin-top: 2px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 5px; }
+  input[type=text], input[type=password] { width: 100%; font: inherit; color: var(--text);
+         padding: 10px 12px; background: var(--field); border: 1px solid var(--line);
+         border-radius: 8px; }
+  input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--ring); }
+  button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+           font: inherit; font-weight: 600; padding: 11px 16px; border-radius: 9px;
+           cursor: pointer; border: 1px solid var(--brand); background: var(--brand);
+           color: var(--on-brand); margin-top: 16px; }
+  button:hover { background: var(--brand-hi); border-color: var(--brand-hi); }
+  button:focus-visible, summary:focus-visible { outline: 3px solid var(--ring);
+         outline-offset: 2px; }
+  button.plain { background: transparent; color: var(--text); border-color: var(--line);
+                 margin-top: 10px; font-weight: 500; }
+  button.plain:hover { background: var(--brand-soft); }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; display: inline-grid;
+            place-items: center; background: var(--on-brand); color: var(--brand);
+            font-size: 13px; font-weight: 700; text-transform: uppercase; }
+  details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+  summary { cursor: pointer; color: var(--brand); font-size: 14px; font-weight: 600; }
+  .fine { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
+  code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg);
+         padding: 1px 6px; border-radius: 5px; }
+  footer { color: var(--muted); font-size: 12px; }
 </style></head><body><main>
+<div class="brand"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+<rect width="32" height="32" rx="9"/><path d="M21.6 11.4a6.6 6.6 0 1 0 0 9.2" fill="none"
+stroke-width="2.6" stroke-linecap="round"/><circle cx="22.6" cy="16" r="1.5"/></svg>Chiron</div>
 <h1>Sign in to Chiron</h1>
-{body}
-</main></body></html>"""
+<!--BODY-->
+</main><footer>Chiron &middot; sign-in for MCP clients</footer></body></html>"""
+
+# Small inline icons (currentColor), so they follow the text colour in both themes.
+_ICONS = {
+    "app": '<path d="M4 5h16v11H4z M8 20h8 M12 16v4" />',
+    "query": '<circle cx="11" cy="11" r="6" /><path d="M20 20l-4.3-4.3" />',
+    "shield": '<path d="M12 3l7 3v5c0 4.4-3 8.3-7 9.5C8 19.3 5 15.4 5 11V6z" />',
+    "save": '<path d="M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6" />',
+    "alert": '<circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5 M12 16.5v.01" />',
+}
+
+
+def _icon(name: str, size: int = 16) -> str:
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" '
+        f'stroke-linejoin="round" aria-hidden="true">{_ICONS[name]}</svg>'
+    )
 
 
 def _html(body: str, status: int = 200) -> HTMLResponse:
     return HTMLResponse(
-        _PAGE.format(body=body),
+        _PAGE.replace("<!--BODY-->", body),
         status_code=status,
         headers={
             "Cache-Control": "no-store",
@@ -484,10 +553,14 @@ def _html(body: str, status: int = 200) -> HTMLResponse:
     )
 
 
+def _error(message: str) -> str:
+    return f'<p class="err" role="alert">{_icon("alert")}<span>{html.escape(message)}</span></p>'
+
+
 def _problem(message: str, status: int = 400) -> HTMLResponse:
     return _html(
-        f'<p class="err">{html.escape(message)}</p>'
-        '<p class="muted">Close this tab and start the sign-in again from your MCP client.</p>',
+        _error(message)
+        + '<p class="muted">Close this tab and start the sign-in again from your MCP client.</p>',
         status,
     )
 
@@ -496,34 +569,45 @@ def _login_form(txn: str, entry: dict, session_user: str | None, error: str | No
     e = html.escape
     params: AuthorizationParams = entry["params"]
     target = urlsplit(str(params.redirect_uri))
-    can = "see what you can see in Chiron"
+    client = e(entry["client_name"])
+    perms = [
+        ("query", "Run Chiron queries and read the results as you"),
+        ("shield", "See only what your Chiron account can see, within your access level"),
+    ]
     if CONFIG.allow_save:
-        can += ", and save reports and replace your open query"
+        perms.append(("save", "Save reports and replace your open query"))
     parts = [
-        f"<p><strong>{e(entry['client_name'])}</strong> wants to query Chiron as you.</p>",
-        f'<p class="muted">It will be able to {can}, within your own access level. '
-        f"The sign-in is returned to <code>{e(target.netloc)}</code> on this machine.</p>",
+        f'<p class="link"><span class="chip">{_icon("app", 14)}{client}</span>'
+        '<span class="arrow" aria-hidden="true">&rarr;</span>'
+        '<span class="chip">Chiron</span></p>',
+        f"<p><strong>{client}</strong> wants to query Chiron as you. It will be able to:</p>",
+        '<ul class="perms">'
+        + "".join(f"<li>{_icon(icon)}<span>{text}</span></li>" for icon, text in perms)
+        + "</ul>",
     ]
     if error:
-        parts.append(f'<p class="err">{e(error)}</p>')
+        parts.append(_error(error))
     hidden = f'<input type="hidden" name="txn" value="{e(txn)}">'
     password_form = (
         f'<form method="post" action="{LOGIN_PATH}" autocomplete="off">{hidden}'
         '<input type="hidden" name="action" value="password">'
         '<label for="u">Chiron username</label>'
-        '<input id="u" type="text" name="username" autocapitalize="none" required>'
+        '<input id="u" type="text" name="username" autocapitalize="none" '
+        'autocomplete="username" required>'
         '<label for="p">Password</label>'
-        '<input id="p" type="password" name="password" required>'
-        '<div class="row"><button type="submit">Sign in</button></div></form>'
+        '<input id="p" type="password" name="password" autocomplete="current-password" required>'
+        '<button type="submit">Sign in</button></form>'
     )
     if session_user:
+        name = e(session_user)
         parts.append(
             f'<form method="post" action="{LOGIN_PATH}">{hidden}'
             '<input type="hidden" name="action" value="session">'
-            f'<div class="row"><button type="submit">Continue as {e(session_user)}</button></div>'
-            "</form>"
-            '<p class="muted" style="margin-top:8px">You are logged in to Chiron in this '
-            "browser.</p>"
+            '<button type="submit"><span class="avatar" aria-hidden="true">'
+            f"{e(session_user[:1])}</span>"
+            f"<span>Continue as {name}</span></button></form>"
+            '<p class="muted" style="margin:8px 0 0;text-align:center">You are logged in to '
+            "Chiron in this browser.</p>"
             f"<details><summary>Use a different Chiron account</summary>{password_form}</details>"
         )
     else:
@@ -531,7 +615,9 @@ def _login_form(txn: str, entry: dict, session_user: str | None, error: str | No
     parts.append(
         f'<form method="post" action="{LOGIN_PATH}">{hidden}'
         '<input type="hidden" name="action" value="deny">'
-        '<div class="row"><button type="submit" class="plain">Cancel</button></div></form>'
+        '<button type="submit" class="plain">Cancel</button></form>'
+        f'<p class="muted fine">The sign-in goes back to <code>{e(target.netloc)}</code> on '
+        "this machine. Only continue if you started it from your MCP client.</p>"
     )
     return _html("".join(parts), 401 if error else 200)
 
