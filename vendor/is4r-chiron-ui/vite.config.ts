@@ -8,7 +8,12 @@ export default defineConfig(({ mode }) => {
   // own deployment with CHIRON_API=http://host:port.
   const api = process.env.CHIRON_API || "http://127.0.0.1:8001";
 
+  // Served under a path prefix (e.g. /chiron) when VITE_BASE_PATH is set; the
+  // deployment's Dockerfile.web passes it through from BASE_PATH. Unset: the site root.
+  const basePath = (process.env.VITE_BASE_PATH || "").replace(/\/+$/, "");
+
   return {
+    base: `${basePath}/`,
     plugins: [react()],
     server: {
       port: Number(process.env.CHIRON_UI_PORT || 5173),

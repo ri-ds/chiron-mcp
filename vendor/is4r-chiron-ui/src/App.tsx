@@ -83,7 +83,7 @@ export function ErrorDisplay({ error }: { error: AllError }) {
             variant="contained"
             component="button"
             onClick={() => {
-              window.location.href = "/";
+              window.location.href = import.meta.env.BASE_URL;
             }}
             sx={{ m: 2 }}
           >

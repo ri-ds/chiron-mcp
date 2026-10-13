@@ -1,0 +1,35 @@
+# The site served under a path prefix, BASE_PATH in .env (e.g. /chiron), for a proxy
+# in front that forwards that prefix unchanged (Apache: ProxyPass /chiron
+# http://localhost:8088/chiron). The web container picks this file over Caddyfile
+# whenever BASE_PATH is set; see that file for SITE_ADDRESS.
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# The same password gate as Caddyfile, in front of everything.
+	import /etc/caddy/gate.caddy
+
+	redir / {$BASE_PATH}/ 302
+	redir {$BASE_PATH} {$BASE_PATH}/ 308
+
+	# Strip the prefix, then route exactly as at the root. Django puts the prefix back
+	# on the URLs it builds (FORCE_SCRIPT_NAME), and the UI is built with it as its base.
+	handle_path {$BASE_PATH}/* {
+		import /etc/caddy/routes.caddy
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

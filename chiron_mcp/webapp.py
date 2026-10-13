@@ -1101,9 +1101,12 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _allowed_origins(self) -> set[str]:
+        # A browser's Origin is scheme and host only, while the UI's address may carry
+        # a path (a deployment under /chiron), so compare against its origin.
+        ui = urlparse(CONFIG.ui_url)
         allowed = {
             f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}",
-            CONFIG.ui_url,
+            f"{ui.scheme}://{ui.netloc}" if ui.netloc else CONFIG.ui_url,
         }
         extra = os.environ.get("CHIRON_MCP_ALLOWED_ORIGINS", "")
         return allowed | {o.strip() for o in extra.split(",") if o.strip()}

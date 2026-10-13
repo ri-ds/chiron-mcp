@@ -169,7 +169,7 @@ export default function ResultsHeader({
             })
           );
           dispatch(resetTableStatus());
-          window.location.href = `/${dataset}/results/`;
+          window.location.href = `${import.meta.env.BASE_URL}${dataset}/results/`;
         },
       });
   }
