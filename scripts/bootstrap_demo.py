@@ -37,6 +37,11 @@ DEMO_WAREHOUSE = os.environ.get(
 # (test_project/main/templates/registration/login.html), so matching them means the
 # demo needs no typing at all. Change these and those buttons stop working.
 DEMO_PASSWORD = "demo1234"
+# The Docker deployment gives admin a password of its own (ADMIN_PASSWORD in
+# deploy/.env, made by setup.sh) and its login page has no admin button, so a site
+# that others can reach does not hand out full access with the public demo password.
+# Unset, as in local development, admin keeps the demo password and its button.
+ADMIN_PASSWORD = os.environ.get("CHIRON_ADMIN_PASSWORD") or DEMO_PASSWORD
 DEMO_USERS = [
     ("demouser", "deid", False),   # "standard user with deidentified data access"
     ("agguser", "agg", False),     # "standard user with aggregated data access"
@@ -133,7 +138,11 @@ def main() -> int:
             username=username, defaults={"is_staff": is_staff}
         )
         user.is_staff = is_staff
-        user.set_password(DEMO_PASSWORD)
+        password = ADMIN_PASSWORD if username == "admin" else DEMO_PASSWORD
+        # Set only when it differs: a new password hash would sign the user out
+        # everywhere (sessions and MCP tokens), and this runs on every start.
+        if not user.check_password(password):
+            user.set_password(password)
         user.save()
         for oDataset in models.Dataset.objects.all():
             cu, _ = models.ChironUser.objects.get_or_create(user=user, dataset=oDataset)

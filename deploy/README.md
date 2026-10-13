@@ -142,6 +142,10 @@ the tunnel container.
   Chiron's demo login page has one-click buttons for accounts with known passwords.
   Without it anyone could log in and ask questions on your Claude account. Use
   `--no-gate` only when something else guards the site, such as Cloudflare Access.
+- **No one-click admin.** The deployment's login page keeps buttons only for the two
+  limited demo accounts. `admin` (full access) signs in with its own password,
+  `ADMIN_PASSWORD` in `deploy/.env`, which setup.sh generates; read it with
+  `grep ADMIN_PASSWORD deploy/.env`.
 - **Ask answers only people logged into Chiron** (`CHIRON_MCP_REQUIRE_SESSION=1`), and
   refuses requests another site's page makes a visitor's browser send.
 - **A question can only call Chiron.** Each answer runs Claude with every built-in tool

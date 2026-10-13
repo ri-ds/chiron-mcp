@@ -1,0 +1,61 @@
+{% extends 'chiron/core/base.html' %}
+
+{% comment %}
+The Docker deployment's login page (deploy/settings_custom.py puts deploy/templates
+first). Chiron's bundled page has one-click buttons for all three demo accounts,
+admin included, with the published demo password. Here only the two limited demo
+accounts keep a button; admin, and any other account, signs in with a real password.
+{% endcomment %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row">
+	<div class="col-sm-5 p-5">
+		<h2>Login</h2>
+
+		{% if form.errors %}
+		<div class="alert alert-danger" role="alert">That username and password did not match.</div>
+		{% endif %}
+
+		<p class="text-muted">Synthetic demo data. Try it with one of the demo accounts:</p>
+
+		<form method="post">
+			{% csrf_token %}
+			<input type="hidden" name="username" value="demouser" />
+			<input type="hidden" name="password" value="demo1234" />
+			{% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+			<button class="btn btn-primary">
+				Login as standard user with deidentified data access
+			</button>
+		</form>
+		<br>
+		<form method="post">
+			{% csrf_token %}
+			<input type="hidden" name="username" value="agguser" />
+			<input type="hidden" name="password" value="demo1234" />
+			{% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+			<button class="btn btn-primary">
+				Login as standard user with aggregated data access
+			</button>
+		</form>
+
+		<hr class="my-4">
+
+		<h5>Other accounts</h5>
+		<form method="post">
+			{% csrf_token %}
+			{% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+			<div class="mb-2">
+				<label for="id_username" class="form-label">Username</label>
+				<input type="text" name="username" id="id_username" class="form-control" autocomplete="username" required>
+			</div>
+			<div class="mb-3">
+				<label for="id_password" class="form-label">Password</label>
+				<input type="password" name="password" id="id_password" class="form-control" autocomplete="current-password" required>
+			</div>
+			<button class="btn btn-secondary">Sign in</button>
+		</form>
+	</div>
+</div>
+{% endblock %}
