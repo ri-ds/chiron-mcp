@@ -34,11 +34,25 @@ DATABASES = {"default": _database(os.environ["CHIRON_MCP_METADATA_DB"])}
 CHIRON_SQL_ALCHEMY_CONNECTION_STRING = os.environ["CHIRON_MCP_WAREHOUSE_URL"]
 
 # One public address; the proxy in front sends Chiron everything under /api,
-# /accounts, /admin and /static.
+# /accounts, /admin, /backend and /ajax (Django's static files it serves itself).
 PUBLIC_URL = os.environ.get("CHIRON_PUBLIC_URL", "http://localhost").rstrip("/")
-_host = urlparse(PUBLIC_URL).hostname or "localhost"
+_public = urlparse(PUBLIC_URL)
+_host = _public.hostname or "localhost"
 ALLOWED_HOSTS = list(dict.fromkeys([_host, "localhost", "127.0.0.1", "chiron"]))
-CSRF_TRUSTED_ORIGINS = [PUBLIC_URL]
+# An origin is scheme and host only; PUBLIC_URL may carry a path (BASE_PATH below).
+CSRF_TRUSTED_ORIGINS = [f"{_public.scheme}://{_public.netloc}"]
+
+# Optionally served under a path prefix, e.g. https://example.org/chiron (BASE_PATH in
+# deploy/.env). The proxy strips the prefix before Django sees a request;
+# FORCE_SCRIPT_NAME puts it back on every URL Django builds, and the settings that hold
+# plain paths are prefixed here because Django leaves those as written.
+BASE_PATH = "/" + os.environ.get("CHIRON_BASE_PATH", "").strip().strip("/")
+if BASE_PATH != "/":
+    FORCE_SCRIPT_NAME = BASE_PATH
+    STATIC_URL = f"{BASE_PATH}/static/"
+    LOGIN_URL = f"{BASE_PATH}/accounts/login/"
+    LOGIN_REDIRECT_URL = f"{BASE_PATH}/"
+    LOGOUT_REDIRECT_URL = f"{BASE_PATH}/accounts/login/"
 
 # TLS ends at the proxy (or at Cloudflare in front of it), which says so in
 # X-Forwarded-Proto.

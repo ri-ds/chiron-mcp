@@ -12,11 +12,14 @@ RUN npm ci --legacy-peer-deps --no-audit --no-fund
 COPY vendor/is4r-chiron-ui/ ./
 # The Ask tab embeds the Ask server from the same origin, which is what lets it read
 # the Chiron login. VITE_MUI_KEY is optional (an MUI X licence key, if you have one).
+# BASE_PATH (e.g. /chiron) builds the UI to live under that prefix; empty is the root.
 ARG VITE_MUI_KEY=""
-ENV VITE_ASK_URL=/ask \
+ARG BASE_PATH=""
+ENV VITE_BASE_PATH=${BASE_PATH} \
+    VITE_ASK_URL=${BASE_PATH}/ask \
     VITE_MUI_KEY=${VITE_MUI_KEY}
 RUN npm run build
 
 FROM caddy:2-alpine
 COPY --from=ui /ui/dist /srv/ui
-COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY deploy/Caddyfile deploy/Caddyfile.subpath deploy/routes.caddy /etc/caddy/

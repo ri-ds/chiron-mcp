@@ -96,6 +96,23 @@ The file holds the data dictionary and the warehouse tables, so no ETL runs here
 minute). A bundle is trusted content, like any database dump: import only your own. Only
 ever move synthetic data this way.
 
+## Serve it under a path, behind another web server
+
+To put the whole site at a path such as `https://example.org/chiron/`, behind a web
+server that forwards that path with its prefix intact (Apache:
+`ProxyPass /chiron http://localhost:8088/chiron`), set two lines in `deploy/.env`:
+
+```bash
+BASE_PATH=/chiron
+PUBLIC_URL=https://example.org/chiron
+```
+
+Then rebuild and restart: `docker compose up -d --build`. The UI is built for that prefix,
+Django adds it to every URL it makes, the Ask tab moves to `/chiron/ask/`, and
+`python3 check.py` tests through `PUBLIC_URL` as before. The bare host redirects to the
+prefix; anything else outside it is a 404. Leave `BASE_PATH` empty (the default) to serve
+at the root.
+
 ## Day to day
 
 | To | Run (in `deploy/`) |

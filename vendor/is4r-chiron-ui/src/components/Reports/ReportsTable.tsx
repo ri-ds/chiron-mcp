@@ -101,7 +101,7 @@ export default function ReportsTable() {
                               })
                             );
                           } else {
-                            window.location.href = `/${dataset}/reports/${row.id}`;
+                            window.location.href = `${import.meta.env.BASE_URL}${dataset}/reports/${row.id}`;
                           }
                         }}
                       >

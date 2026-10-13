@@ -16,6 +16,10 @@ import { useParams } from "react-router-dom";
 // it read the Chiron login.
 const ASK_URL = (import.meta.env.VITE_ASK_URL || "http://localhost:8900").replace(/\/$/, "");
 
+// The path prefix the site is served under ("" at the root, "/chiron" under /chiron),
+// from vite.config.ts `base`. Chiron's own pages and API live under it too.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 /**
  * Natural-language question box for the current dataset.
  *
@@ -46,7 +50,9 @@ function AskRoute() {
 // deepMerge replaces arrays wholesale (lib/utils.ts isObject excludes arrays), so
 // the nav has to be restated in full, not just appended to.
 export const overrideConfig = {
-  // apiBaseUrl: "http://localhost:8000",
+  // Local development against a separate Chiron: apiBaseUrl: "http://localhost:8000".
+  // Otherwise the API is on this origin, under the same path prefix as the UI.
+  apiBaseUrl: BASE,
   routes: {
     datasetMore: [{ path: "ask", element: <AskRoute /> }],
   },
@@ -54,7 +60,8 @@ export const overrideConfig = {
     // Chiron's default is "/login/", which Django does not serve; the real form is
     // at /accounts/login/. Without this, the LOGIN button goes nowhere and every API
     // call 403s, which the UI reports as "Could not load the page".
-    loginLink: "/accounts/login/",
+    loginLink: `${BASE}/accounts/login/`,
+    logo: `${BASE}/vite.svg`,
     nav: [
       { label: "Dataset Home", link: "/dataset", icon: <HomeIcon /> },
       { label: "Query", link: "/query", icon: <SearchIcon /> },
