@@ -22,4 +22,5 @@ RUN npm run build
 
 FROM caddy:2-alpine
 COPY --from=ui /ui/dist /srv/ui
-COPY deploy/Caddyfile deploy/Caddyfile.subpath deploy/routes.caddy /etc/caddy/
+COPY deploy/Caddyfile deploy/Caddyfile.subpath deploy/routes.caddy deploy/mcp-wellknown.caddy \
+     /etc/caddy/

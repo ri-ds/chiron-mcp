@@ -21,6 +21,7 @@
 	# log in, and ask questions on your Claude account.
 	import /etc/caddy/gate.caddy
 
+	import /etc/caddy/mcp-wellknown.caddy
 	import /etc/caddy/routes.caddy
 
 	header {

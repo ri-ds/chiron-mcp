@@ -113,6 +113,37 @@ Django adds it to every URL it makes, the Ask tab moves to `/chiron/ask/`, and
 prefix; anything else outside it is a 404. Leave `BASE_PATH` empty (the default) to serve
 at the root.
 
+## Connect your own Claude (MCP over HTTPS)
+
+People can also use the Chiron tools from their own MCP client (Claude Code, ...): each
+signs in once as their own Chiron user and every call acts with that account's
+permissions. The `mcp` service is off by default because it needs an HTTPS address;
+chiron-mcp refuses to publish its sign-in over plain http. In `deploy/.env`:
+
+```bash
+COMPOSE_PROFILES=mcp
+MCP_PUBLIC_URL=https://example.org/chiron     # the site's public HTTPS address, BASE_PATH included
+```
+
+Then `docker compose up -d`. People add it with
+
+```bash
+claude mcp add --transport http chiron https://example.org/chiron/mcp
+```
+
+and the first call opens a browser on the Chiron sign-in page. The endpoint is
+`<MCP_PUBLIC_URL>/mcp`; its OAuth discovery documents are at the site root, so a web
+server in front that only forwards the prefix must forward these two paths as well
+(Apache, for `/chiron`):
+
+```apache
+ProxyPass /.well-known/oauth-protected-resource/chiron   http://localhost:8088/.well-known/oauth-protected-resource/chiron
+ProxyPass /.well-known/oauth-authorization-server/chiron http://localhost:8088/.well-known/oauth-authorization-server/chiron
+```
+
+`MCP_OAUTH_SECRET` (made by setup.sh) signs the tokens; changing it signs everyone out.
+`MCP_MAX_ACCESS_LEVEL` caps what any caller gets (default `deid`).
+
 ## Day to day
 
 | To | Run (in `deploy/`) |

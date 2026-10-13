@@ -21,8 +21,9 @@ ACCESS_ORDER = [AGG, DEID, PHI]
 
 TRANSPORTS = ["stdio", "http"]
 HTTP_AUTH_MODES = ["none", "oauth"]
-# The only address the HTTP endpoint ever binds.  See Config.transport.
+# The address the HTTP endpoint binds unless it is hosted (Config.public_url).
 HTTP_HOST = "127.0.0.1"
+LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 
 
 def _flag(name: str, default: bool = False) -> bool:
@@ -110,15 +111,27 @@ class Config:
 
     # --- transport ----------------------------------------------------------
     # "stdio" (the default: an MCP client launches this server as a subprocess) or
-    # "http" (a long-running streamable-HTTP endpoint at /mcp).  The HTTP endpoint has
-    # no authentication, so it listens on the loopback interface only and there is
-    # deliberately no setting to change that: anyone who can reach it acts as
-    # CHIRON_MCP_USERNAME.
+    # "http" (a long-running streamable-HTTP endpoint at /mcp).  Without OAuth the HTTP
+    # endpoint has no authentication, so anyone who can reach it acts as
+    # CHIRON_MCP_USERNAME; it therefore listens on the loopback interface only.
     transport: str = field(
         default_factory=lambda: os.environ.get("CHIRON_MCP_TRANSPORT", "stdio").strip().lower()
     )
     http_port: int = field(
         default_factory=lambda: int(os.environ.get("CHIRON_MCP_HTTP_PORT", "8765"))
+    )
+    # Hosted mode: the HTTPS address a web server in front publishes this server under,
+    # e.g. https://chiron.example.org/chiron, serving the endpoint at <that>/mcp and the
+    # sign-in beside it. Empty (the default) keeps everything on this machine.
+    # validate() only allows it with OAuth on and HTTPS (http only for localhost tests).
+    public_url: str = field(
+        default_factory=lambda: os.environ.get("CHIRON_MCP_PUBLIC_URL", "").strip().rstrip("/")
+    )
+    # The address to listen on. Anything but loopback needs hosted mode, so the endpoint
+    # is never reachable from another machine without a sign-in in front of it; in a
+    # container, 0.0.0.0 with only the proxy able to reach the port.
+    http_host: str = field(
+        default_factory=lambda: os.environ.get("CHIRON_MCP_HTTP_HOST", HTTP_HOST).strip()
     )
     # "none": every caller of the HTTP endpoint acts as CHIRON_MCP_USERNAME.
     # "oauth": a caller must log in as a Chiron user first, and each tool call then acts
@@ -136,6 +149,35 @@ class Config:
     def oauth(self) -> bool:
         """True when callers are identified by an OAuth login rather than by config."""
         return self.transport == "http" and self.http_auth == "oauth"
+
+    @property
+    def hosted(self) -> bool:
+        """True when the HTTP endpoint is published by a proxy at public_url."""
+        return bool(self.public_url)
+
+    def _validate_hosting(self) -> None:
+        from urllib.parse import urlsplit
+
+        if self.public_url:
+            if not self.oauth:
+                raise SystemExit(
+                    "CHIRON_MCP_PUBLIC_URL needs CHIRON_MCP_TRANSPORT=http and "
+                    "CHIRON_MCP_HTTP_AUTH=oauth: a published endpoint must make callers sign in."
+                )
+            u = urlsplit(self.public_url)
+            local = (u.hostname or "") in LOOPBACK_HOSTS
+            if u.scheme != "https" and not (u.scheme == "http" and local):
+                raise SystemExit(
+                    f"CHIRON_MCP_PUBLIC_URL={self.public_url!r} must be https:// (OAuth tokens "
+                    "and passwords cross it); plain http is allowed only for localhost tests."
+                )
+            if u.query or u.fragment or not u.hostname:
+                raise SystemExit(f"CHIRON_MCP_PUBLIC_URL={self.public_url!r} is not a plain URL.")
+        if self.http_host not in LOOPBACK_HOSTS and not self.public_url:
+            raise SystemExit(
+                f"CHIRON_MCP_HTTP_HOST={self.http_host!r} would expose the endpoint beyond this "
+                "machine; that needs hosted mode (CHIRON_MCP_PUBLIC_URL, OAuth, HTTPS)."
+            )
 
     def validate(self) -> None:
         if not self.chiron_src:
@@ -176,6 +218,7 @@ class Config:
             raise SystemExit(
                 f"CHIRON_MCP_HTTP_AUTH must be one of {HTTP_AUTH_MODES}, got {self.http_auth!r}"
             )
+        self._validate_hosting()
 
 
 CONFIG = Config()
