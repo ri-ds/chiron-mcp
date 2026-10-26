@@ -420,6 +420,31 @@ Running the larger models on only the 49 plus the new questions about halves the
     is right for all three, swapped in: **set c 49/49 for all three.** So every re-phrased
     question (147) and every held-out question (40) has been answered right by Opus 5.5,
     Sonnet 5.5 and Haiku 5.5.
-- **Final run** (all 236 questions, one model at a time) started after a warm-up of the value
-  and range caches for Synthea 100k and Synthea 300: see `results/runs/` for its id
-  (scratchpad run_final.id), and AUDIT notes to follow.
+- **Final run** `20261026-112756` (all 236 questions, one model at a time, 11:27–14:07 UTC,
+  Chiron MCP at 5dcf4b5, caches warmed first): after four grader fixes (years in a date span
+  and numbers in names such as "type 2" are not the lead figure; "isn't one of the datasets" and
+  "can't build that table" are refusals; a count of 0 may be said in words), which flip exactly
+  the five grades they were written for out of 1,918 stored answers: **Opus 5.5 236/236,
+  Sonnet 5.5 235/236, Haiku 5.5 235/236.** The two misses are the models' own: Sonnet counted
+  from a report instead of restricting its filters (b43); Haiku ran a MIMIC-IV question on
+  Synthea 100k without saying MIMIC-IV is absent (a48). Nothing re-asked, nothing swapped.
+  Cost $5.55 / $2.57 / $0.18, median 8.4 / 6.9 / 7.7 s. CloudTrail: 1,431 calls, all matched.
+  `results/runs/20261026-112756/AUDIT.md`.
+- **A fresh held-out set, written after every fix** (`questions/synthea-100k.fresh.json`, f01–f40,
+  keys from `bench/truth.py build_fresh`): the held-out n01–n40 had been run four times and n28
+  drove the range fix, and a/b/c re-word the 49 the fixes were tuned on, so a set no model has
+  seen is the real test. It asks for things no earlier set asked (lay and class names such as
+  blood sugar, statin, ACE inhibitor and insurer; a month-level window; the date a lab was
+  taken; payer and cost on one visit; organisation and provider rankings; study group B;
+  medication cost; averaged labs; a one-to-two count rule; names and SSNs that are not there).
+  Rule: run once, no re-runs, no swaps; a fix made after it needs another fresh set.
+  - Building its keys found a Chiron MCP bug: the spelling-variant rule folded "prov-14" into
+    "prov-147" (a short value with exactly one *larger* group starting with it), doubling four
+    providers' counts in rankings. A cut-off spelling must now be the start of exactly one
+    longer name and at most a tenth as common (real cut-offs are below 0.3%). Commit 0c3ed50,
+    `tests/value_groups.py`; value caches rebuilt. Also f3e123c: the note with a count started
+    from a report now says to make the update call when a change was asked for.
+  - Comparison decided by the user: the three PHI-safe Bedrock lanes plus **Opus 5.5 on the
+    local Claude account** (lane `opus-5-5`), which also runs the 236 known questions
+    afterwards, to be merged with the final run. Fresh run: `20261026-142345`, four lanes one at
+    a time, Bedrock first.
