@@ -351,12 +351,40 @@ def _column_transformation(cu, oConcept, col: dict) -> dict:
     return transformation
 
 
+# Variables whose values identify a person outright. A dictionary marks such a concept
+# has_phi; these short names cover one that does not (a synthetic dataset's "first" and
+# "last"). The patient id is a pseudonymous key and stays, as in Chiron's own Results tab.
+_DIRECT_IDENTIFIERS = {"first", "last", "name", "firstname", "lastname", "fullname", "maiden",
+                       "ssn", "drivers", "passport", "address", "phone", "email"}
+
+
+def _identifies_person(oConcept) -> bool:
+    short = str(getattr(oConcept, "permanent_id", "") or "").split("__")[-1].lower()
+    return bool(getattr(oConcept, "has_phi", False)) or short in _DIRECT_IDENTIFIERS
+
+
+def _require_columns_viewable(ident, concepts: list) -> None:
+    """An identity that may not view subject details gets no column that identifies a
+    person, in a list, in Results or in a report: refused outright, as Chiron's own
+    patient-detail page is for that identity, rather than shown and left to the model."""
+    if ident.can_view_subject_details:
+        return
+    hidden = [c for c in concepts if _identifies_person(c)]
+    if hidden:
+        names = ", ".join(str(getattr(c, "name", None) or str(c.permanent_id).split("__")[-1]) for c in hidden)
+        raise AccessError(
+            f"{names}: these identify people, and this account (de-identified access) may not view "
+            "subject details, so they cannot be listed, put in Results or saved in a report. Say so, "
+            "and offer columns that do not identify anyone (birthdate, gender, city) or counts.")
+
+
 def _table_def_from_columns(ident, cohort_def: list, columns: list[dict]) -> dict:
     """Turn a plain column list into a real table_def via Chiron's own transformations."""
     cu = identity.checked_chironuser(ident)
+    concepts = [_concept(ident, col["concept_id"]) for col in columns]
+    _require_columns_viewable(ident, concepts)
     table_def: dict = {}
-    for col in columns:
-        oConcept = _concept(ident, col["concept_id"])
+    for col, oConcept in zip(columns, concepts):
         table_def = _apply_td(cu, table_def, _column_transformation(cu, oConcept, col))
     return table_def
 

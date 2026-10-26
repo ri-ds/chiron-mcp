@@ -378,9 +378,12 @@ def warm_ranges(ident) -> list[str]:
 
 def _identifying(var: Var) -> bool:
     """A variable whose values identify people (names, ids, addresses): never written to
-    disk and never listed in the summary."""
-    return bool(getattr(var.concept, "has_phi", False)) or var.short in ("id", "first", "last", "ssn", "zip", "postcode",
-                                                                          "drivers", "passport", "address")
+    disk and never listed in the summary. Wider than server._identifies_person (which
+    decides what a de-identified identity may see as a column): ids and postcodes are
+    pseudonymous or coarse enough to show, but their values are still not cached."""
+    from chiron_mcp import server as S
+
+    return S._identifies_person(var.concept) or var.short in ("id", "zip", "postcode")
 
 
 def _value_cache_file(dataset_id: str, cid: str):
@@ -925,8 +928,9 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
         pid = _var(ident, "subject", "id")
         if pid:
             columns.append({"concept_id": pid.cid})
-        for c in cols:
-            v = resolve_field(ident, c)
+        asked = [resolve_field(ident, c) for c in cols]
+        S._require_columns_viewable(ident, [v.concept for v in asked])
+        for v in asked:
             if v.cid not in [x["concept_id"] for x in columns]:
                 columns.append({"concept_id": v.cid})
         out["rows"] = S.chiron_run_table(ds, cd, columns, 1, int(show.get("limit") or 10))
@@ -1095,6 +1099,9 @@ def plain_columns(ident, cd: list, columns: list, sort=None, words: list | None 
     if pid:
         cols.append({"concept_id": pid.cid})
     cu = identity.checked_chironuser(ident)
+    from chiron_mcp import server as S
+
+    S._require_columns_viewable(ident, [_column_var(ident, c).concept for c in columns or [] if isinstance(c, str)])
     for c in columns or []:
         if isinstance(c, str):
             var = _column_var(ident, c)
