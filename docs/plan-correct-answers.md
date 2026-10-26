@@ -310,3 +310,21 @@ Running the larger models on only the 49 plus the new questions about halves the
     (40 questions, n01–n40), with answer keys from `bench/truth.py` `build_new`.
   - The benchmark runs any set: `./bench.sh run --questions rephrased-a`, or
     `question_set` in `/api/bench/start`.
+
+- **Step 0 done.** The Haiku 5.5 baseline (`20261026-062329`) got **37/49**, cost $0.10 and had a
+  typical answer time of 14 s. Its misses: `at_least` (q07–09), "over" (q29–31, q34), one spelling
+  variant (q25), the highest-HbA1c column (q37, q38), a timeout (q33) and the wrong follow-up
+  group (q19).
+- **Steps 1 and 2 merged** (P1 strict tools, P2 `chiron_query`, P3 dictionary). Haiku
+  (`20261026-070501`) got **45/49**, cost $0.07 and had a typical time of 10.6 s.
+  `tool_check.py` matches every SQL answer key: 27 counts, plus the follow-up group, the refusal
+  of an unknown dataset, a value range and a top-5 list.
+- **Steps 3–6 and 8 merged.**
+  - P4: Results, reports and the query builder from plain columns, with a column's
+    `aggregation_criteria_set` and an "at least 0" group. `tool_check_writes.py` passes q37–q46.
+  - P5: the conversation's groups are listed with every follow-up.
+  - P6: a value cache refreshed by the ETL log; `client_connection_check_interval` and
+    `statement_timeout` on warehouse connections; `python -m chiron_mcp.query --warm`.
+  - P8: the short tool list and plain instructions by default; a dataset summary in plain words
+    with real values and lab units; identifying values are never cached.
+- **P7** (number check with one retry) is decided after the next Haiku run.
