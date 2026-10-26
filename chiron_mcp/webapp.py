@@ -691,6 +691,7 @@ class _CohortTracker:
         self.breakdown: dict | None = None  # the last breakdown's groups, for subgroup buttons
         self.link: dict | None = None
         self.deleted: list[int] = []  # report ids deleted in this answer
+        self.counted = False  # a tool counted patients in this answer
 
     def tool_use(self, block: dict) -> None:
         self._calls[block.get("id", "")] = (
@@ -702,6 +703,9 @@ class _CohortTracker:
         name, args = self._calls.get(block.get("tool_use_id", ""), ("", {}))
         if not name or block.get("is_error"):
             return
+        if name in ("chiron_query", "chiron_count_cohort", "chiron_breakdown", "chiron_crosstab",
+                    "chiron_run_table", "chiron_run_saved_report"):
+            self.counted = True
         content = block.get("content")
         if isinstance(content, list):
             content = "".join(c.get("text", "") for c in content if isinstance(c, dict))
@@ -820,6 +824,19 @@ def split_followups(text: str) -> tuple[str, list[str]]:
 _NUMBER = re.compile(r"(?<![\w.,])\d{1,3}(?:,\d{3})+(?![\d])|(?<![\w.,])\d+(?![\d,])")
 
 
+def _numbers_in(content) -> set[int]:
+    """Every whole number in a tool result's text ("12,755" and 12755 alike)."""
+    if isinstance(content, list):
+        content = "".join(c.get("text", "") for c in content if isinstance(c, dict))
+    out = set()
+    for m in re.finditer(r"\d{1,3}(?:,\d{3})+(?!\d)|\d+", str(content or "")):
+        try:
+            out.add(int(m.group().replace(",", "")))
+        except ValueError:
+            pass
+    return out
+
+
 def headline_figure(answer: str) -> int | None:
     """The figure an answer leads with: its first bold number, else its first number.
 
@@ -920,6 +937,14 @@ def _state_dir() -> Path:
     except OSError:
         pass
     return d
+
+
+def _group_counts(tid: str) -> set[int]:
+    try:
+        return {g.get("count") for g in json.loads(_groups_file(tid).read_text()).values()
+                if isinstance(g.get("count"), int)}
+    except (OSError, ValueError, AttributeError):
+        return set()
 
 
 def _groups_note(tid: str) -> str:
@@ -1164,7 +1189,8 @@ def _drain(trace):
 
 
 def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: dict,
-                 inherited: dict | None = None, tid: str = "", trace=tracing.OFF):
+                 inherited: dict | None = None, tid: str = "", trace=tracing.OFF,
+                 known: set | None = None):
     """One headless Claude run, translated into page events.
 
     `inherited` is the cohort behind the conversation's previous Query button. A
@@ -1190,6 +1216,7 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
         stdin=subprocess.DEVNULL, text=True, bufsize=1, cwd=_neutral_dir(),
     )
     tracker = _CohortTracker()
+    tool_numbers: set[int] = set()
     outcome.update(answered=False, rc=None, stderr="")
     THREADS.started(tid, proc, outcome)
     lines: queue.Queue = queue.Queue()
@@ -1244,6 +1271,8 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 for block in ev.get("message", {}).get("content", []) or []:
                     if isinstance(block, dict) and block.get("type") == "tool_result":
                         tracker.tool_result(block)
+                        if not block.get("is_error"):
+                            tool_numbers.update(_numbers_in(block.get("content")))
             elif kind == "result":
                 if ev.get("is_error"):
                     message = explain_claude_error(ev.get("result") or "Claude returned an error.")
@@ -1255,6 +1284,17 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 # The suggested follow-ups travel separately; everything below judges
                 # the answer itself, never numbers that only appear in a suggestion.
                 text, followups = split_followups(ev.get("result", ""))
+                # The answer's lead figure must be one a tool returned (plan P7). When it is
+                # not, the answer is held back and the caller asks once for a checked one.
+                lead = headline_figure(text)
+                if (known is not None and tracker.counted and lead is not None
+                        and lead not in tool_numbers and lead not in known):
+                    outcome.update(answered=True, unbacked=lead)
+                    trace.note("Lead figure not from a tool",
+                               f"The answer led with {lead:,}, which no tool returned; it was not "
+                               "shown, and the model was asked to check it.", status="warn")
+                    yield from _drain(trace)
+                    continue
                 trace.post("followups", followup_audit(ev.get("result", "")))
                 trace.post("charts", tracing.chart_audit(text))
                 # Earlier answers may carry Report buttons for what was just deleted;
@@ -1397,7 +1437,8 @@ def ask_stream(
                 cmd = _claude_command(claude, prompt, session, cfg)
                 outcome = {}
                 trace.launched(cmd, prompt, SYSTEM_PROMPT, resume)
-                yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid, trace)
+                yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid, trace,
+                                        known=_numbers_in(question) | _group_counts(tid))
                 if outcome.get("answered") or not _thinking_flag_refused(outcome):
                     break
                 # A Claude Code too old for --thinking-display: ask again without it, and
@@ -1429,6 +1470,18 @@ def ask_stream(
                 trace.error(message)
                 yield "error", message
             break
+        if outcome.get("unbacked") is not None and not outcome.get("cancelled"):
+            # Held back: its lead figure came from no tool. Ask once for a checked answer,
+            # and show that one whatever it says.
+            fig = outcome["unbacked"]
+            note = (f"Check before answering: your answer led with {fig:,}, but no tool returned "
+                    "that figure. Every figure must come from a tool result: get it with a tool "
+                    "(chiron_query does any arithmetic exactly), then give the whole answer again.")
+            cmd = _claude_command(claude, note, ["--resume", tid], cfg)
+            outcome = {}
+            trace.launched(cmd, note, SYSTEM_PROMPT, True)
+            yield from _claude_turn(cmd, username, allow_superuser, outcome,
+                                    THREADS.cohort(tid), tid, trace)
         THREADS.touch(tid, username, dataset, outcome.get("cohort"))
         if TRACE:
             trace.finish(outcome.get("rc"), outcome.get("stderr", ""))
