@@ -629,7 +629,11 @@ def run(dataset: str, where: list | None = None, match: str = "all", start_from:
     identity.require_workspace(ident)
     identity.require_subject_level(ident)
     base, base_text = [], None
-    if start_from:
+    if start_from and _is_report_ref(start_from):
+        rep = find_report(S, dataset_id, start_from)
+        base = rep.get("cohort_def") or []
+        base_text = f"report {rep['name']!r} (id {rep['report_id']})"
+    elif start_from:
         g = get_group(start_from)
         if g.get("dataset_id") != dataset_id:
             raise AccessError(f"Group {start_from} is on {g.get('dataset_id')}, not {dataset_id}.")
@@ -751,6 +755,24 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
         out["results"] = _written(S, ds, r)
         notes.append("The Results tab now holds these patients and columns; check `results` for what "
                      "Chiron shows, and report its row count.")
+    elif show.get("report") is not None and isinstance(show["report"], dict) and show["report"].get("update"):
+        spec = show["report"]
+        rep = find_report(S, ds, spec.get("name") or "latest", mine=True)
+        kw: dict = {"cohort_def": cd}
+        if spec.get("columns"):
+            cd2, cols, sort = plain_columns(ident, cd, spec["columns"], spec.get("sort"))
+            kw.update(cohort_def=cd2, columns=cols, sort=sort or None)
+        if spec.get("new_name"):
+            kw["name"] = spec["new_name"]
+        if spec.get("public") is not None:
+            kw["public"] = bool(spec["public"])
+        r = S.chiron_update_report(ds, rep["report_id"], **kw)
+        if r.get("error"):
+            raise AccessError(f"Report not changed: {r['error']}")
+        after = find_report(S, ds, str(rep["report_id"]))
+        out["report"] = {"report_id": rep["report_id"], "name": after.get("name"),
+                         "public": after.get("public"), "patients_now": out["count"],
+                         "filters_now": describe(ident, after.get("cohort_def") or [])}
     elif show.get("report") is not None:
         spec = show["report"] if isinstance(show["report"], dict) else {"name": show["report"]}
         if not spec.get("name"):
@@ -776,6 +798,38 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
                           "{'results': {'columns': [...], 'sort': [...]}}, "
                           "{'report': {'name': ..., 'columns': [...], 'public': false}} or {'query_builder': true}.")
     return out
+
+
+def _is_report_ref(ref) -> bool:
+    return str(ref).strip().lower().startswith(("report:", "report "))
+
+
+def find_report(S, ds: str, ref, mine: bool = False) -> dict:
+    """A saved report, with its definition, by "report:<name>", "report:<id>", a plain
+    name or id, or "latest" (the most recent you created)."""
+    text = re.sub(r"^report[: ]\s*", "", str(ref).strip(), flags=re.I).strip()
+    listing = S.chiron_saved_reports(ds, scope="mine" if mine else "all")
+    if listing.get("error"):
+        raise AccessError(listing["error"])
+    reports = listing.get("reports") or []
+    if text.lower() in ("latest", "most recent", "newest", "last"):
+        own = [r for r in reports if r.get("mine")]
+        if not own:
+            raise AccessError("You have no saved reports.")
+        hit = own[0]
+    elif text.isdigit():
+        hit = {"report_id": int(text)}
+    else:
+        hits = [r for r in reports if D.norm(r.get("name")) == D.norm(text)]
+        if len(hits) != 1:
+            names = ", ".join(f"{r['name']!r} ({r['report_id']})" for r in reports[:20]) or "none"
+            raise AccessError((f"Several reports are called {text!r}" if hits else f"No report called {text!r}")
+                              + f". Reports: {names}.")
+        hit = hits[0]
+    full = S.chiron_saved_reports(ds, report_id=hit["report_id"])
+    if full.get("error"):
+        raise AccessError(full["error"])
+    return full
 
 
 def _written(S, ds: str, r: dict) -> dict:
