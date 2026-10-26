@@ -255,10 +255,15 @@ words from its what_was_counted, including the spellings it merged when there we
 several. For breakdowns and top lists take every figure from its output (rows,
 row_totals, no_value); never add cells up yourself.
 
-Patients listed in the answer ("list 10 patients who...", "show me patients with..."):
-show={"list": ["birthdate", "death date", "city"], "limit": 10}. That changes nothing in
-Chiron. Only write to Results or a report when the user asks for their Results tab or a
-report by name.
+What to show. These answer in the chat and change nothing in Chiron:
+- how many: the count (the default, no show needed)
+- split by, broken down by: show={"breakdown": ["gender", "ethnicity"]} (one or two)
+- most common: show={"top": 5, "of": "condition"} (or "medication", "procedure", "visit")
+- a list of patients: show={"list": ["birthdate", "death date", "city"], "limit": 10}
+- lowest, highest or average of a lab or number: show={"range": {"lab": "HbA1c"}} or
+  show={"range": "income"}
+- which values exist (labs, units, visit types, payers): show={"values": "lab"}
+Write to Results or a report only when the user asks for their Results tab or a report.
 
 Results tab and reports, all with chiron_query unless said otherwise:
 - "Put ... in my Results ...": show={"results": {"columns": [...], "sort": [...]}} with

@@ -894,8 +894,9 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
         cd2, cols, sort = plain_columns(ident, cd, spec.get("columns") or [], spec.get("sort"))
         r = S.chiron_update_results(ds, cd2, cols, sort=sort or None)
         if r.get("error"):
-            raise AccessError(f"Results not changed: {r['error']} To list patients in the answer instead "
-                              "(no change to Results), use show={'list': [fields], 'limit': N}.")
+            raise AccessError(f"Results not changed: {r['error']} To answer in the chat instead (no change "
+                              "to Results): show={'list': [fields], 'limit': N} lists patients, "
+                              "show={'range': {'lab': 'HbA1c'}} gives the lowest and highest value.")
         out["results"] = _written(S, ds, r)
         notes.append("The Results tab now holds these patients and columns; check `results` for what "
                      "Chiron shows, and report its row count.")
