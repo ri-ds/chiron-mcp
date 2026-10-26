@@ -373,3 +373,8 @@ Running the larger models on only the 49 plus the new questions about halves the
   - Three models at once on the old form took 136–250 s each (51 s alone): the benchmark's
     grader also read "6,208.4" as 208.4; fixed (`bench/score.py` decimals), changing 1 of 737
     stored grades, Opus's n28 from wrong to right.
+  - **n28 re-tested on all three at once** (run `20261026-102615`): right on every model, 10–15 s
+    wall, Chiron step 0.5–3.4 s. With n38–n40 (run `20261026-084021`) that makes every held-out
+    question right for every model.
+- **Re-phrased sets** (a, b, c; 49 questions each, all three models at once): started with set a,
+  run `20261026-102704`.
