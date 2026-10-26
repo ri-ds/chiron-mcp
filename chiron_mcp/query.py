@@ -267,6 +267,62 @@ def _table_rows(ident, collection: str) -> int:
     return _CACHE[key]
 
 
+def units_by_name(ident, collection: str, refresh: bool = False) -> dict | None:
+    """{lab name: [units it is recorded in]} for a collection that has a name and a units
+    variable (labs and vitals), from the warehouse: one distinct scan, no patient counts,
+    kept on disk like value lists. None when the collection has no units variable."""
+    name_var = _var(ident, collection, D.NAME_FIELD.get(collection) or "")
+    unit_var = _var(ident, collection, "units")
+    if not name_var or not unit_var:
+        return None
+    path = _value_cache_file(ident.dataset_id, f"{collection}__units_by_name")
+    stamp = _etl_stamp(ident.dataset_id)
+    if not refresh:
+        try:
+            cached = json.loads(path.read_text())
+            if cached.get("stamp") == stamp:
+                return cached["units"]
+        except (OSError, ValueError, KeyError):
+            pass
+    import sqlalchemy as sa
+    from django.conf import settings
+
+    if "engine" not in _CACHE:
+        _CACHE["engine"] = sa.create_engine(settings.CHIRON_SQL_ALCHEMY_CONNECTION_STRING, pool_size=1)
+    schema = ident.dataset.unique_id.replace("-", "_")
+    n_tab, u_tab = f"lkp_{name_var.cid}", f"lkp_{unit_var.cid}"
+    sql = (f'select distinct n."{name_var.cid}", u."{unit_var.cid}" from "{schema}"."{n_tab}" n '
+           f'join "{schema}"."{u_tab}" u on u._collection_id = n._collection_id')
+    with _CACHE["engine"].connect() as conn:
+        rows = conn.execute(sa.text(sql)).fetchall()
+    groups, _ = _groups(ident, name_var)
+    label_of = {v: g["label"] for g in groups for v in g["values"]}
+    out: dict[str, list] = {}
+    for name, unit in rows:
+        if name is None or unit is None:
+            continue
+        units = out.setdefault(label_of.get(name, name), [])
+        if str(unit) not in units:
+            units.append(str(unit))
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"stamp": stamp, "units": out}))
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    return out
+
+
+def cached_units(ident, collection: str) -> dict | None:
+    try:
+        cached = json.loads(_value_cache_file(ident.dataset_id, f"{collection}__units_by_name").read_text())
+        if cached.get("stamp") == _etl_stamp(ident.dataset_id):
+            return cached["units"]
+    except (OSError, ValueError, KeyError):
+        pass
+    return None
+
+
 def warm(dataset_id: str) -> list[str]:
     """List every category variable's values once, so later questions find them cached."""
     ident = identity.resolve(dataset_id)
@@ -278,6 +334,13 @@ def warm(dataset_id: str) -> list[str]:
                 done.append(f"{v.cid}: {n} values")
             except Exception as exc:  # noqa: BLE001
                 done.append(f"{v.cid}: {type(exc).__name__}: {exc}"[:200])
+    for coll in sorted({v.collection for v in catalogue(ident)}):
+        try:
+            u = units_by_name(ident, coll, refresh=True)
+            if u is not None:
+                done.append(f"{coll} units: {len(u)} names")
+        except Exception as exc:  # noqa: BLE001
+            done.append(f"{coll} units: {type(exc).__name__}: {exc}"[:200])
     return done
 
 
@@ -806,9 +869,11 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
             raise AccessError(f"{var.label()} is a {var.kind} variable; ask for its range instead.")
         groups, _ = _groups(ident, var)
         top = sorted(groups, key=lambda g: -g["approx"])[: int(show.get("limit") or 50)]
+        units = cached_units(ident, var.collection) if var.short == D.NAME_FIELD.get(var.collection) else None
         out["values"] = {"variable": var.label(), "count_of_values": len(groups),
                          "values": [{"value": g["label"], "patients_about": g["approx"],
-                                     "spellings": len(g["values"])} for g in top]}
+                                     "spellings": len(g["values"]),
+                                     **({"units": units.get(g["label"], [])} if units else {})} for g in top]}
         notes.append("patients_about adds the spellings' counts, so a patient recorded under two "
                      "spellings counts twice; for an exact count of one value, ask chiron_query.")
     elif show.get("stats") is not None or show.get("range") is not None:

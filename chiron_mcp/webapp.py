@@ -240,8 +240,10 @@ rules, checks it and counts. Translate the question faithfully:
   "started before 2010"). "Died" is {"field": "death date", "has_value": true}.
 - Follow-ups ("how many of them", "of those", "break them down"): pass start_from with
   the group of the answer they refer to; the groups so far are listed with the question.
-  When the user names a group ("the widowed patients"), use that group, not simply the
-  latest one, and say in a few words which patients you used.
+  When the user names a group ("the widowed patients"), use the group that is exactly
+  those patients, not simply the latest one; if no group is exactly them (only a
+  narrower one, such as "widowed and died"), describe them afresh in where. Say in a few
+  words which patients you used.
 - Another dataset: pass its name as dataset. If chiron_query says it does not exist, say
   so in one sentence and stop; never answer from another dataset instead.
 - If chiron_query says a word matches several values, pick the one the question means
@@ -421,8 +423,10 @@ def plain_brief(dataset_id: str, username: str, allow_superuser: bool) -> str:
             if groups is None or not 1 <= len(groups) <= 30:
                 continue
             alias = (D.FIELDS.get(coll, {}).get(v.short) or (v.short.replace("_", " "),))[0]
-            vals = "; ".join(g["label"] for g in groups)
-            lines.append(f"    {alias} values: {vals}")
+            units = Q.cached_units(ident, coll) if v.short == D.NAME_FIELD.get(coll) else None
+            vals = "; ".join(g["label"] + (f" ({', '.join(units[g['label']])})" if units and units.get(g["label"]) else "")
+                             for g in groups)
+            lines.append(f"    {alias} values{' (units)' if units else ''}: {vals}")
     return "\n".join(lines)
 
 
