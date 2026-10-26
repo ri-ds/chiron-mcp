@@ -446,5 +446,7 @@ Running the larger models on only the 49 plus the new questions about halves the
     from a report now says to make the update call when a change was asked for.
   - Comparison decided by the user: the three PHI-safe Bedrock lanes plus **Opus 5.5 on the
     local Claude account** (lane `opus-5-5`), which also runs the 236 known questions
-    afterwards, to be merged with the final run. Fresh run: `20261026-142345`, four lanes one at
-    a time, Bedrock first.
+    afterwards, to be merged with the final run. Fresh run: `20261026-151506`, four lanes one at
+    a time, Bedrock first (a first start, `20261026-142345`, is discarded: the AWS SSO session
+    had expired a minute earlier, every call failed before reaching a model, no model saw a
+    question; see its DISCARDED.md).
