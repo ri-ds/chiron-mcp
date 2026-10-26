@@ -404,3 +404,15 @@ Running the larger models on only the 49 plus the new questions about halves the
     within a group 110 s, top-5 conditions within a group 147 s, sorting Results by a summary
     column 63 s, a count rule over visits 35–44 s. All under the limit; the final run is one
     model at a time. Typical answer 7.8–8.2 s per model.
+  - **Set c** (run `20261026-110737`): first grades Haiku 47/49, Sonnet 47/49, Opus 48/49; none
+    of the misses was a wrong figure from Chiron:
+    - q15 (the 90-day rule, "say it cannot be done"): Sonnet said it cannot be done and gave the
+      figure Chiron can count, labelled as such; the grader took "within 90 days" as the lead
+      figure. `bench/score.py` now ignores a figure with a unit (days, months, mg/dL, %...) as
+      the lead; 1 of 1,204 stored grades changed.
+    - q35: the re-wording had turned "which datasets can I query" into "what data can I query
+      here", so no model named Synthea 300. Restored "datasets" in
+      `questions/synthea-100k.rephrased-c.json` (backup in state/); re-run below.
+    - q36, Haiku: "Twenty patients in Synthea 300 have ... asthma", right, in words. The
+      instructions now say "the figure in digits (20, not 'twenty')", and the answer check
+      holds back an answer that states no figure in digits although a tool returned a count.

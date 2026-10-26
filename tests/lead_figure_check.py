@@ -29,12 +29,14 @@ first = "--resume" not in sys.argv
 def out(ev): print(json.dumps(ev), flush=True)
 out({"type": "system", "subtype": "init", "model": "fake", "claude_code_version": "0"})
 tool = "mcp__chiron__chiron_datasets" if mode == "nocount" else "mcp__chiron__chiron_query"
+count = 0 if mode == "zero" else 100
 if first:
     out({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t1", "name": tool, "input": {}}]}})
     out({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t1",
-        "content": json.dumps({"dataset_id": "ds", "count": 100, "cohort_def": [], "datasets": [{}, {}]})}]}})
+        "content": json.dumps({"dataset_id": "ds", "count": count, "cohort_def": [], "datasets": [{}, {}]})}]}})
     text = {"invented": "**250** patients have asthma.", "right": "**100** patients have asthma.",
-            "nocount": "You can query **2** datasets."}[mode]
+            "nocount": "You can query **2** datasets.", "words": "One hundred patients have asthma.",
+            "zero": "No patients have asthma."}[mode]
 else:
     text = "**100** patients have asthma (checked)."
 out({"type": "result", "subtype": "success", "is_error": False, "result": text})
@@ -76,6 +78,14 @@ check("no second run", runs == ["first"], str(runs))
 
 answers, runs = run("nocount")
 check("an answer that counted nothing is not checked", answers == ["You can query **2** datasets."] and runs == ["first"],
+      f"{answers} {runs}")
+
+
+answers, runs = run("words")
+check("an answer with the figure in words is held back and asked for digits",
+      answers == ["**100** patients have asthma (checked)."] and runs == ["first", "resume"], f"{answers} {runs}")
+answers, runs = run("zero")
+check("a count of 0 answered in words is shown as it is", answers == ["No patients have asthma."] and runs == ["first"],
       f"{answers} {runs}")
 
 print()

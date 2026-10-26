@@ -170,8 +170,8 @@ extend it with chiron_edit_cohort, then call chiron_count_cohort on the result. 
 so the figures are about those patients, not the whole dataset.
 
 Answering. The reader wants the figure, not an essay.
-- One short sentence with the answer. Add a second only if something would mislead
-  without it, such as merged spelling variants.
+- One short sentence with the answer, the figure in digits (20, not "twenty"). Add a
+  second only if something would mislead without it, such as merged spelling variants.
 - A markdown table for more than two rows of figures.
 - For a chart, a fenced block tagged `chart` containing JSON, with a title that says
   exactly what the bars are:
@@ -284,8 +284,8 @@ Results tab and reports, all with chiron_query unless said otherwise:
 After a change say in one sentence what Chiron now holds (patients, rows, columns).
 
 Answering. The reader wants the figure, not an essay.
-- One short sentence with the answer. Add a second only if something would mislead
-  without it, such as merged spelling variants.
+- One short sentence with the answer, the figure in digits (20, not "twenty"). Add a
+  second only if something would mislead without it, such as merged spelling variants.
 - A markdown table for more than two rows of figures.
 - For a chart, a fenced block tagged `chart` containing JSON, with a title that says
   exactly what the bars are:
@@ -704,6 +704,7 @@ class _CohortTracker:
         self.link: dict | None = None
         self.deleted: list[int] = []  # report ids deleted in this answer
         self.counted = False  # a tool counted patients in this answer
+        self.count_value: int | None = None  # the last count chiron_query returned
 
     def tool_use(self, block: dict) -> None:
         self._calls[block.get("id", "")] = (
@@ -727,6 +728,8 @@ class _CohortTracker:
             return
         if not isinstance(data, dict) or data.get("error"):
             return
+        if name == "chiron_query" and isinstance(data.get("count"), int):
+            self.count_value = data["count"]
 
         ds = args.get("dataset_id")
         if name == "chiron_query" and data.get("cohort_def") is not None:
@@ -1307,6 +1310,18 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                                "shown, and the model was asked to check it.", status="warn")
                     yield from _drain(trace)
                     continue
+                # A count came back but the answer states no figure in digits ("Twenty
+                # patients have asthma"): held back the same way, for the figure in digits.
+                # A count of 0 is left alone ("No patients have ...").
+                if (known is not None and lead is None and tracker.count_value
+                        and not re.search(r"\d", text)):
+                    outcome.update(answered=True, nodigits=tracker.count_value)
+                    trace.note("No figure in digits",
+                               f"A tool returned the count {tracker.count_value:,}, but the answer states no "
+                               "figure in digits; it was not shown, and the model was asked for the figure.",
+                               status="warn")
+                    yield from _drain(trace)
+                    continue
                 trace.post("followups", followup_audit(ev.get("result", "")))
                 trace.post("charts", tracing.chart_audit(text))
                 # Earlier answers may carry Report buttons for what was just deleted;
@@ -1482,13 +1497,18 @@ def ask_stream(
                 trace.error(message)
                 yield "error", message
             break
-        if outcome.get("unbacked") is not None and not outcome.get("cancelled"):
-            # Held back: its lead figure came from no tool. Ask once for a checked answer,
-            # and show that one whatever it says.
-            fig = outcome["unbacked"]
-            note = (f"Check before answering: your answer led with {fig:,}, but no tool returned "
-                    "that figure. Every figure must come from a tool result: get it with a tool "
-                    "(chiron_query does any arithmetic exactly), then give the whole answer again.")
+        if (outcome.get("unbacked") is not None or outcome.get("nodigits")) and not outcome.get("cancelled"):
+            # Held back: its lead figure came from no tool, or it states no figure in digits.
+            # Ask once for a checked answer, and show that one whatever it says.
+            if outcome.get("unbacked") is not None:
+                fig = outcome["unbacked"]
+                note = (f"Check before answering: your answer led with {fig:,}, but no tool returned "
+                        "that figure. Every figure must come from a tool result: get it with a tool "
+                        "(chiron_query does any arithmetic exactly), then give the whole answer again.")
+            else:
+                note = (f"Check before answering: a tool returned the count {outcome['nodigits']:,}, but your "
+                        "answer states no figure in digits. Give the whole answer again with the figure "
+                        "in digits (20, not \"twenty\").")
             cmd = _claude_command(claude, note, ["--resume", tid], cfg)
             outcome = {}
             trace.launched(cmd, note, SYSTEM_PROMPT, True)
