@@ -291,12 +291,22 @@ Running the larger models on only the 49 plus the new questions about halves the
   - **The local database changes in P6** affect only the chiron-ask benchmark copy, not
     the data itself.
 
-## 6. Decisions needed before starting
+## 6. Decisions
 
-1. Commit the finished Oct 13 answer-trace work (uncommitted on `mcp-hosted`) first, and
-   branch from there?
-2. Give small models in Ask only the short tool list by default, keeping the full list
-   for MCP clients?
-3. Final benchmark scope and budget: all models on all 236 questions (about $65 on
-   Bedrock), or the larger models on 49 + new only (about $35)?
-4. Include gpt-oss-20b (local, slow) in the final run?
+1. **Done (2026-10-26):** the Oct 13 answer-trace work was committed on `mcp-hosted`
+   (157c49b). This work happens on the `ask-reliable-queries` branch.
+2. **Yes:** small models in Ask see only the short tool list by default. The full list
+   stays for MCP clients and strong models.
+3. **Open:** final benchmark scope and budget (all 236 questions, about $65 on Bedrock,
+   or the larger models on 49 + new only, about $35).
+4. **Open:** include gpt-oss-20b (local, slow) in the final run?
+
+## 7. Progress
+
+- **Step 0, started 2026-10-26.**
+  - 0.1: Haiku 5.5 baseline, run `20261026-062329` (chiron-benchmark).
+  - 0.2: re-phrased sets `questions/synthea-100k.rephrased-{a,b,c}.json`, written by
+    `scripts/make_rephrased.py` (147 questions). New set `questions/synthea-100k.new.json`
+    (40 questions, n01–n40), with answer keys from `bench/truth.py` `build_new`.
+  - The benchmark runs any set: `./bench.sh run --questions rephrased-a`, or
+    `question_set` in `/api/bench/start`.
