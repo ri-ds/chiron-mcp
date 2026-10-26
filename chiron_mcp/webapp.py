@@ -25,11 +25,21 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from chiron_mcp import trace as tracing
 from chiron_mcp.config import CONFIG
 
 HERE = Path(__file__).resolve().parent
 WEBUI = HERE / "webui"
 PORT = int(os.environ.get("CHIRON_MCP_WEB_PORT", "8900"))
+
+# Every answer keeps a step-by-step trace the page shows on request, for working out
+# why an answer is wrong (see trace.py). CHIRON_MCP_TRACE=0 switches it off.
+TRACE = os.environ.get("CHIRON_MCP_TRACE", "1") != "0"
+# Ask Claude Code for summaries of the model's reasoning, so the trace can show why it
+# chose each step. The Ask server turns this on in main(); code that imports ask_stream
+# (the benchmark) keeps Claude Code's default unless it sets the variable. Set it to ""
+# to leave the flag off.
+THINKING_DISPLAY = os.environ.get("CHIRON_MCP_THINKING_DISPLAY")
 
 # Only the read-only analysis tools are offered by default. The hand-off tool is
 # included so "open this in Chiron" works, but it is itself gated on
@@ -496,6 +506,9 @@ class _CohortTracker:
         self._calls: dict[str, tuple[str, dict]] = {}
         self.cohort: dict | None = None
         self.last_edit: dict | None = None
+        # The tool calls those two came from, for the trace.
+        self.cohort_call: tuple[str, str] | None = None
+        self.edit_call: tuple[str, str] | None = None
         self.breakdown: dict | None = None  # the last breakdown's groups, for subgroup buttons
         self.link: dict | None = None
         self.deleted: list[int] = []  # report ids deleted in this answer
@@ -525,6 +538,7 @@ class _CohortTracker:
             if data.get("successful") and data.get("cohort_def"):
                 self.last_edit = {"dataset_id": ds, "cohort_def": data["cohort_def"],
                                   "columns": []}
+                self.edit_call = (name, block.get("tool_use_id", ""))
             return
 
         # A saved or updated report gets its button whether or not this call carried a
@@ -558,9 +572,14 @@ class _CohortTracker:
             "cohort_def": args["cohort_def"],
             "columns": [c for c in (args.get("columns") or []) if isinstance(c, dict)],
         }
+        self.cohort_call = (name, block.get("tool_use_id", ""))
 
     def final(self) -> dict | None:
         return self.cohort or self.last_edit
+
+    def final_call(self) -> tuple[str, str] | None:
+        """(tool, tool_use id) behind final()."""
+        return self.cohort_call if self.cohort else self.edit_call if self.last_edit else None
 
 
 _FOLLOWUPS = re.compile(r"```followups\s*([\s\S]*?)```", re.I)
@@ -569,20 +588,34 @@ _UNANSWERABLE = re.compile(
     r"\b(average|mean|median|sum|totals?|costs?|spend|price|age groups?|by age)\b", re.I)
 
 
-def split_followups(text: str) -> tuple[str, list[str]]:
-    """The answer without its ```followups block, and up to 3 usable suggestions."""
-    found: list[str] = []
+def followup_audit(text: str) -> list[dict]:
+    """Every suggestion the model wrote, whether the page shows it, and if not, why."""
+    out: list[dict] = []
+    shown: list[str] = []
     for block in _FOLLOWUPS.findall(text or ""):
         try:
             items = json.loads(block)
         except ValueError:
+            out.append({"q": block.strip()[:200], "shown": False, "why": "the block is not valid JSON"})
             continue
         for q in items if isinstance(items, list) else []:
             q = " ".join(str(q).split())
-            if (q and len(q) <= 90 and not _UNANSWERABLE.search(q)
-                    and q.lower() not in (f.lower() for f in found)):
-                found.append(q)
-    return _FOLLOWUPS.sub("", text or "").rstrip(), found[:3]
+            why = ("empty" if not q
+                   else "longer than 90 characters" if len(q) > 90
+                   else "asks for something the tools cannot do" if _UNANSWERABLE.search(q)
+                   else "repeats another suggestion" if q.lower() in (f.lower() for f in shown)
+                   else "only 3 are shown" if len(shown) >= 3
+                   else None)
+            if not why:
+                shown.append(q)
+            out.append({"q": q, "shown": not why, "why": why})
+    return out
+
+
+def split_followups(text: str) -> tuple[str, list[str]]:
+    """The answer without its ```followups block, and up to 3 usable suggestions."""
+    found = [f["q"] for f in followup_audit(text) if f["shown"]]
+    return _FOLLOWUPS.sub("", text or "").rstrip(), found
 
 
 _NUMBER = re.compile(r"(?<![\w.,])\d{1,3}(?:,\d{3})+(?![\d])|(?<![\w.,])\d+(?![\d,])")
@@ -643,12 +676,14 @@ def states_count(answer: str, n: int) -> bool:
     return False
 
 
-def verify_cohort(state: dict, username: str, allow_superuser: bool) -> dict | None:
+def verify_cohort(state: dict, username: str, allow_superuser: bool,
+                  why: list | None = None) -> dict | None:
     """Re-check a cohort as the requesting user before offering a button for it.
 
     Runs the same validation /load will run and counts it, so every Query button that
     appears is one that works, and it can say how many subjects it will load. Returns
-    None for whole-dataset cohorts (nothing to load) and anything that fails.
+    None for whole-dataset cohorts (nothing to load) and anything that fails, and says
+    which in `why` when given one.
     """
     from chiron.query_engine import get_querytool
     from chiron_mcp import identity, server as S
@@ -661,10 +696,14 @@ def verify_cohort(state: dict, username: str, allow_superuser: bool) -> dict | N
         identity.require_subject_level(ident)
         cohort = S._validated_cohort(ident, state.get("cohort_def") or [])
         if not cohort.cohort_def:
+            if why is not None:
+                why.append("The cohort has no filters (the whole dataset), so there is nothing to load.")
             return None
         n = get_querytool(identity.checked_chironuser(ident), cohort.cohort_def).get_cohort_count()
         return {**state, "cohort_def": cohort.cohort_def, "subject_count": int(n)}
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        if why is not None:
+            why.append(f"{type(exc).__name__}: {exc}"[:500])
         return None
 
 
@@ -690,6 +729,11 @@ def _neutral_dir() -> str:
     return str(wd)
 
 
+def _trace_root() -> Path:
+    """Where answers' traces are kept, one folder per conversation (see trace.py)."""
+    return _state_dir() / "traces"
+
+
 THREAD_TTL_HOURS = float(os.environ.get("CHIRON_MCP_THREAD_TTL_HOURS", "12"))
 
 
@@ -703,7 +747,7 @@ class _Threads:
 
     Claude Code saves each session's transcript to disk, tool results included, which
     means patient-level data. So a thread's transcript is deleted when it is cleared or
-    once it has been idle for THREAD_TTL_HOURS.
+    once it has been idle for THREAD_TTL_HOURS, and its answers' traces with it.
     """
 
     def __init__(self):
@@ -787,6 +831,7 @@ class _Threads:
         for d in root.glob(f"*/{tid}"):
             if d.is_dir():
                 _sh.rmtree(d, ignore_errors=True)
+        tracing.delete_thread(_trace_root(), tid)
 
     def forget(self, tid: str, user: str) -> bool:
         with self._guard:
@@ -810,6 +855,9 @@ class _Threads:
                 self._save()
         for tid in stale:
             self._delete_transcript(tid)
+        # Also any trace left by a conversation that was never registered (the browser
+        # went away before its first answer finished).
+        tracing.prune(_trace_root(), THREAD_TTL_HOURS)
 
 
 THREADS = _Threads()
@@ -845,6 +893,22 @@ def tidy(answer: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", out).strip()
 
 
+def _tidy_audit(before: str, after: str) -> dict:
+    """What tidy() took out of an answer, for its trace."""
+    base = CONFIG.ui_url.rstrip("/")
+    links = [m for m in _URL.finditer(before or "")
+             if base and (m.group(2) or m.group(3) or "").startswith(base)]
+    return {"changed": (before or "").strip() != after, "links_removed": len(links),
+            "emails_redacted": len(_EMAIL.findall(before or "")),
+            "paths_removed": len(_PATH.findall(before or "")), "before": before}
+
+
+def _redact(text: str) -> str:
+    """The operator's email and paths never reach a trace (the page shows it to whoever
+    asked, who may not be the operator)."""
+    return _PATH.sub("[path]", _EMAIL.sub("[email]", text))
+
+
 _NOT_LOGGED_IN = re.compile(
     r"invalid api key|please run /login|not logged in|log ?in to|authenticat|oauth|"
     r"credit balance|x-api-key", re.I)
@@ -873,8 +937,14 @@ def _pump(stream, lines: "queue.Queue") -> None:
         lines.put(None)
 
 
+def _drain(trace):
+    """The trace's changed steps as page events."""
+    for step in trace.drain():
+        yield "trace", step
+
+
 def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: dict,
-                 inherited: dict | None = None, tid: str = ""):
+                 inherited: dict | None = None, tid: str = "", trace=tracing.OFF):
     """One headless Claude run, translated into page events.
 
     `inherited` is the cohort behind the conversation's previous Query button. A
@@ -888,6 +958,9 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
     PING_SECONDS. The write fails once the browser has gone (reloaded, closed, or
     stopped), and that ends the run, so an abandoned answer never keeps its
     conversation locked. A run is stopped after TURN_SECONDS.
+
+    Every event is also fed to `trace`, which records the run step by step, and the
+    steps it changes go to the page as "trace" events (see trace.py).
     """
     import queue
     import time
@@ -910,7 +983,10 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 outcome["answered"] = True
                 took = (f"{TURN_SECONDS // 60} minutes" if TURN_SECONDS >= 120
                         else f"{TURN_SECONDS} seconds")
-                yield "error", f"No answer after {took}, so it was stopped. Claude may be busy; ask again."
+                message = f"No answer after {took}, so it was stopped. Claude may be busy; ask again."
+                trace.error(message)
+                yield from _drain(trace)
+                yield "error", message
                 break
             try:
                 line = lines.get(timeout=min(PING_SECONDS, left))
@@ -926,6 +1002,9 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 ev = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            trace.feed(ev)
+            trace.raw(line, ev)
+            yield from _drain(trace)
 
             kind = ev.get("type")
             if kind == "system" and ev.get("subtype") == "api_retry":
@@ -947,41 +1026,78 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                         tracker.tool_result(block)
             elif kind == "result":
                 if ev.get("is_error"):
-                    yield "error", explain_claude_error(ev.get("result") or "Claude returned an error.")
+                    message = explain_claude_error(ev.get("result") or "Claude returned an error.")
+                    trace.error(message)
+                    yield from _drain(trace)
+                    yield "error", message
                     outcome["answered"] = True
                     continue
                 # The suggested follow-ups travel separately; everything below judges
                 # the answer itself, never numbers that only appear in a suggestion.
                 text, followups = split_followups(ev.get("result", ""))
+                trace.post("followups", followup_audit(ev.get("result", "")))
+                trace.post("charts", tracing.chart_audit(text))
                 # Earlier answers may carry Report buttons for what was just deleted;
                 # the page retires them.
                 for rid in tracker.deleted:
                     yield "deleted", rid
                 if tracker.link:
                     yield "link", tracker.link
+                trace.post("link", tracker.link)
+                trace.post("deleted", tracker.deleted)
+                # Why the answer did or did not get a Query button, for the trace.
+                decision: dict = {"offered": None}
                 # A workspace hand-off has already loaded the query, and its link says
                 # so; a second Query button for the same cohort would just repeat it.
                 if not (tracker.link and tracker.link.get("mode") in ("workspace", "results")):
                     state = tracker.final() or inherited
-                    verified = state and verify_cohort(state, username, allow_superuser)
+                    call = tracker.final_call() if tracker.final() else None
+                    why: list[str] = []
+                    verified = state and verify_cohort(state, username, allow_superuser, why)
                     # The button is labelled with its count; offer it only when that is
                     # the figure the answer leads with, so it is never about other
                     # patients than the ones the answer describes. If the answer leads
                     # with one group of a breakdown, offer that group's cohort instead.
                     figure = headline_figure(text)
+                    decision.update(
+                        source=(f"the cohort passed to {call[0]}" if call else
+                                "the previous answer's cohort" if state else None),
+                        step=trace.step_for_call(call[1]) if call else None,
+                        cohort=tracing.cohort_lines(state.get("cohort_def")) if state else None,
+                        figure=figure, verified=verified["subject_count"] if verified else None,
+                        verify_error=why[0] if why else None)
                     if verified and verified["subject_count"] != figure:
                         verified = None
                         sub = tracker.breakdown and figure is not None and subgroup_cohort(
                             tracker.breakdown, figure, username, allow_superuser)
                         checked = sub and verify_cohort(sub, username, allow_superuser)
+                        if tracker.breakdown and figure is not None:
+                            decision["subgroup"] = {
+                                "found": bool(sub),
+                                "count": checked["subject_count"] if checked else None}
                         if checked and checked["subject_count"] == figure:
                             state, verified = sub, checked
+                            decision["source"] = "one group of the breakdown"
                     if verified:
                         outcome["cohort"] = state
+                        decision["offered"] = verified["subject_count"]
                         yield "cohort", verified
+                    else:
+                        decision["reason"] = (
+                            "No cohort was built or counted, and none carried over." if not state
+                            else "The cohort could not be re-checked." if decision["verified"] is None
+                            else f"The answer leads with {figure if figure is not None else 'no figure'}, "
+                                 f"not the cohort's {decision['verified']:,} patients.")
+                else:
+                    decision["reason"] = "The answer already put this in Chiron; its own button opens it."
+                trace.post("cohort", decision)
                 if followups:
                     yield "followups", followups
-                yield "answer", tidy(text)
+                answer = tidy(text)
+                trace.post("tidy", _tidy_audit(text, answer))
+                trace.answer(answer)
+                yield from _drain(trace)
+                yield "answer", answer
                 outcome["answered"] = True
         proc.wait(timeout=10)
         outcome["rc"] = proc.returncode
@@ -1002,9 +1118,13 @@ def ask_stream(
     """Answer one question as `username`, continuing `thread` when it is theirs.
 
     Events: thread (the conversation id to send back with a follow-up), step, link,
-    cohort (verified, with its subject count), answer, error.
+    cohort (verified, with its subject count), answer, error. With tracing on, also
+    trace_start (the trace's id and what it is about), trace (one step, new or changed)
+    and trace_end (totals and checks); the whole trace is then at /trace?id=.
     """
     import uuid
+
+    global THINKING_DISPLAY
 
     claude = shutil.which("claude") or os.path.expanduser("~/.local/bin/claude")
     if not Path(claude).exists():
@@ -1025,8 +1145,16 @@ def ask_stream(
             return
 
     cfg = _mcp_config(username, allow_superuser)
+    trace = tracing.OFF
+    outcome: dict = {}
     try:
         yield "thread", tid
+        if TRACE:
+            trace = tracing.Trace(
+                question=question, dataset=dataset, user=username, thread=tid, followup=resume,
+                prior=tracing.prior(_trace_root(), tid, username) if resume else [],
+                inherited=THREADS.cohort(tid) if resume else None, redact=_redact)
+            yield "trace_start", trace.head()
         for _attempt in range(2):
             if resume:
                 # The dataset brief is already in the conversation.
@@ -1043,31 +1171,26 @@ def ask_stream(
                         prompt = f"[dataset: {dataset}]\n\n{question}\n\n(Access check: {exc})"
                 session = ["--session-id", tid]
 
-            # Isolate the headless session from the operator's own Claude Code setup.
-            # Without this it inherits their git identity, project files, memory and
-            # every other MCP server they have configured, and repeats them in answers.
-            # The account email is injected by Claude Code itself and cannot be switched
-            # off without an API key (--bare), which is why tidy() also redacts.
-            cmd = [
-                claude, "-p", prompt, *session,
-                "--mcp-config", str(cfg),
-                "--strict-mcp-config",
-                "--setting-sources", "",
-                # No built-in tools at all (Bash, Read, Write, WebFetch...): the only thing
-                # a question can make Claude do is call Chiron. Without this, a visitor
-                # could ask it to read files on the server, the Claude login among them.
-                "--tools", "",
-                "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in TOOLS),
-                "--system-prompt", SYSTEM_PROMPT,
-                "--output-format", "stream-json",
-                "--verbose",
-            ]
-            outcome: dict = {}
             inherited = THREADS.cohort(tid) if resume else None
-            yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid)
+            for _flag in range(2):
+                cmd = _claude_command(claude, prompt, session, cfg)
+                outcome = {}
+                trace.launched(cmd, prompt, SYSTEM_PROMPT, resume)
+                yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid, trace)
+                if outcome.get("answered") or not _thinking_flag_refused(outcome):
+                    break
+                # A Claude Code too old for --thinking-display: ask again without it, and
+                # stop passing it for as long as this server runs.
+                THINKING_DISPLAY = None
+                trace.note("Reasoning summaries unavailable",
+                           "This Claude Code does not know --thinking-display, so the question was "
+                           "asked again without it; the trace shows no reasoning.", status="info")
+                yield from _drain(trace)
 
             if outcome.get("cancelled"):
-                yield "error", "Stopped, because a newer question in this conversation replaced it."
+                message = "Stopped, because a newer question in this conversation replaced it."
+                trace.error(message)
+                yield "error", message
                 break
             if outcome.get("answered"):
                 break
@@ -1076,18 +1199,62 @@ def ask_stream(
                 # question as a fresh conversation rather than failing it.
                 resume = False
                 tid = str(uuid.uuid4())
+                trace.restarted(tid)
+                yield from _drain(trace)
                 yield "thread", tid
                 continue
             if outcome.get("stderr"):
-                yield "error", explain_claude_error(outcome["stderr"][:500])
+                message = explain_claude_error(outcome["stderr"][:500])
+                trace.error(message)
+                yield "error", message
             break
         THREADS.touch(tid, username, dataset, outcome.get("cohort"))
+        if TRACE:
+            trace.finish(outcome.get("rc"), outcome.get("stderr", ""))
+            trace.save(_trace_root())
+            yield from _drain(trace)
+            yield "trace_end", trace.tail()
     finally:
+        if TRACE and trace is not tracing.OFF and not trace.data.get("done"):
+            # The page went away (or a newer question stopped this one) mid-answer:
+            # keep what was recorded, so a stuck answer can still be looked into.
+            trace.note("Stopped before the end",
+                       "The page closed, or a newer question replaced this one, before the answer "
+                       "finished.", status="warn")
+            trace.finish(outcome.get("rc"), outcome.get("stderr", ""))
+            trace.save(_trace_root())
         lock.release()
         try:
             cfg.unlink()
         except OSError:
             pass
+
+
+def _claude_command(claude: str, prompt: str, session: list[str], cfg: Path) -> list[str]:
+    # Isolate the headless session from the operator's own Claude Code setup.
+    # Without this it inherits their git identity, project files, memory and
+    # every other MCP server they have configured, and repeats them in answers.
+    # The account email is injected by Claude Code itself and cannot be switched
+    # off without an API key (--bare), which is why tidy() also redacts.
+    return [
+        claude, "-p", prompt, *session,
+        "--mcp-config", str(cfg),
+        "--strict-mcp-config",
+        "--setting-sources", "",
+        # No built-in tools at all (Bash, Read, Write, WebFetch...): the only thing
+        # a question can make Claude do is call Chiron. Without this, a visitor
+        # could ask it to read files on the server, the Claude login among them.
+        "--tools", "",
+        "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in TOOLS),
+        "--system-prompt", SYSTEM_PROMPT,
+        *(["--thinking-display", THINKING_DISPLAY] if THINKING_DISPLAY else []),
+        "--output-format", "stream-json",
+        "--verbose",
+    ]
+
+
+def _thinking_flag_refused(outcome: dict) -> bool:
+    return bool(THINKING_DISPLAY) and "thinking-display" in (outcome.get("stderr") or "")
 
 
 # The session-cookie lookup lives in identity, shared with the OAuth login page.
@@ -1154,6 +1321,10 @@ class Handler(BaseHTTPRequestHandler):
             if not self._same_site():
                 return self.send_error(403, "cross-site request refused")
             return self._ask(parse_qs(url.query))
+        if url.path == "/trace":
+            if not self._same_site():
+                return self.send_error(403, "cross-site request refused")
+            return self._trace(parse_qs(url.query))
 
         self.send_error(404)
 
@@ -1282,6 +1453,17 @@ class Handler(BaseHTTPRequestHandler):
         tid = body.get("thread") or ""
         return self._json({"forgotten": bool(tid) and THREADS.forget(tid, who)})
 
+    def _trace(self, params):
+        """One answer's full trace, for the person who asked it (see trace.py)."""
+        who, _ = request_identity(self.headers.get("Cookie"))
+        data = tracing.find(_trace_root(), (params.get("id") or [""])[0], who)
+        if data is None:
+            return self._json({"error": (
+                "No trace for this answer. Traces are kept only as long as their conversation "
+                f"({THREAD_TTL_HOURS:g} hours after its last question), and only for the person "
+                "who asked.")})
+        return self._json(data)
+
     def _ask(self, params):
         question = (params.get("q") or [""])[0].strip()
         dataset = (params.get("dataset") or [None])[0]
@@ -1330,11 +1512,17 @@ def main() -> int:
     from chiron_mcp.bootstrap import ensure_django
 
     ensure_django()
+    # The Ask page shows the model's reasoning in its traces, so ask for it.
+    global THINKING_DISPLAY
+    if THINKING_DISPLAY is None:
+        THINKING_DISPLAY = "summarized"
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"Chiron Ask running at http://localhost:{PORT}")
     print("  identity : the user logged into Chiron; with no session, "
           f"{CONFIG.username} (ceiling {CONFIG.max_access_level})")
     print(f"  chiron ui: {CONFIG.ui_url}")
+    print(f"  traces   : {'on' if TRACE else 'off'}"
+          + (f", reasoning {THINKING_DISPLAY}" if TRACE and THINKING_DISPLAY else ""))
     print("  Ctrl-C to stop")
     try:
         srv.serve_forever()
