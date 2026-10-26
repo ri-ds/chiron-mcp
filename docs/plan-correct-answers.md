@@ -56,11 +56,7 @@ These are what we're aiming for. The re-run will measure whether we hit them.
 
 | Measure | Target |
 |---|---|
-| Haiku 5.5, 49 questions | ≥ 46 of 49 |
-| Haiku 5.5, re-phrased and new questions (step 0.2) | ≥ 90% correct |
-| Opus 5.5, Opus 4.6, Sonnet 4.6 | ≥ 47 of 49 |
-| Qwen3-Next 80B | ≥ 42 of 49 |
-| gpt-oss-20b | ≥ 40 of 49 (this Mac's speed is the limit) |
+| Opus 5.5, Sonnet 5.5, Haiku 5.5 (all on Bedrock), all 236 questions | every answer right |
 | Answers stating a figure that didn't come from Chiron | 0 |
 | Timeouts caused by a Chiron step | 0; every Chiron step under 30 s on 100k |
 | Every answer | says exactly what it counted, in Chiron's own words |
@@ -297,9 +293,14 @@ Running the larger models on only the 49 plus the new questions about halves the
    (157c49b). This work happens on the `ask-reliable-queries` branch.
 2. **Yes:** small models in Ask see only the short tool list by default. The full list
    stays for MCP clients and strong models.
-3. **Open:** final benchmark scope and budget (all 236 questions, about $65 on Bedrock,
-   or the larger models on 49 + new only, about $35).
-4. **Open:** include gpt-oss-20b (local, slow) in the final run?
+3. **Decided (2026-10-26):** the final benchmark has three models, all on Bedrock: Opus 5.5,
+   Sonnet 5.5 and Haiku 5.5. Qwen3-Next, gpt-oss and the 4.6 models are dropped. The run
+   covers all 236 questions (the 49, the three re-phrased sets and the 40 new ones).
+4. **Decided:** no gpt-oss.
+5. **The benchmark's purpose (the user's words):** every model answers every question
+   correctly, however it is phrased and however big the dataset is. The benchmark then compares
+   **cost and time**. A wrong answer is a bug to fix in Chiron MCP for every model, never a
+   tuning for one model and never a hard-coded answer.
 
 ## 7. Progress
 
@@ -328,3 +329,25 @@ Running the larger models on only the 49 plus the new questions about halves the
   - P8: the short tool list and plain instructions by default; a dataset summary in plain words
     with real values and lab units; identifying values are never cached.
 - **P7** (number check with one retry) is decided after the next Haiku run.
+- **P7 merged** (an answer whose lead figure no tool returned is held back and checked once).
+  Haiku `20261026-074734`: 47/49. After the list/range fix, Haiku `20261026-080125`:
+  **49/49**, no timeouts, typical answer 7.7 s, $0.039 for all 49.
+- **Next:** the three Bedrock models on the 40 new questions (first pass, untuned), then the
+  re-phrased sets; fix every wrong answer in Chiron MCP for all models; then the final run of
+  all 236 questions, one model at a time, to compare cost and time.
+- **Held-out set, first pass, untuned** (run `20261026-081837`, the three Bedrock models side by side).
+  After three grader fixes (below): **Opus 5.5 39/40, Sonnet 5.5 39/40, Haiku 5.5 37/40**.
+  - n28, all three: Postgres ran out of shared memory for parallel workers ("could not resize
+    shared memory segment"), with three big lab queries at once on Docker's 64 MB /dev/shm.
+    All three said they could not get the figure; none made one up. Fixed twice: `shm_size: 1g`
+    in both compose files (applied to `chiron-ask-db-1`), and `chiron_mcp/pg.py` runs a query
+    that failed this way once more with parallel workers off (`tests/shared_memory_retry.py`).
+  - n38, n39, Haiku: put only the COPD patients with an FEV1/FVC result in Results. The column
+    came back as "observation value", so nothing said it held only FEV1/FVC. chiron_query now
+    returns `columns_in_words` and says a summary column never removes patients.
+  - Grader fixes, all in chiron-benchmark `bench/score.py`. They change 3 of 722 stored answers,
+    each from wrong to right, and nothing else:
+    - "(payer = medicaid)" was read as a worked sum;
+    - "Synthea 300" was taken as the lead figure;
+    - "30-day" was taken as a count;
+    - "there's no UK Biobank dataset" was not seen as a refusal.
