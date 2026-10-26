@@ -215,6 +215,8 @@ def _groups(ident, var: Var) -> tuple[list[dict], dict]:
     counts = S._value_counts(ident, [], var.concept)
     groups, _ = S._groups(counts, 10 ** 6)
     _CACHE[key] = (groups, counts)
+    if _identifying(var):
+        return _CACHE[key]  # names, ids, addresses: kept in memory for this question only
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
@@ -242,6 +244,8 @@ def cached_groups(ident, var: Var):
             return cached["groups"]
     except (OSError, ValueError, KeyError):
         pass
+    if _identifying(var):
+        return None
     if _table_rows(ident, var.collection) <= SMALL_TABLES:
         return _groups(ident, var)[0]
     return None
@@ -328,7 +332,7 @@ def warm(dataset_id: str) -> list[str]:
     ident = identity.resolve(dataset_id)
     done = []
     for v in catalogue(ident):
-        if v.kind in ("category", "text"):
+        if v.kind in ("category", "text") and not _identifying(v):
             try:
                 n = len(_groups(ident, v)[0])
                 done.append(f"{v.cid}: {n} values")
@@ -342,6 +346,13 @@ def warm(dataset_id: str) -> list[str]:
         except Exception as exc:  # noqa: BLE001
             done.append(f"{coll} units: {type(exc).__name__}: {exc}"[:200])
     return done
+
+
+def _identifying(var: Var) -> bool:
+    """A variable whose values identify people (names, ids, addresses): never written to
+    disk and never listed in the summary."""
+    return bool(getattr(var.concept, "has_phi", False)) or var.short in ("id", "first", "last", "ssn",
+                                                                          "drivers", "passport", "address")
 
 
 def _value_cache_file(dataset_id: str, cid: str):
