@@ -45,6 +45,7 @@ THINKING_DISPLAY = os.environ.get("CHIRON_MCP_THINKING_DISPLAY")
 # included so "open this in Chiron" works, but it is itself gated on
 # CHIRON_MCP_ALLOW_SAVE inside the server.
 TOOLS = [
+    "chiron_query",
     "chiron_datasets",
     "chiron_find_concepts",
     "chiron_describe_concept",
@@ -68,6 +69,15 @@ TOOLS = [
 SYSTEM_PROMPT = """You are a research data analyst answering questions about one Chiron dataset.
 
 Use the chiron tools. Never invent a number: every figure must come from a tool result.
+
+Start with chiron_query for counts, breakdowns, top lists, patient lists and value
+ranges: describe the question in plain terms, as in its examples, and it finds every
+spelling of each value, builds the query, checks it and counts. Lead your answer with its
+count and say what was counted (its what_was_counted). For a follow-up about the same
+patients ("how many of them..."), pass start_from with the group name from the earlier
+answer. If it refuses because a dataset does not exist, say so and do not answer from
+another dataset. Use the lower-level tools below only when chiron_query says it cannot
+express the question, and for the Results tab and saved reports.
 
 The dataset's variables, their exact concept ids and their filter types are listed after
 the question. Use them directly: do not call chiron_find_concepts or
@@ -463,8 +473,12 @@ REQUIRE_SESSION = os.environ.get("CHIRON_MCP_REQUIRE_SESSION") == "1"
 NOT_LOGGED_IN = "Log in to Chiron first; Ask answers as the person logged in."
 
 
-def _mcp_config(username: str, allow_superuser: bool) -> Path:
-    """A per-request MCP config, so two people asking at once never swap identities."""
+def _mcp_config(username: str, allow_superuser: bool, thread: str | None = None) -> Path:
+    """A per-request MCP config, so two people asking at once never swap identities.
+
+    `thread` gives chiron_query a file for the conversation's groups (g1, g2, ...), so a
+    follow-up can start from an earlier answer's patients; each question runs a fresh
+    Chiron MCP process, so the groups cannot live in memory."""
     import tempfile
 
     env = {
@@ -481,6 +495,8 @@ def _mcp_config(username: str, allow_superuser: bool) -> Path:
         env["CHIRON_MCP_ALLOW_SAVE"] = "1"
     if allow_superuser:
         env["CHIRON_MCP_ALLOW_SUPERUSER"] = "1"
+    if thread:
+        env["CHIRON_MCP_GROUPS_FILE"] = str(_groups_file(thread))
 
     console = Path(sys.executable).parent / "chiron-mcp"
     cfg = {"mcpServers": {"chiron": {"command": str(console), "env": env}}}
@@ -534,6 +550,21 @@ class _CohortTracker:
             return
 
         ds = args.get("dataset_id")
+        if name == "chiron_query" and data.get("cohort_def") is not None:
+            # chiron_query built and counted this cohort itself (args name the dataset in
+            # words; the result carries its id).
+            ds = data.get("dataset_id")
+            bd = data.get("breakdown") or data.get("top")
+            if isinstance(bd, dict) and bd.get("by"):
+                self.breakdown = {
+                    "dataset_id": ds, "cohort_def": data["cohort_def"],
+                    "concept_id": bd["by"][0].get("concept_id"), "rows": bd.get("rows") or [],
+                    "totals": bd.get("row_totals") or [], "variants": bd.get("merged_variants") or {},
+                }
+            if data["cohort_def"]:
+                self.cohort = {"dataset_id": ds, "cohort_def": data["cohort_def"], "columns": []}
+                self.cohort_call = (name, block.get("tool_use_id", ""))
+            return
         if name == "chiron_edit_cohort":
             if data.get("successful") and data.get("cohort_def"):
                 self.last_edit = {"dataset_id": ds, "cohort_def": data["cohort_def"],
@@ -723,6 +754,11 @@ def _state_dir() -> Path:
     return d
 
 
+def _groups_file(tid: str) -> Path:
+    """Where chiron_query keeps a conversation's groups (cohort definitions, no patients)."""
+    return _state_dir() / "groups" / f"{tid}.json"
+
+
 def _neutral_dir() -> str:
     wd = _state_dir() / "workdir"
     wd.mkdir(exist_ok=True)
@@ -832,6 +868,7 @@ class _Threads:
             if d.is_dir():
                 _sh.rmtree(d, ignore_errors=True)
         tracing.delete_thread(_trace_root(), tid)
+        _groups_file(tid).unlink(missing_ok=True)
 
     def forget(self, tid: str, user: str) -> bool:
         with self._guard:
@@ -1144,7 +1181,7 @@ def ask_stream(
             yield "error", "Still answering your previous question in this conversation."
             return
 
-    cfg = _mcp_config(username, allow_superuser)
+    cfg = _mcp_config(username, allow_superuser, thread=tid)
     trace = tracing.OFF
     outcome: dict = {}
     try:

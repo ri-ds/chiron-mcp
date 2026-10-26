@@ -492,7 +492,7 @@ const DATASET = new URLSearchParams(location.search).get('dataset') || '';
 
 // What each Chiron tool call means to someone waiting for an answer.
 const STEP_LABELS = {
-  datasets: 'Checking access', find_concepts: 'Finding variables',
+  query: 'Asking Chiron', datasets: 'Checking access', find_concepts: 'Finding variables',
   describe_concept: 'Reading a variable', concept_values: 'Looking up values',
   edit_cohort: 'Building filters', event_rule_options: 'Checking date rules',
   count_cohort: 'Counting patients', run_table: 'Pulling rows', export_table: 'Exporting',

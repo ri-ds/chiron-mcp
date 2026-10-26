@@ -44,6 +44,7 @@ VERSION = 1
 # What each Chiron tool call means to someone reading the timeline. The page uses the
 # same words for the progress chips it shows while an answer is coming.
 TOOL_LABELS = {
+    "query": "Asking Chiron",
     "datasets": "Checking access", "find_concepts": "Finding variables",
     "describe_concept": "Reading a variable", "concept_values": "Looking up values",
     "edit_cohort": "Building filters", "event_rule_options": "Checking date rules",
@@ -176,6 +177,16 @@ def _facts(name: str, args: dict, data) -> tuple[str, list[list[str]], str | Non
         facts.append(["Patients", _number(n)])
         if data.get("warnings"):
             facts.append(["Warnings", "; ".join(map(str, data["warnings"]))])
+    elif tool == "chiron_query":
+        n = data.get("count")
+        summary = f"{_number(n)} patients" if n is not None else "Done"
+        facts.append(["Patients", _number(n)])
+        if data.get("what_was_counted"):
+            facts.append(["Counted", str(data["what_was_counted"])[:400]])
+        for m in data.get("matched") or []:
+            facts.append([f"“{m.get('you asked')}”", f"{m.get('matched')} ({len(m.get('spellings') or [])} spellings)"])
+        if data.get("group"):
+            facts.append(["Group", str(data["group"])])
     elif tool == "chiron_edit_cohort":
         if data.get("successful"):
             summary = "Filter added" if (args.get("transformation") or {}).get("type") == "add_entry" \

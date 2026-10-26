@@ -786,6 +786,65 @@ def chiron_edit_cohort(
 
 
 @mcp.tool()
+def chiron_query(
+    dataset: str,
+    where: list[dict] | None = None,
+    match: str = "all",
+    start_from: str | None = None,
+    show: dict | None = None,
+    label: str | None = None,
+) -> dict:
+    """Answer a question about patients in one call: describe it in plain terms and Chiron
+    MCP builds the query, checks it and counts with Chiron's engine. Use this first.
+
+    dataset: its name as the user says it ("Synthea 100k", "Synthea 300"). An unknown name
+        is refused: then say that dataset is not available, never answer from another.
+    where: the conditions, all of which must hold (match="any": at least one). Each is
+        one object; plain words are fine, every spelling of a value is found for you:
+          {"condition": "asthma"}                      has asthma (any record)
+          {"condition": "COPD", "never": true}         has never had COPD
+          {"medication": "metformin"}                  ever prescribed metformin
+          {"procedure": "throat culture", "at_least": 5}
+          {"visit": "emergency", "at_least": 3}        3 or more ER visits
+          {"visit": "urgent care", "exactly": 1}       also at_most, more_than, fewer_than
+          {"lab": "HbA1c", "op": ">=", "value": 6.5}   one result of 6.5 or more
+          {"lab": "TSH", "op": ">", "value": 4.5}      ">" means strictly above
+          {"lab": "total cholesterol", "between": [200, 239]}
+          {"condition": "hypothyroidism", "year_between": [2010, 2015]}   diagnosed then
+          {"visit": "emergency", "year": 2019}         a visit in 2019
+          {"medication": "atorvastatin", "before": "2010-01-01"}           started before
+          {"visit": "self-pay", "with": [{"field": "cost", "op": ">", "value": 1000}]}
+                                                       payer and cost on the SAME visit
+          {"field": "gender", "is": "female"}          also "is": ["a", "b"], "is_not"
+          {"field": "income", "op": ">", "value": 150000}
+          {"field": "death date", "has_value": true}   has died
+          {"field": "death date", "year": 2020}        died in 2020
+          {"field": "birthdate", "before": "1945-01-01"}
+          {"field": "county", "is": "Hamilton"}
+        Two conditions on the same kind of record are two different records ("asthma" and
+        "COPD"; an HbA1c >= 6.5 and, separately, one < 5.7): just list both.
+    start_from: a group from an earlier answer ("g1") to narrow down, for follow-ups such
+        as "how many of them...". Every reply names its group.
+    show: what to return besides the count (default: just the count):
+          {"breakdown": ["gender", "ethnicity"]}      patients per group (one or two)
+          {"top": 5, "of": "condition"}              most common conditions/medications
+          {"list": ["birthdate", "death date", "city"], "limit": 10}   patient rows
+          {"range": {"lab": "HbA1c"}}                 lowest and highest recorded value
+    label: a short name for this group, for later follow-ups.
+
+    Returns count (distinct patients), what_was_counted (Chiron's own words), matched (the
+    values and spellings used), group, and the cohort_def for chiron_update_results,
+    chiron_open_in_ui or a report. It refuses, with the reason, anything it cannot express.
+    """
+    from chiron_mcp import query
+
+    try:
+        return query.run(dataset, where, match, start_from, show, label)
+    except Exception as exc:  # noqa: BLE001
+        return _err(exc)
+
+
+@mcp.tool()
 def chiron_event_rule_options(dataset_id: str, cohort_def: list, entry_id: str) -> dict:
     """List the event-rule (date/age restriction) options available for one criteria set.
 
