@@ -424,8 +424,13 @@ def plain_brief(dataset_id: str, username: str, allow_superuser: bool) -> str:
                 continue
             alias = (D.FIELDS.get(coll, {}).get(v.short) or (v.short.replace("_", " "),))[0]
             units = Q.cached_units(ident, coll) if v.short == D.NAME_FIELD.get(coll) else None
-            vals = "; ".join(g["label"] + (f" ({', '.join(units[g['label']])})" if units and units.get(g["label"]) else "")
-                             for g in groups)
+            codes = D.CODES.get(v.short) or {}
+
+            def shown(g):
+                meaning = codes.get(D.norm(g["label"]))
+                text = g["label"] + (f" = {meaning[0]}" if meaning and D.norm(meaning[0]) != D.norm(g["label"]) else "")
+                return text + (f" ({', '.join(units[g['label']])})" if units and units.get(g["label"]) else "")
+            vals = "; ".join(shown(g) for g in groups)
             lines.append(f"    {alias} values{' (units)' if units else ''}: {vals}")
     return "\n".join(lines)
 
