@@ -1194,17 +1194,18 @@ def _groups(counts: dict, top: int) -> tuple[list[dict], int]:
         g["approx"] += n
         if n > g["best"][0]:
             g["best"] = (n, value)
-    # Fold truncations into the name they cut short ("asthm" into "asthma", "essential
-    # hypertensio" into "essential hypertension"), so a ranking agrees with a direct
-    # count. Conservative on purpose: the short form must cover at least 80% of the
-    # longer name, be 5+ characters, and match exactly one larger group.
+    # Fold a cut-off spelling into the name it cuts short ("asthm" into "asthma",
+    # "essential hypertensio" into "essential hypertension"), so a ranking agrees with a
+    # direct count. A cut-off spelling is 5+ characters covering at least 80% of exactly
+    # one longer name, and is rare next to it (at most a tenth as many). "prov-14" next
+    # to "prov-140".."prov-149", or "prov-40" with as many patients as "prov-400", is a
+    # value of its own.
     for key in sorted(merged, key=len):
         if key not in merged or len(key) < 5:
             continue
-        hosts = [k for k in merged if k != key and k.startswith(key)
-                 and len(key) >= 0.8 * len(k) and merged[k]["approx"] > merged[key]["approx"]]
-        if len(hosts) == 1:
-            g, host = merged.pop(key), merged[hosts[0]]
+        longer = [k for k in merged if k != key and k.startswith(key) and len(key) >= 0.8 * len(k)]
+        if len(longer) == 1 and merged[longer[0]]["approx"] >= 10 * merged[key]["approx"]:
+            g, host = merged.pop(key), merged[longer[0]]
             host["values"] += g["values"]
             host["approx"] += g["approx"]
     ordered = sorted(merged.values(), key=lambda g: -g["approx"])
