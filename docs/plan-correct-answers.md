@@ -464,5 +464,9 @@ Running the larger models on only the 49 plus the new questions about halves the
     identifying-variable rule (first, last, ssn, id, address, has_phi) only kept them out of its
     caches and listings. To fix after the local lane's known-set run: no identifying column in a
     list, Results or report unless the user may view subject details.
-- Local Opus 5.5 over the 236 known questions: run `20261026-155836`, to be merged with
-  `20261026-112756` for the four-model comparison.
+- **Local Opus 5.5 over the 236 known questions** (run `20261026-155836`, 15:58–16:50 UTC, Chiron MCP
+  at 0c3ed50): **236/236**, $0 billed (its tokens at Anthropic's list price: $6.67), median 7.7 s.
+  Merged with the final Bedrock run as `20261026-165027`: Opus 5.5 (Bedrock) 236, Sonnet 5.5 235,
+  Haiku 5.5 235, local Opus 5.5 236 of 236; Bedrock cost $5.55 / $2.57 / $0.18.
+- The identifying-columns guard (4afc8f7) is merged into main after that run, so no benchmark
+  answer here ran with it; it is checked live as the benchmark's de-identified user instead.
