@@ -1,0 +1,302 @@
+# Plan: correct Chiron answers from any model, Haiku included
+
+**Goal.** Every model gives the right answer, however the question is phrased, including
+cheap ones like Haiku 5.5. The way there is to move the hard parts out of the model and
+into Chiron MCP. Then we run the benchmark again to show the gain.
+
+Status: draft for approval, 2026-10-26. Nothing here has been built yet.
+
+---
+
+## 1. Where we are
+
+### Score on the 49 benchmark questions (synthea-100k)
+
+| Model | Correct | Notes |
+|---|---|---|
+| Opus 5.5 (Chiron Ask page) | 44 | |
+| Opus 4.6 (Bedrock) | 40 | |
+| Sonnet 4.6 (Bedrock) | 37 | |
+| Qwen3-Next 80B (Bedrock) | 23 | |
+| gpt-oss-20b (this Mac) | 22 | 20 timeouts |
+| Opus 5.5 (Bedrock) | 15 of 17 | stopped run, not a full score |
+| Haiku 5.5 (Bedrock) | not measured yet | step 0.1 measures it |
+
+### Why answers go wrong
+
+There were 81 wrong or missing answers across all runs, and each was read by hand. None
+were caused by Chiron counting wrong. Every one came from turning the question into a
+Chiron query, or from Chiron being too slow.
+
+| # | Cause | Wrong answers | Example | Fixed in |
+|---|---|---|---|---|
+| A | **Two conditions on the same table.** For example "both asthma and COPD", or "HbA1c ≥ 6.5 and, at another time, < 5.7". Chiron always adds a new filter to the first group of that table, so both conditions must hold on the same record and the count drops to 0. The models guess fields like `parent_id` and `set_id` to fix this, and Chiron silently ignores them. | 14 | q02, q03, q11, q12 | P2 |
+| B | **Count rule written as `at_least`.** Chiron only knows `at least`, `at most` and `exactly`. It accepts `at_least` without error and treats it as `exactly`. The follow-ups then build on the wrong group. | 12 | q07 → q08, q09 (all 4 benchmark models) | P1, P2 |
+| C | **Results and reports built wrong or too slowly.** For example, an extra cohort filter added just to get a "highest HbA1c" column (5,933 rows instead of 6,914), or a report's filters changed without saving the report. | 12 | q37–q44 | P4 |
+| D | **"Over" or "above" turned into "at least".** For example, "over $4,500" became ≥ 4,501, which skips $4,500.01–$4,500.99, and "above 4.5" became ≥ 4.5. | 11 | q29 → q30, q31; q34 | P2 |
+| E | **A Chiron step too slow for the 5-minute limit.** Value lists and breakdowns over the 21.5M lab rows take minutes. | 9 | q32, q33, q01 | P6 |
+| F | **Malformed tool calls**, mostly from small models: hand-written `cohort_def`, missing `collection_id`, made-up transformation types, wrong tool names. | 7 | gpt-oss q16 (6 broken calls), Qwen q18 | P1, P2, P8 |
+| G | **Answered for a dataset that doesn't exist** ("MIMIC-IV") using synthea-100k numbers. | 4 | q48 | P3, P7 |
+| H | **Wrong field**, for example "base encounter cost" instead of "total claim cost". | 3 | Qwen q29 → q30, q31 | P3 |
+| I | **Wrong dataset name or list**, for example a Synthea 300 question answered from Synthea 100k. | 3 | q35, q36 | P3 |
+| J | **Value not found** (what label does "depression screening" have?). | 2 | q46 | P3 |
+| K | **A follow-up built on an earlier wrong answer.** | 2 | Qwen q23, q47 | P5 |
+| L | **Model too slow, or too many steps** (gpt-oss on this Mac). | 2 | gpt-oss q20, q47 | P2, P8 |
+
+**The pattern.** Small models fail on mechanics: Chiron's internal query format, its rule
+names, which group a filter goes into, inclusive limits, dataset ids and field ids. Big
+models fail where the tools give them no correct way to say something (A, D) or accept a
+mistake silently (B). The English in the questions is not the problem.
+
+---
+
+## 2. Targets for the re-run
+
+These are what we're aiming for. The re-run will measure whether we hit them.
+
+| Measure | Target |
+|---|---|
+| Haiku 5.5, 49 questions | ≥ 46 of 49 |
+| Haiku 5.5, re-phrased and new questions (step 0.2) | ≥ 90% correct |
+| Opus 5.5, Opus 4.6, Sonnet 4.6 | ≥ 47 of 49 |
+| Qwen3-Next 80B | ≥ 42 of 49 |
+| gpt-oss-20b | ≥ 40 of 49 (this Mac's speed is the limit) |
+| Answers stating a figure that didn't come from Chiron | 0 |
+| Timeouts caused by a Chiron step | 0; every Chiron step under 30 s on 100k |
+| Every answer | says exactly what it counted, in Chiron's own words |
+
+"Never wrong" can't be promised for questions that really are ambiguous. "Never silently
+wrong" can. Every answer will either be right, show exactly what it counted so a
+mismatch is obvious, or say which reading it chose.
+
+---
+
+## 3. The plan
+
+### P0. Baseline and test sets, before changing anything
+
+**0.1 Haiku 5.5 baseline.** Run the current system on the 49 questions with Haiku 5.5, so
+the improvement can be measured. Rough cost: under $1.
+
+**0.2 Robustness sets.** These are written now and kept away from development, so we
+can't tune the system to them.
+- **Re-phrased set:** 3 versions of each of the 49 questions (147 in all), with the same
+  checks as the originals:
+  - casual: "how many ppl had 3+ ER visits"
+  - clinical: "patients with ≥ 3 emergency department encounters"
+  - indirect, or with typos and units: "diabetic-range A1c", "a1c over 6.5 %"
+- **New set:** about 40 new questions on the same data, with answers worked out by
+  SQL in `bench/truth.py`. They use other labs, conditions and numbers, plus "under",
+  "between", "never", "at most", "exactly", date ranges, lists, top-N and report
+  actions. They run only at the end.
+- **Fair readings:** a question with two fair readings accepts both, and the answer must
+  say which one it used.
+
+**0.3 Offline tests.** A test harness that needs no model: a query description goes in,
+and the resulting Chiron count is compared with the SQL answer. Every change in P1–P6
+gets tests here. It follows the same approach as `tests/ask_trace.py`.
+
+### P1. Strict tools that explain mistakes (small change, big effect)
+
+- Give every tool argument an exact schema: enums for transformation types and count
+  rules, and no unknown fields allowed.
+- **An unknown parameter returns an error that names the right way.** Example: "`set_id`
+  is not a field; to put a filter in its own group use …". Today these are silently
+  ignored (cause A).
+- **Accept the usual spellings of count rules and correct them:** `at_least`, `>=`, `min`
+  become `at least`, and the reply says so (cause B).
+- Check every `cohort_def` with Chiron's own cleaner before counting. Never count a
+  malformed or empty definition; an empty one would match all 100,000 patients.
+- Rewrite unhelpful Chiron messages. "Please enter a minimum or maximum value" becomes
+  "to ask whether a date or number is present, use `has_value`".
+
+### P2. One simple query tool: `chiron_query` (the core of the plan)
+
+The model describes the question in plain terms. Chiron MCP turns that into Chiron's
+query format, checks it and counts. One call replaces the 5–15 low-level steps needed
+today. Draft of what the model sends:
+
+```json
+{
+  "dataset": "Synthea 100k",
+  "start_from": "g3",
+  "where": [
+    {"lab": "HbA1c", "op": ">=", "value": 6.5},
+    {"lab": "HbA1c", "op": "<", "value": 5.7, "separately": true},
+    {"condition": "asthma"},
+    {"condition": "COPD", "never": true},
+    {"count_of": {"encounter": "emergency room admission"}, "op": ">=", "value": 3},
+    {"field": "death date", "op": "has_value"},
+    {"condition": "hypothyroidism", "date_between": ["2010-01-01", "2015-12-31"]}
+  ],
+  "match": "all",
+  "show": {"count": true}
+}
+```
+
+`start_from` names a group kept from an earlier answer (P5).
+
+What Chiron MCP does with it:
+- **Resolves** every word to a field and its value variants, using the dictionary (P3).
+- **Gives each condition its own group** (criteria set). Patient-level AND/OR/NOT then
+  work, and "both asthma and COPD" no longer turns into "one record that is both"
+  (cause A). It uses Chiron's own functions, including the entry move the UI uses for
+  drag and drop, so the result is exactly what the Chiron UI would build.
+- **Keeps a lab's name and value on the same record** ("HbA1c ≥ 6.5" means one HbA1c
+  result of at least 6.5).
+- **Handles real comparisons:** >, ≥, <, ≤, =, between, has value, is empty. Strict
+  limits are turned into Chiron's inclusive ones correctly for decimal values (cause
+  D). Each number type gets a test against SQL.
+- **"At least N times"** becomes a valid count rule (cause B).
+- **Does set arithmetic itself** ("both", "either", "only A"), so the model never
+  estimates.
+- **Returns** the count, Chiron's own plain-English description of the cohort, the
+  exact values it matched (for example "Asthma, ASTHMA, asthma, Asthm"), any
+  assumptions, and a name for the group (P5).
+- **Says plainly when something can't be expressed**, for example timing between two
+  events on a dataset without event rules (q15). It never quietly drops a condition.
+
+The same tool also gives the other answer shapes, so one call covers most questions:
+- `"show": {"breakdown": ["gender", "ethnicity"]}`
+- `"show": {"top": 5, "of": "condition"}`
+- `"show": {"list": ["birthdate", "death date", "city"], "limit": 10}`
+- `"show": {"stats": ["min", "max"], "of": {"lab": "HbA1c"}}`
+
+### P3. A dictionary for each dataset, and resolvers
+
+- **Dataset resolver.** "Synthea 300", "synthea small", "the 100k" and similar map to
+  the right dataset id. An unknown name ("MIMIC-IV") returns "there is no dataset called
+  MIMIC-IV; you can use: …", and the model must not answer from another dataset (causes
+  G, I).
+- **Field dictionary.** Built automatically from Chiron's own metadata (names,
+  collections, types, units, descriptions), plus a short curated list per dataset in
+  `chiron-mcp/dictionaries/<dataset>.yaml`. Examples:
+  - "ER visit" → encounter "Emergency room admission"
+  - "visit cost" → total claim cost (with a note that base cost also exists)
+  - "died" → death date has value
+  - "HbA1c" or "A1c" → its exact lab name, in %
+  - "TSH" → Thyrotropin
+  - "COPD" → chronic obstructive pulmonary disease
+
+  It describes the data, never the benchmark answers (causes H, J).
+- **Value resolver.** Matching ignores case, spacing and punctuation. It also handles
+  values cut off by the data load ("Major depressive disorde") and close misspellings.
+  It returns every variant it matched, with counts. If two different things match, it
+  asks instead of guessing.
+- Ask's dataset summary gets a short version of the dictionary.
+
+### P4. Results and reports at the same level
+
+- **`chiron_results_table`** takes a group or a query plus plain columns, for example:
+  `["birthdate", "gender", {"has": {"medication": "metformin"}}, {"max": {"lab": "HbA1c"}}]`.
+  - Lab and medication columns use Chiron's column-level filter (`prefilter_value`),
+    not an extra cohort filter, so q37 keeps all 6,914 patients.
+  - It sorts and paginates the same way.
+- **`chiron_report`** covers save, rename, make public, change filters, run and delete,
+  by name.
+  - "Change filters" updates the saved report itself (q43).
+  - Delete needs the exact name.
+- **After every write, Chiron is read back** and the tool returns what is actually
+  there: rows, columns and the filter description. The model reports what is there,
+  not what it intended.
+
+### P5. Keep conversation groups on the server
+
+- Every query result gets a short name ("g1", "g2", …) stored with the conversation. Ask
+  already keeps the previous cohort, and this extends that.
+- Follow-ups use `start_from` instead of rebuilding the definition. The prompt tells the
+  model which group "them" most likely means, and the answer says which one it used
+  (cause K).
+
+### P6. Speed, so nothing times out
+
+- **chiron-ask database:** raise Postgres shared memory from 64 MB to 1 GB. Add indexes
+  on the observation lookup tables (description, value, units), then ANALYZE. This is
+  only the local benchmark copy; for deployments it becomes a documented setting.
+- **Cache** value lists and breakdowns for each conversation.
+- **Time limit per Chiron call** (for example 60 s). When an answer is stopped, its
+  database queries are cancelled too. This moves the benchmark's leftover-query
+  watchdog into Chiron MCP itself.
+- **Target:** every Chiron step under 30 s on 100k (cause E). gpt-oss on this Mac stays
+  slow, and fewer steps help it most (cause L).
+
+### P7. Check the answer before it is shown
+
+- **Number check.** Every figure in the answer must appear in a tool result, or come
+  from the server's own arithmetic. If not, the model gets one automatic retry with the
+  problem named; after that the answer shows a warning. This builds on the Oct 13
+  answer-trace checks (`trace.py`).
+- **Every answer** includes Chiron's description of what was counted.
+- **A question about a dataset that doesn't exist** gets a clear "not available" answer
+  (cause G).
+
+### P8. Short instructions and a small tool set for small models
+
+- Rewrite the Ask instructions. They're 8,600 characters now. The new version has a
+  short core plus one worked example per question type: count, both/either/never,
+  over/under, at least N times, date range, breakdown/top-N, list, Results, report
+  actions, other dataset, and can't-do.
+- **Ask shows small models a short tool list by default:** datasets, dictionary lookup,
+  `chiron_query`, Results, reports, open in Chiron. The 18 low-level tools stay
+  available to MCP clients and strong models. A setting lets us benchmark both ways.
+
+---
+
+## 4. Order of work, with a check after each step
+
+| Step | Work | Check before moving on |
+|---|---|---|
+| 0 | Baseline (Haiku on the 49) and the robustness sets | Baseline numbers recorded; sets saved and not looked at again |
+| 1 | P1 strict tools | Offline tests; Haiku on the 49 |
+| 2 | P2 `chiron_query` + P3 dictionary and resolvers | Offline tests against SQL for every operator; Haiku and Qwen on the 49 |
+| 3 | P4 Results/reports + P5 groups | Offline tests; Haiku on sets 15–19 |
+| 4 | P6 speed | Every Chiron step timed on 100k; no step over 30 s |
+| 5 | P7 answer checks + P8 instructions and tool list | Haiku, Qwen and gpt-oss on the 49 |
+| 6 | **Final benchmark** | All models × (49 + re-phrased + new); AWS CloudTrail check; LangSmith export; PDF |
+
+Every in-between check uses Haiku. It's cheap, it's the target, and if Haiku gets it
+right the bigger models should too. Opus is spot-checked for regressions.
+
+**Final benchmark cost, roughly:** 236 questions per model.
+- Haiku 5.5: about $1
+- Qwen3-Next: about $2
+- Opus 5.5 (Bedrock): about $20
+- Opus 4.6: about $20
+- Sonnet 4.6: about $20
+- Opus 5.5 (Claude account): $0
+- gpt-oss-20b: $0, but many hours on this Mac
+
+Running the larger models on only the 49 plus the new questions about halves their cost.
+
+---
+
+## 5. Where the code goes, and the risks
+
+- **chiron-mcp:** a new branch off `mcp-hosted`.
+  - New code: `chiron_mcp/query.py` (the P2 compiler), `chiron_mcp/dictionary.py` and
+    `dictionaries/`.
+  - Changes: `server.py` (P1, and new tools P2/P4), `webapp.py` (P5, P7, P8).
+  - New tests: `tests/query_*.py`.
+  - The hosted deployment (genoquery) stays untouched until you approve a merge.
+- **chiron-benchmark:**
+  - `questions/` gets the re-phrased and new sets.
+  - `bench/truth.py` gets the new facts.
+  - A setting to run with the new or old tool set.
+- **Risks, and how they are handled:**
+  - **Tuning to the 49 questions.** The new set is written first and only run at the
+    end, and the dictionary describes data, not questions.
+  - **Strict limits on decimals.** Tested against SQL for each number type.
+  - **A question `chiron_query` can't express.** It says so, and strong models can
+    still use the low-level tools.
+  - **The local database changes in P6** affect only the chiron-ask benchmark copy, not
+    the data itself.
+
+## 6. Decisions needed before starting
+
+1. Commit the finished Oct 13 answer-trace work (uncommitted on `mcp-hosted`) first, and
+   branch from there?
+2. Give small models in Ask only the short tool list by default, keeping the full list
+   for MCP clients?
+3. Final benchmark scope and budget: all models on all 236 questions (about $65 on
+   Bedrock), or the larger models on 49 + new only (about $35)?
+4. Include gpt-oss-20b (local, slow) in the final run?
