@@ -1168,12 +1168,86 @@ def _stats(ident, S, cd, show: dict) -> dict:
         var = resolve_field(ident, of)
         scope = cd
     proc = var.concept.get_cohort_def_processor(cu)
-    raw = proc.get_statistics(copy.deepcopy(scope)) or {}
+    raw = _statistics(cu, var.concept, proc, copy.deepcopy(scope)) or {}
     st = raw.get("stats") or {}
     return {"variable": var.label(), "within": describe(ident, scope),
             "min": st.get("min"), "max": st.get("max"), "average": st.get("avg"),
             "results": st.get("count_non_null"), "patients": st.get("unique_patients"),
             "results_without_a_value": raw.get("count_missing_values")}
+
+
+def _statistics(cu, concept, proc, cd: list) -> dict:
+    """Chiron's statistics for a numeric variable within a cohort, in the shape Chiron's own
+    get_statistics returns: {"stats": {min, max, avg, count_non_null, unique_patients},
+    "count_missing_values", ...}.
+
+    Chiron's get_statistics answers from its cache when it has the entry. Otherwise it runs
+    eight statements, and each of min, max and average first gathers every value into one
+    JSON array (json_agg over all the rows, then array functions on it). Over the 3.6 million
+    systolic blood pressure readings in Synthea 100k each of those took minutes, so the range
+    of a common vital could never be answered in time. The same numbers come from one plain
+    aggregate over the same rows: Chiron's query builder supplies the FROM and WHERE exactly as
+    for its own statistics (the cohort, the user's permissions, and only the lab's own
+    results), and Postgres's min, max, avg and count do the rest in one pass."""
+    from chiron.cache.cached_concept_stats import CachedConceptStatsWrapper
+    from chiron.query_definition import Cohort
+
+    cohort = Cohort(cu, cd)
+    cached = CachedConceptStatsWrapper(cu, cohort, concept, proc.prefilter_value).find_matching_cache_entry()
+    if cached:
+        return cached.get_stats()
+    return _aggregate_statistics(cu, concept, proc, cohort)
+
+
+def _statistics_statement(cu, concept, proc, cohort):
+    """The one SQL statement behind _aggregate_statistics: min, max, average, the number of
+    results with a value, of patients with one, of results without one, and of patients with
+    a result without one. Its FROM and WHERE are Chiron's own, from the same query builder
+    Chiron's statistics use, with the same arguments."""
+    from sqlalchemy import distinct, func, select, tuple_
+
+    from chiron.query_engine.postgres.sql_alchemy_queries.query_builder import SqlAlchemyQueryBuilder
+
+    b = SqlAlchemyQueryBuilder(cu, cohort, target_collection=concept.collection,
+                               prefilters=proc.collection_prefilters)
+    info = b.query_info
+    col_table = info.get_sql_alchemy_table_for_concept(concept)
+    coll_table = info.get_sql_alchemy_table_for_collection(concept.collection)
+    subject = info.get_sql_alchemy_table_for_subject()
+    column = concept.get_display_processor(cu).sql_alchemy_map_in_query(getattr(col_table.c, concept.permanent_id))
+    has, missing = column != None, column == None  # noqa: E711  (SQL "is not null" / "is null")
+    stmt = select(func.min(column), func.max(column), func.avg(column),
+                  func.count(distinct(tuple_(coll_table.c._id, column))).filter(has),
+                  func.count(distinct(subject.c._id)).filter(has),
+                  func.count(distinct(coll_table.c._id)).filter(missing),
+                  func.count(distinct(subject.c._id)).filter(missing))
+    stmt = b.from_builder.modify_statement(stmt)
+    stmt = b.where_builder.modify_statement(stmt)
+    if concept.multivalue and col_table not in info.get_core_lookup_tables()[concept.collection.permanent_id]:
+        stmt = stmt.outerjoin(col_table, coll_table.c._id == col_table.c._collection_id)
+    return stmt
+
+
+def _aggregate_statistics(cu, concept, proc, cohort) -> dict:
+    """The statistics of _statistics in one SQL pass (_statistics_statement). The numbers are
+    Chiron's own: the average is rounded to three significant digits, as Chiron's is."""
+    from chiron import helpers
+    from chiron.query_engine.postgres.database import get_sql_alchemy_db_engine
+
+    stmt = _statistics_statement(cu, concept, proc, cohort)
+    with get_sql_alchemy_db_engine(cu.dataset).connect() as conn:
+        lo, hi, avg, n, patients, missing, subjects_missing = conn.execute(stmt).one()
+    stats = {
+        "stats": {"min": lo, "max": hi,
+                  "avg": helpers.round_sig_3(float(avg), round_whole_number=False) if avg is not None else None,
+                  "count_non_null": n, "unique_patients": patients},
+        "count_missing_values": missing,
+        "count_subjects_with_missing_values": subjects_missing,
+        "histogram_data": [],
+    }
+    if cu.access_level == cu.AccessLevel.AGG:
+        stats = proc.aggregate_stats(stats)
+    return stats
 
 
 if __name__ == "__main__":

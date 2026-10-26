@@ -64,6 +64,10 @@ if CONFIG.metadata_db:
 # A connection string that already sets "options" is left alone.
 
 
+def _statement_timeout_ms() -> int:
+    return int(float(os.environ.get("CHIRON_MCP_STATEMENT_TIMEOUT", "240")) * 1000)
+
+
 def _with_pg_options(url: str) -> str:
     from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
@@ -73,13 +77,24 @@ def _with_pg_options(url: str) -> str:
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     if "options" in query:
         return url
-    timeout = int(float(os.environ.get("CHIRON_MCP_STATEMENT_TIMEOUT", "240")) * 1000)
-    query["options"] = f"-c client_connection_check_interval=2000 -c statement_timeout={timeout}"
+    query["options"] = f"-c client_connection_check_interval=2000 -c statement_timeout={_statement_timeout_ms()}"
     return urlunsplit(parts._replace(query=urlencode(query, quote_via=quote)))
 
 
 if CONFIG.warehouse_url:
     CHIRON_SQL_ALCHEMY_CONNECTION_STRING = _with_pg_options(CONFIG.warehouse_url)
+
+# The URL's "options" reach only our own connections (chiron_mcp.query's engine). Chiron
+# builds an engine per dataset with libpq options of its own (the schema's search_path plus
+# CHIRON_PG_CONN_OPTIONS_SITE), and those replace the URL's, so without this Chiron's
+# queries ran under its default statement_timeout of 30 minutes: a stopped question's
+# query kept running for minutes after the question was gone. Site connections are the
+# ones Chiron MCP and Ask use; the MGMT setting (Chiron's own management commands, i.e. an
+# ETL) keeps Chiron's default, because an ETL step may legitimately take longer.
+CHIRON_PG_CONN_OPTIONS_SITE = {
+    "statement_timeout": _statement_timeout_ms(),
+    "client_connection_check_interval": 2000,
+}
 
 # Never leak tracebacks through tool output.
 DEBUG = False
