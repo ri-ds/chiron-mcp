@@ -785,10 +785,17 @@ def run(dataset: str, where: list | None = None, match: str = "all", start_from:
     identity.require_workspace(ident)
     identity.require_subject_level(ident)
     base, base_text = [], None
+    report_note = None
     if start_from and _is_report_ref(start_from):
         rep = find_report(S, dataset_id, start_from)
         base = rep.get("cohort_def") or []
         base_text = f"report {rep['name']!r} (id {rep['report_id']})"
+        if rep.get("mine", True):
+            report_note = (f"To change report {rep['report_id']} ({rep['name']!r}) itself, its filters, name or "
+                           f"public setting, call chiron_query again with start_from='report:{rep['report_id']}', "
+                           f"the new conditions in where, and show={{'report': {{'name': {rep['name']!r}, "
+                           "'update': true}}} (with 'new_name' or 'public' as needed); a count alone, as "
+                           "here, changes nothing.")
     elif start_from:
         g = get_group(start_from)
         if g.get("dataset_id") != dataset_id:
@@ -802,6 +809,8 @@ def run(dataset: str, where: list | None = None, match: str = "all", start_from:
     out: dict[str, Any] = {"dataset_id": dataset_id}
     if base_text:
         out["started_from"] = base_text
+    if report_note and not (isinstance(show, dict) and show.get("report")):
+        notes.append(report_note)
 
     match = str(match or "all").strip().lower()
     if match not in ("all", "any"):
@@ -1030,10 +1039,15 @@ def find_report(S, ds: str, ref, mine: bool = False) -> dict:
         hit = {"report_id": int(text)}
     else:
         hits = [r for r in reports if D.norm(r.get("name")) == D.norm(text)]
+        own = [r for r in hits if r.get("mine")]
+        if len(own) == 1:
+            hits = own  # your own report over other users' public reports of the same name
         if len(hits) != 1:
-            names = ", ".join(f"{r['name']!r} ({r['report_id']})" for r in reports[:20]) or "none"
-            raise AccessError((f"Several reports are called {text!r}" if hits else f"No report called {text!r}")
-                              + f". Reports: {names}.")
+            shown = hits or reports[:20]
+            names = ", ".join(f"{r['name']!r} ({r['report_id']}{', yours' if r.get('mine') else ', another user' + chr(39) + 's'})"
+                              for r in shown) or "none"
+            raise AccessError((f"Several reports are called {text!r}; say which by id, 'report:<id>'"
+                               if hits else f"No report called {text!r}") + f". Reports: {names}.")
         hit = hits[0]
     full = S.chiron_saved_reports(ds, report_id=hit["report_id"])
     if full.get("error"):

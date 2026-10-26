@@ -1411,9 +1411,15 @@ def chiron_saved_reports(
                     "description": oReport.description,
                     "public": oReport.public,
                     "mine": mine,
+                    "owner": "you" if mine else "another user (public)",
                 }
             )
-        return {"dataset_id": dataset_id, "count": len(out), "reports": out}
+        yours = sum(1 for r in out if r["mine"])
+        return {"dataset_id": dataset_id, "count": len(out), "yours": yours, "others_public": len(out) - yours,
+                "reports": out,
+                "note": ("Only your own reports can be changed or deleted; the others are other users' public "
+                         "reports. Several reports may share a name: refer to one by id, 'report:<id>'."
+                         if len(out) > yours else None)}
     except Exception as exc:  # noqa: BLE001
         return _err(exc)
 
@@ -1444,7 +1450,7 @@ def _run_saved_report(dataset_id: str, report_id: int, page: int, records_per_pa
         if not oReport:
             raise AccessError(f"No viewable report {report_id} on {dataset_id!r}.")
 
-        definition = oReport.get_def_value()
+        definition = oReport.get_definition() or {}
         cohort_def = definition.get("cohort_def") or []
         table_def = definition.get("table_def") or {}
         cohort = _validated_cohort(ident, cohort_def)

@@ -378,3 +378,21 @@ Running the larger models on only the 49 plus the new questions about halves the
     question right for every model.
 - **Re-phrased sets** (a, b, c; 49 questions each, all three models at once): started with set a,
   run `20261026-102704`.
+  - **Set a** (run `20261026-102704`): Opus 49/49, Sonnet 49/49, Haiku 48/49, after two faults
+    outside the models were put right:
+    - The grader read "3 or more ER visits" as the lead figure 3 (one Sonnet answer: "Of the
+      19,713 patients with 3 or more ER visits, 1,224 have a recorded death date"). `bench/score.py`
+      now skips "N or more / N+" thresholds like "at least N"; 1 of 890 stored grades changed.
+    - The harness deleted a user's reports before every conversation that saves reports (added
+      2026-10-26 for the held-out set), so "what reports do I have? ... change the latest" always
+      started from none, for all three models. `bench/runner.py` keeps the reports for a
+      conversation that reads them. s16+s17 were re-run (`20261026-104616`) and swapped in.
+    - Haiku's one miss: asked to change the report's filters to women, it counted the women and
+      said it could not change a report. On the way it had found three same-named public reports
+      (the three models' own, side by side) and `chiron_run_saved_report` had crashed on a Chiron
+      accessor. Fixed in Chiron MCP for every model: `chiron_run_saved_report` runs again
+      (`get_definition`); a report name shared with other users' public reports resolves to
+      your own (`find_report`); the listing says whose each report is ("owner": "you" / "another
+      user (public)", with "yours" and "others_public" counts and a note); and a count that
+      started from a report comes with the exact call that changes that report, so the model
+      has the recipe in hand when the follow-up asks for it. `tests/report_names.py`.
