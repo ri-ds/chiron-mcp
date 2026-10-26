@@ -396,3 +396,11 @@ Running the larger models on only the 49 plus the new questions about halves the
       user (public)", with "yours" and "others_public" counts and a note); and a count that
       started from a report comes with the exact call that changes that report, so the model
       has the recipe in hand when the follow-up asks for it. `tests/report_names.py`.
+  - With the report fixes live, Haiku's set-a report follow-up (`20261026-110506`) and Sonnet's
+    set-b one (`20261026-110607`) both change the report and give 4,320; swapped in. **Set a:
+    49/49 for all three. Set b** (run `20261026-104801`): **49/49 for all three** (Sonnet's one
+    miss was the same report follow-up, before the fix).
+  - Three models at once triple the heavy Chiron steps: breakdown by gender and ethnicity
+    within a group 110 s, top-5 conditions within a group 147 s, sorting Results by a summary
+    column 63 s, a count rule over visits 35–44 s. All under the limit; the final run is one
+    model at a time. Typical answer 7.8–8.2 s per model.
