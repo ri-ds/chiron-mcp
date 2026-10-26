@@ -351,7 +351,7 @@ def warm(dataset_id: str) -> list[str]:
 def _identifying(var: Var) -> bool:
     """A variable whose values identify people (names, ids, addresses): never written to
     disk and never listed in the summary."""
-    return bool(getattr(var.concept, "has_phi", False)) or var.short in ("id", "first", "last", "ssn",
+    return bool(getattr(var.concept, "has_phi", False)) or var.short in ("id", "first", "last", "ssn", "zip", "postcode",
                                                                           "drivers", "passport", "address")
 
 
