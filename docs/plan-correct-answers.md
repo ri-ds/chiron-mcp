@@ -351,3 +351,25 @@ Running the larger models on only the 49 plus the new questions about halves the
     - "Synthea 300" was taken as the lead figure;
     - "30-day" was taken as a count;
     - "there's no UK Biobank dataset" was not seen as a refusal.
+- **n28 traced to its causes and fixed** (the Desktop session hit its limit on this; continued in a
+  terminal session the same morning).
+  - Chiron's own warehouse engines never had the 240 s statement timeout: Chiron passes its own
+    libpq options (search_path + CHIRON_PG_CONN_OPTIONS_SITE, default 30 min), which replace the
+    URL's. A stopped question's query ran on for 5 minutes. Now `CHIRON_PG_CONN_OPTIONS_SITE`
+    carries the timeout and the client check; `tests/pg_options.py` checks it on Chiron's engine.
+  - A lab's range went through Chiron's `get_statistics`: eight statements, and min, max and
+    average each gather every value into one JSON array (min and max twice, for the histogram).
+    Systolic blood pressure, 3.6 million readings: 13.5 minutes alone (max alone 205 s). The range
+    now comes from one aggregate over the FROM and WHERE of Chiron's own query builder, with the
+    lab kept by Chiron's prefilter predicate instead of a cohort group: 14.6 s cold, and the
+    numbers (min, max, average to 3 significant digits, result and patient counts, missing
+    counts) equal `get_statistics` on every lab where it can finish. Ranges are kept on disk by
+    the cohort's meaning (entry ids ignored) and the user's subject permissions, refreshed by the
+    ETL log, with a lock so three models asking at once run the query once; `warm_ranges` fills
+    the common labs and vitals at warm-up (73 s for Synthea 100k). A cohort group that only
+    repeats the range's lab (`where` the lab and the range of it, as Haiku writes it) is left out
+    of the query: with the prefilter it changes nothing, and Chiron checked it with another pass
+    (196 s). `tests/range_cache.py`.
+  - Three models at once on the old form took 136–250 s each (51 s alone): the benchmark's
+    grader also read "6,208.4" as 208.4; fixed (`bench/score.py` decimals), changing 1 of 737
+    stored grades, Opus's n28 from wrong to right.

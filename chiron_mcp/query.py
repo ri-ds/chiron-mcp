@@ -21,6 +21,7 @@ expressed, it says so instead of dropping a condition.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import difflib
 import html
@@ -345,6 +346,33 @@ def warm(dataset_id: str) -> list[str]:
                 done.append(f"{coll} units: {len(u)} names")
         except Exception as exc:  # noqa: BLE001
             done.append(f"{coll} units: {type(exc).__name__}: {exc}"[:200])
+    done += warm_ranges(ident)
+    return done
+
+
+def warm_ranges(ident) -> list[str]:
+    """The range of every common lab and vital over the whole dataset, once, so the first
+    question about one does not wait a minute (a vital recorded at every visit has millions
+    of results; see _statistics). Common: recorded for a twentieth of the patients or more.
+    A rarer lab's range is quick live."""
+    done = []
+    patients = _table_rows(ident, "subject")
+    for coll, name_field in D.NAME_FIELD.items():
+        value_field = D.VALUE_FIELD.get(coll)
+        name_var = _var(ident, coll, name_field) if value_field else None
+        value_var = _var(ident, coll, value_field) if value_field else None
+        if not name_var or not value_var or _identifying(name_var):
+            continue
+        groups, _ = _groups(ident, name_var)
+        for g in groups:
+            if g.get("approx", 0) < max(1000, patients // 20):
+                continue
+            t = time.time()
+            try:
+                r = _stats(ident, None, [], {"range": {coll: g["label"]}})  # the tool's own path and key
+                done.append(f"{coll} range of {g['label']}: {r.get('min')} to {r.get('max')}, {time.time() - t:.0f} s")
+            except Exception as exc:  # noqa: BLE001
+                done.append(f"{coll} range of {g['label']}: {type(exc).__name__}: {exc}"[:200])
     return done
 
 
@@ -1157,26 +1185,65 @@ def _stats(ident, S, cd, show: dict) -> dict:
     patient-level number, within the cohort."""
     of = show.get("range") if show.get("range") is not None else show.get("of")
     cu = identity.checked_chironuser(ident)
+    prefilter = None
     if isinstance(of, dict):
         clause = parse_condition(ident, of)
         vf = D.VALUE_FIELD.get(clause.collection)
         var = _var(ident, clause.collection, vf) if vf else None
         if not var:
             raise AccessError("A range needs a lab or vital (or a numeric field).")
-        scope = build(ident, [clause], cd)
+        prefilter = _lab_prefilter(clause)
+        scope = _without_lab_set(cd, *prefilter) if prefilter else build(ident, [clause], cd)
+        full = build(ident, [clause], scope) if prefilter else scope  # for the description only
     else:
         var = resolve_field(ident, of)
-        scope = cd
+        full = scope = cd
     proc = var.concept.get_cohort_def_processor(cu)
-    raw = _statistics(cu, var.concept, proc, copy.deepcopy(scope)) or {}
+    raw = _statistics(cu, var.concept, proc, copy.deepcopy(scope), prefilter) or {}
     st = raw.get("stats") or {}
-    return {"variable": var.label(), "within": describe(ident, scope),
+    return {"variable": var.label(), "within": describe(ident, full),
             "min": st.get("min"), "max": st.get("max"), "average": st.get("avg"),
             "results": st.get("count_non_null"), "patients": st.get("unique_patients"),
             "results_without_a_value": raw.get("count_missing_values")}
 
 
-def _statistics(cu, concept, proc, cd: list) -> dict:
+def _lab_prefilter(clause: Clause) -> tuple | None:
+    """(name concept, stored name) when the clause is one lab or vital by name and nothing
+    else; then its results are kept by Chiron's prefilter predicate (_statistics_statement)."""
+    name_field = D.NAME_FIELD.get(clause.collection)
+    if clause.count_rule or len(clause.filters) != 1 or not name_field:
+        return None
+    var, fields, _ = clause.filters[0]
+    values = fields.get("selected_categories") if set(fields) == {"selected_categories"} else None
+    if var.short != name_field or not isinstance(values, list) or len(values) != 1:
+        return None
+    return (var.concept, values[0])
+
+
+def _without_lab_set(cd: list, name_concept, value: str) -> list:
+    """The cohort without a group that only says "has a <value> result": with the results
+    already kept to that lab by the prefilter, such a group changes nothing about which
+    results are counted, and Chiron would check it with another pass over every result
+    (the same vital in `where` and in the range: minutes instead of seconds). A group with a
+    count rule, another filter or several names stays."""
+    def redundant(g: dict) -> bool:
+        if g.get("entry_type") != "criteria_set" or g.get("collection_id") != name_concept.collection.permanent_id:
+            return False
+        if g.get("subcol_count_restriction") not in (None, {"type": "at least", "value": 1}):
+            return False
+        entries = g.get("list") or []
+        if len(entries) != 1:
+            return False
+        e = entries[0]
+        return (e.get("concept_id") == name_concept.permanent_id and e.get("categories") == [value]
+                and not e.get("exclude_selected") and not e.get("include_null_and_missing")
+                and set(e) <= {"entry_id", "entry_type", "concept_id", "categories", "exclude_selected",
+                               "include_null_and_missing", "prefilter_value"})
+
+    return [g for g in cd if not redundant(g)]
+
+
+def _statistics(cu, concept, proc, cd: list, prefilter: tuple | None = None) -> dict:
     """Chiron's statistics for a numeric variable within a cohort, in the shape Chiron's own
     get_statistics returns: {"stats": {min, max, avg, count_non_null, unique_patients},
     "count_missing_values", ...}.
@@ -1189,27 +1256,120 @@ def _statistics(cu, concept, proc, cd: list) -> dict:
     aggregate over the same rows: Chiron's query builder supplies the FROM and WHERE exactly as
     for its own statistics (the cohort, the user's permissions, and only the lab's own
     results), and Postgres's min, max, avg and count do the rest in one pass."""
+    from chiron.cache import hashing
     from chiron.cache.cached_concept_stats import CachedConceptStatsWrapper
     from chiron.query_definition import Cohort
 
     cohort = Cohort(cu, cd)
-    cached = CachedConceptStatsWrapper(cu, cohort, concept, proc.prefilter_value).find_matching_cache_entry()
+    value = prefilter[1] if prefilter else proc.prefilter_value
+    cached = CachedConceptStatsWrapper(cu, cohort, concept, value).find_matching_cache_entry()
     if cached:
         return cached.get_stats()
-    return _aggregate_statistics(cu, concept, proc, cohort)
+    # Kept on disk like value lists (until the dataset is next loaded), keyed by the cohort's
+    # meaning, the patients the user may see and the variable: the same question from another
+    # conversation, or from three models at once, runs the query once. A vital's range over
+    # 3.6 million readings takes about a minute; while one process computes it the others
+    # wait for its result instead of running the same query against the same database.
+    dataset_id = cu.dataset.unique_id
+    key = f"range__{concept.permanent_id}__{hashing.create_subject_permission_hash(cu)[:12]}__{_cohort_key([cd, value])}"
+    path = _value_cache_file(dataset_id, key)
+    stamp = _etl_stamp(dataset_id)
+
+    def fresh():
+        try:
+            cached = json.loads(path.read_text())
+            if cached.get("stamp") == stamp and time.time() - cached.get("made", 0) < 7 * 86400:
+                return cached["stats"]
+        except (OSError, ValueError, KeyError):
+            pass
+        return None
+
+    stats = fresh()
+    if stats is None:
+        with _computing(path):
+            stats = fresh()  # another process may have finished it while this one waited
+            if stats is None:
+                stats = _aggregate_statistics(cu, concept, proc, cohort, prefilter, aggregate=False)
+                try:
+                    tmp = path.with_suffix(".tmp")
+                    tmp.write_text(json.dumps({"stamp": stamp, "made": time.time(), "stats": stats}, default=str))
+                    os.chmod(tmp, 0o600)
+                    os.replace(tmp, path)
+                except OSError:
+                    pass
+    if cu.access_level == cu.AccessLevel.AGG:
+        stats = proc.aggregate_stats(copy.deepcopy(stats))
+    return stats
 
 
-def _statistics_statement(cu, concept, proc, cohort):
+def _cohort_key(cd) -> str:
+    """A cohort definition's meaning as a short hash: the same filters, groups and count rules
+    give the same key whatever entry ids Chiron handed out (any JSON-able structure holding
+    cohort definitions may be given)."""
+    import hashlib
+
+    ids: dict[str, str] = {}
+
+    def canon(x):
+        if isinstance(x, dict):
+            out = {}
+            for k in sorted(x):
+                v = x[k]
+                if k == "entry_id" and isinstance(v, str):
+                    v = ids.setdefault(v, f"e{len(ids) + 1}")
+                out[k] = canon(v)
+            return out
+        if isinstance(x, list):
+            return [canon(v) for v in x]
+        return x
+
+    return hashlib.md5(json.dumps(canon(cd), sort_keys=True, default=str).encode()).hexdigest()[:16]
+
+
+@contextlib.contextmanager
+def _computing(path):
+    """An exclusive lock on <path>.lock while this process computes the cached value; any
+    other process wanting the same value waits here, then finds it on disk."""
+    import fcntl
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        f = open(path.with_suffix(".lock"), "w")
+    except OSError:
+        yield
+        return
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        yield
+    finally:
+        try:
+            fcntl.flock(f, fcntl.LOCK_UN)
+        finally:
+            f.close()
+
+
+def _statistics_statement(cu, concept, proc, cohort, prefilter: tuple | None = None):
     """The one SQL statement behind _aggregate_statistics: min, max, average, the number of
     results with a value, of patients with one, of results without one, and of patients with
     a result without one. Its FROM and WHERE are Chiron's own, from the same query builder
-    Chiron's statistics use, with the same arguments."""
+    Chiron's statistics use, with the same arguments.
+
+    prefilter = (name concept, stored name) keeps only the lab's own results the way Chiron's
+    own lab statistics do: a plain predicate on the name (Chiron's "prefilter"), with the
+    cohort left as it is. A criteria set for the lab in the cohort gives the same rows but
+    costs a second pass over every result, and a third when the cohort already names the lab."""
     from sqlalchemy import distinct, func, select, tuple_
 
     from chiron.query_engine.postgres.sql_alchemy_queries.query_builder import SqlAlchemyQueryBuilder
 
-    b = SqlAlchemyQueryBuilder(cu, cohort, target_collection=concept.collection,
-                               prefilters=proc.collection_prefilters)
+    prefilters = proc.collection_prefilters
+    if prefilter:
+        name_concept, value = prefilter
+        prefilters = {name_concept.collection.permanent_id: {
+            "concept_id": name_concept.permanent_id,
+            "full_database_field_name": name_concept.get_full_database_field_name(),
+            "value": value}}
+    b = SqlAlchemyQueryBuilder(cu, cohort, target_collection=concept.collection, prefilters=prefilters)
     info = b.query_info
     col_table = info.get_sql_alchemy_table_for_concept(concept)
     coll_table = info.get_sql_alchemy_table_for_collection(concept.collection)
@@ -1228,13 +1388,15 @@ def _statistics_statement(cu, concept, proc, cohort):
     return stmt
 
 
-def _aggregate_statistics(cu, concept, proc, cohort) -> dict:
+def _aggregate_statistics(cu, concept, proc, cohort, prefilter: tuple | None = None, aggregate: bool = True) -> dict:
     """The statistics of _statistics in one SQL pass (_statistics_statement). The numbers are
-    Chiron's own: the average is rounded to three significant digits, as Chiron's is."""
+    Chiron's own: the average is rounded to three significant digits, as Chiron's is. With
+    aggregate=False the counts are left exact for an aggregate-level user (for the cache; the
+    caller applies the user's level)."""
     from chiron import helpers
     from chiron.query_engine.postgres.database import get_sql_alchemy_db_engine
 
-    stmt = _statistics_statement(cu, concept, proc, cohort)
+    stmt = _statistics_statement(cu, concept, proc, cohort, prefilter)
     with get_sql_alchemy_db_engine(cu.dataset).connect() as conn:
         lo, hi, avg, n, patients, missing, subjects_missing = conn.execute(stmt).one()
     stats = {
@@ -1245,7 +1407,7 @@ def _aggregate_statistics(cu, concept, proc, cohort) -> dict:
         "count_subjects_with_missing_values": subjects_missing,
         "histogram_data": [],
     }
-    if cu.access_level == cu.AccessLevel.AGG:
+    if aggregate and cu.access_level == cu.AccessLevel.AGG:
         stats = proc.aggregate_stats(stats)
     return stats
 
