@@ -255,6 +255,11 @@ words from its what_was_counted, including the spellings it merged when there we
 several. For breakdowns and top lists take every figure from its output (rows,
 row_totals, no_value); never add cells up yourself.
 
+Patients listed in the answer ("list 10 patients who...", "show me patients with..."):
+show={"list": ["birthdate", "death date", "city"], "limit": 10}. That changes nothing in
+Chiron. Only write to Results or a report when the user asks for their Results tab or a
+report by name.
+
 Results tab and reports, all with chiron_query unless said otherwise:
 - "Put ... in my Results ...": show={"results": {"columns": [...], "sort": [...]}} with
   plain columns: "birthdate", "gender", "city"; {"has": {"medication": "metformin"}};
