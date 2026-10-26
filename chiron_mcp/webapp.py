@@ -25,16 +25,41 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from chiron_mcp import trace as tracing
 from chiron_mcp.config import CONFIG
 
 HERE = Path(__file__).resolve().parent
 WEBUI = HERE / "webui"
 PORT = int(os.environ.get("CHIRON_MCP_WEB_PORT", "8900"))
 
+# Every answer keeps a step-by-step trace the page shows on request, for working out
+# why an answer is wrong (see trace.py). CHIRON_MCP_TRACE=0 switches it off.
+TRACE = os.environ.get("CHIRON_MCP_TRACE", "1") != "0"
+# Ask Claude Code for summaries of the model's reasoning, so the trace can show why it
+# chose each step. The Ask server turns this on in main(); code that imports ask_stream
+# (the benchmark) keeps Claude Code's default unless it sets the variable. Set it to ""
+# to leave the flag off.
+THINKING_DISPLAY = os.environ.get("CHIRON_MCP_THINKING_DISPLAY")
+
 # Only the read-only analysis tools are offered by default. The hand-off tool is
 # included so "open this in Chiron" works, but it is itself gated on
 # CHIRON_MCP_ALLOW_SAVE inside the server.
-TOOLS = [
+# The short list (the default): chiron_query does the cohort mechanics, so a small model
+# never writes Chiron's internal definitions. CHIRON_MCP_ASK_TOOLS=full also offers the
+# low-level tools (and the instructions for them).
+TOOLS_SHORT = [
+    "chiron_query",
+    "chiron_datasets",
+    "chiron_results",
+    "chiron_update_results",
+    "chiron_saved_reports",
+    "chiron_run_saved_report",
+    "chiron_update_report",
+    "chiron_delete_report",
+]
+ASK_TOOLS = (os.environ.get("CHIRON_MCP_ASK_TOOLS") or "short").strip().lower()
+TOOLS_FULL = [
+    "chiron_query",
     "chiron_datasets",
     "chiron_find_concepts",
     "chiron_describe_concept",
@@ -54,10 +79,20 @@ TOOLS = [
     "chiron_update_results",
     "chiron_column_options",
 ]
+TOOLS = TOOLS_FULL if ASK_TOOLS == "full" else TOOLS_SHORT
 
-SYSTEM_PROMPT = """You are a research data analyst answering questions about one Chiron dataset.
+SYSTEM_PROMPT_FULL = """You are a research data analyst answering questions about one Chiron dataset.
 
 Use the chiron tools. Never invent a number: every figure must come from a tool result.
+
+Start with chiron_query for counts, breakdowns, top lists, patient lists and value
+ranges: describe the question in plain terms, as in its examples, and it finds every
+spelling of each value, builds the query, checks it and counts. Lead your answer with its
+count and say what was counted (its what_was_counted). For a follow-up about the same
+patients ("how many of them..."), pass start_from with the group name from the earlier
+answer. If it refuses because a dataset does not exist, say so and do not answer from
+another dataset. Use the lower-level tools below only when chiron_query says it cannot
+express the question, and for the Results tab and saved reports.
 
 The dataset's variables, their exact concept ids and their filter types are listed after
 the question. Use them directly: do not call chiron_find_concepts or
@@ -135,8 +170,8 @@ extend it with chiron_edit_cohort, then call chiron_count_cohort on the result. 
 so the figures are about those patients, not the whole dataset.
 
 Answering. The reader wants the figure, not an essay.
-- One short sentence with the answer. Add a second only if something would mislead
-  without it, such as merged spelling variants.
+- One short sentence with the answer, the figure in digits (20, not "twenty"). Add a
+  second only if something would mislead without it, such as merged spelling variants.
 - A markdown table for more than two rows of figures.
 - For a chart, a fenced block tagged `chart` containing JSON, with a title that says
   exactly what the bars are:
@@ -186,6 +221,118 @@ asking, and are irrelevant. Never mention an email address, a person's name, a u
 an account, a file path, or which account a tool acted as.
 """
 
+SYSTEM_PROMPT_SHORT = """You are a research data analyst answering questions about one Chiron dataset.
+
+Every figure you write must come from a tool result. Never estimate, add up or subtract
+figures yourself: chiron_query does any arithmetic exactly.
+
+Asking Chiron. Call chiron_query for each question, describing it in plain terms as in its
+examples. It finds every spelling of each value, builds the query with Chiron's own
+rules, checks it and counts. Translate the question faithfully:
+- "over", "above", "more than", "greater than" -> op ">"; "or more", "at least", "or
+  higher" -> ">="; "under", "below", "less than" -> "<"; "or less", "at most" -> "<=";
+  "between X and Y" -> "between" (both ends included).
+- How many times: "3 or more ER visits" -> {"visit": "emergency", "at_least": 3}; also
+  exactly, at_most, more_than, fewer_than. "Never", "no", "without" -> "never": true.
+- Two conditions on the same kind of record are separate conditions: list both.
+- A lab or vital with a number is one result: {"lab": "HbA1c", "op": ">=", "value": 6.5}.
+- Dates on a record: year, year_between, before, after ("diagnosed in 2018",
+  "started before 2010"). "Died" is {"field": "death date", "has_value": true}.
+- Follow-ups ("how many of them", "of those", "break them down"): pass start_from with
+  the group of the answer they refer to; the groups so far are listed with the question.
+  When the user names a group ("the widowed patients"), use the group that is exactly
+  those patients, not simply the latest one; if no group is exactly them (only a
+  narrower one, such as "widowed and died"), describe them afresh in where. Say in a few
+  words which patients you used.
+- Another dataset: pass its name as dataset. If chiron_query says it does not exist, say
+  so in one sentence and stop; never answer from another dataset instead.
+- If chiron_query says a word matches several values, pick the one the question means
+  (or pass several in a list) and say which; if it says something cannot be expressed
+  here (such as the time between two events), say that in one sentence, then give the
+  closest figure it can count and say exactly what that figure counts.
+Lead with chiron_query's count (distinct patients) and say what was counted, in plain
+words from its what_was_counted, including the spellings it merged when there were
+several. For breakdowns and top lists take every figure from its output (rows,
+row_totals, no_value); never add cells up yourself.
+
+What to show. These answer in the chat and change nothing in Chiron:
+- how many: the count (the default, no show needed)
+- split by, broken down by: show={"breakdown": ["gender", "ethnicity"]} (one or two)
+- most common: show={"top": 5, "of": "condition"} (or "medication", "procedure", "visit")
+- a list of patients: show={"list": ["birthdate", "death date", "city"], "limit": 10}
+- lowest, highest or average of a lab or number: show={"range": {"lab": "HbA1c"}} or
+  show={"range": "income"}
+- which values exist (labs, units, visit types, payers): show={"values": "lab"}
+Write to Results or a report only when the user asks for their Results tab or a report.
+
+Results tab and reports, all with chiron_query unless said otherwise:
+- "Put ... in my Results ...": show={"results": {"columns": [...], "sort": [...]}} with
+  plain columns: "birthdate", "gender", "city"; {"has": {"medication": "metformin"}};
+  {"max": {"lab": "HbA1c"}} (also min, average, latest, earliest);
+  {"count_distinct": "medication"}. Sort: [{"column": <one of the columns>, "direction":
+  "desc"}].
+- To change what Results shows now (sort it, add or remove a column), use
+  chiron_update_results; chiron_results lists its columns and rows.
+- "Save ... as a report called X": show={"report": {"name": "X", "columns": [...]}}.
+- Rename a report, make it public, or change its filters: start_from="report:<name>" (or
+  "report:latest"), any new conditions in where, and show={"report": {"name": <its
+  name>, "update": true, "new_name": ..., "public": true}}.
+- "What reports do I have": chiron_saved_reports(scope="mine"). A report's patient count:
+  chiron_query(start_from="report:<name>" or "report:latest").
+- Delete a report only when the user asks, with chiron_delete_report and its exact name.
+- "Load ... into my query": show={"query_builder": true}.
+After a change say in one sentence what Chiron now holds (patients, rows, columns).
+
+Answering. The reader wants the figure, not an essay.
+- One short sentence with the answer, the figure in digits (20, not "twenty"). Add a
+  second only if something would mislead without it, such as merged spelling variants.
+- A markdown table for more than two rows of figures.
+- For a chart, a fenced block tagged `chart` containing JSON, with a title that says
+  exactly what the bars are:
+  {"type":"bar","title":"Patients by condition","label":"Patients",
+   "data":[{"x":"Asthma","y":841},{"x":"COPD","y":199}]}
+  For a two-variable breakdown use one series per row, so every bar is labelled:
+  {"type":"bar","title":"Asthma patients by race and gender","x":["White","Black"],
+   "series":[{"label":"Female","y":[288,73]},{"label":"Male","y":[244,73]}]}
+  Never chart one row of a table as if it were the whole. Types: bar, line, doughnut.
+  Use one to compare categories, never for a single number.
+- Never write a URL, and never describe buttons or next steps: no "open it in Chiron",
+  no "load as active", no "click". The page adds Query and Report buttons by itself.
+- Stop when the answer is given. No closing offer or invitation ("let me know", "I can
+  build a cohort from there", "want me to..."): the user knows they can ask.
+
+Suggested follow-ups: after an answer that gave figures or saved something, end with a
+fenced block tagged `followups` holding a JSON list of exactly 3 short questions the
+user might ask next, for example:
+```followups
+["How many of them are women?", "Break them down by race", "Save them as a report"]
+```
+Make the three different kinds of next step: narrow the cohort with another filter,
+break it down by a category (gender, race, ethnicity, marital status), rank what is
+common among these patients (conditions, medications, visit types), compare with
+another group, or save it as a report (after saving one: rename it, change its
+filters, or delete it). Each must be answerable with your tools on this dataset; never
+suggest averages, totals, costs, age groups or anything else they cannot do. Under 60
+characters each, phrased as the user would type them. Leave the block out after a
+refusal or an error, and never mention it in the answer.
+
+Aggregate-only accounts (access level agg) cannot count or list patients; for them use
+chiron_breakdown, which masks small counts the way Chiron's analysis view does, and say
+the figures are aggregate. Never try to get patient rows for them.
+
+If a tool refuses because of access, say in one sentence that this account cannot see
+that data, and stop. Do not work around it. The same goes for a question about a dataset
+you cannot find or open: say so and stop, and never answer with figures from a different
+dataset instead.
+
+Your context also contains details of the machine this runs on: an email address, file
+paths, a working directory. They belong to whoever set the server up, not to the person
+asking, and are irrelevant. Never mention an email address, a person's name, a username,
+an account, a file path, or which account a tool acted as.
+"""
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_FULL if ASK_TOOLS == "full" else SYSTEM_PROMPT_SHORT
+
 FILTER_REFERENCE = """Filter fields for chiron_edit_cohort (always type "add_entry" plus concept_id):
   Category  selected_categories: [every variant of the value]   exclude_selected: true inverts
   Number    cd_numeric_min, cd_numeric_max. Bounds are INCLUSIVE, so "more than 50000"
@@ -218,6 +365,10 @@ def dataset_brief(dataset_id: str, username: str, allow_superuser: bool) -> tupl
     hit = _BRIEF_CACHE.get(key)
     if hit and time.time() - hit[0] < _BRIEF_TTL:
         return hit[1], hit[2]
+    if ASK_TOOLS != "full":
+        brief = plain_brief(dataset_id, username, allow_superuser)
+        _BRIEF_CACHE[key] = (time.time(), brief, [])
+        return brief, []
 
     from chiron import models
     from chiron_mcp import identity
@@ -250,6 +401,48 @@ def dataset_brief(dataset_id: str, username: str, allow_superuser: bool) -> tupl
     brief = "\n".join(lines) + "\n\n" + FILTER_REFERENCE
     _BRIEF_CACHE[key] = (time.time(), brief, ids)
     return brief, ids
+
+
+def plain_brief(dataset_id: str, username: str, allow_superuser: bool) -> str:
+    """What the dataset records, in the words chiron_query takes, built as the requesting
+    user from Chiron itself: each kind of record with its variables, and the actual values
+    where a variable has few (lab names, visit types, payers, conditions...). Values are
+    listed only when already cached (or the table is small), so building this never makes
+    a person wait; `python -m chiron_mcp.query --warm <dataset>` fills the cache after a load."""
+    from chiron_mcp import dictionary as D
+    from chiron_mcp import identity
+    from chiron_mcp import query as Q
+
+    ident = identity.resolve(dataset_id, username=username, allow_superuser=allow_superuser)
+    words = {"subject": "patients", "condition": "conditions", "medication": "medications",
+             "procedure": "procedures", "encounter": "visits", "observation": "labs and vitals"}
+    colls = sorted({v.collection for v in Q.catalogue(ident)}, key=lambda c: (c != "subject", c))
+    lines = [f"Dataset {ident.dataset.display_name or dataset_id} ({dataset_id}). What it records, in the "
+             "words to use with chiron_query:"]
+    for coll in colls:
+        vs = Q._vars(ident, coll)
+        names = []
+        for v in vs:
+            alias = (D.FIELDS.get(coll, {}).get(v.short) or (v.short.replace("_", " "),))[0]
+            names.append(f"{alias} ({v.kind or 'other'})")
+        lines.append(f"- {words.get(coll, coll)}: " + ", ".join(names))
+        for v in vs:
+            if v.kind != "category":
+                continue
+            groups = Q.cached_groups(ident, v)
+            if groups is None or not 1 <= len(groups) <= 30:
+                continue
+            alias = (D.FIELDS.get(coll, {}).get(v.short) or (v.short.replace("_", " "),))[0]
+            units = Q.cached_units(ident, coll) if v.short == D.NAME_FIELD.get(coll) else None
+            codes = D.CODES.get(v.short) or {}
+
+            def shown(g):
+                meaning = codes.get(D.norm(g["label"]))
+                text = g["label"] + (f" = {meaning[0]}" if meaning and D.norm(meaning[0]) != D.norm(g["label"]) else "")
+                return text + (f" ({', '.join(units[g['label']])})" if units and units.get(g["label"]) else "")
+            vals = "; ".join(shown(g) for g in groups)
+            lines.append(f"    {alias} values{' (units)' if units else ''}: {vals}")
+    return "\n".join(lines)
 
 
 # --- starter questions ---------------------------------------------------------------
@@ -453,8 +646,12 @@ REQUIRE_SESSION = os.environ.get("CHIRON_MCP_REQUIRE_SESSION") == "1"
 NOT_LOGGED_IN = "Log in to Chiron first; Ask answers as the person logged in."
 
 
-def _mcp_config(username: str, allow_superuser: bool) -> Path:
-    """A per-request MCP config, so two people asking at once never swap identities."""
+def _mcp_config(username: str, allow_superuser: bool, thread: str | None = None) -> Path:
+    """A per-request MCP config, so two people asking at once never swap identities.
+
+    `thread` gives chiron_query a file for the conversation's groups (g1, g2, ...), so a
+    follow-up can start from an earlier answer's patients; each question runs a fresh
+    Chiron MCP process, so the groups cannot live in memory."""
     import tempfile
 
     env = {
@@ -471,6 +668,10 @@ def _mcp_config(username: str, allow_superuser: bool) -> Path:
         env["CHIRON_MCP_ALLOW_SAVE"] = "1"
     if allow_superuser:
         env["CHIRON_MCP_ALLOW_SUPERUSER"] = "1"
+    if thread:
+        env["CHIRON_MCP_GROUPS_FILE"] = str(_groups_file(thread))
+    if ASK_TOOLS != "full":
+        env["CHIRON_MCP_TOOLS"] = ",".join(TOOLS)  # the short list is all the model sees
 
     console = Path(sys.executable).parent / "chiron-mcp"
     cfg = {"mcpServers": {"chiron": {"command": str(console), "env": env}}}
@@ -496,9 +697,14 @@ class _CohortTracker:
         self._calls: dict[str, tuple[str, dict]] = {}
         self.cohort: dict | None = None
         self.last_edit: dict | None = None
+        # The tool calls those two came from, for the trace.
+        self.cohort_call: tuple[str, str] | None = None
+        self.edit_call: tuple[str, str] | None = None
         self.breakdown: dict | None = None  # the last breakdown's groups, for subgroup buttons
         self.link: dict | None = None
         self.deleted: list[int] = []  # report ids deleted in this answer
+        self.counted = False  # a tool counted patients in this answer
+        self.count_value: int | None = None  # the last count chiron_query returned
 
     def tool_use(self, block: dict) -> None:
         self._calls[block.get("id", "")] = (
@@ -510,6 +716,9 @@ class _CohortTracker:
         name, args = self._calls.get(block.get("tool_use_id", ""), ("", {}))
         if not name or block.get("is_error"):
             return
+        if name in ("chiron_query", "chiron_count_cohort", "chiron_breakdown", "chiron_crosstab",
+                    "chiron_run_table", "chiron_run_saved_report"):
+            self.counted = True
         content = block.get("content")
         if isinstance(content, list):
             content = "".join(c.get("text", "") for c in content if isinstance(c, dict))
@@ -519,12 +728,35 @@ class _CohortTracker:
             return
         if not isinstance(data, dict) or data.get("error"):
             return
+        if name == "chiron_query" and isinstance(data.get("count"), int):
+            self.count_value = data["count"]
 
         ds = args.get("dataset_id")
+        if name == "chiron_query" and data.get("cohort_def") is not None:
+            # chiron_query built and counted this cohort itself (args name the dataset in
+            # words; the result carries its id).
+            ds = data.get("dataset_id")
+            bd = data.get("breakdown") or data.get("top")
+            if isinstance(bd, dict) and bd.get("by"):
+                self.breakdown = {
+                    "dataset_id": ds, "cohort_def": data["cohort_def"],
+                    "concept_id": bd["by"][0].get("concept_id"), "rows": bd.get("rows") or [],
+                    "totals": bd.get("row_totals") or [], "variants": bd.get("merged_variants") or {},
+                }
+            if data["cohort_def"]:
+                self.cohort = {"dataset_id": ds, "cohort_def": data["cohort_def"], "columns": []}
+                self.cohort_call = (name, block.get("tool_use_id", ""))
+            for key, label, mode in (("results", "Results", "results"), ("report", "Report", "report"),
+                                     ("query_builder", "Query", "workspace")):
+                written = data.get(key)
+                if isinstance(written, dict) and written.get("url"):
+                    self.link = {"label": label, "url": written["url"], "mode": mode}
+            return
         if name == "chiron_edit_cohort":
             if data.get("successful") and data.get("cohort_def"):
                 self.last_edit = {"dataset_id": ds, "cohort_def": data["cohort_def"],
                                   "columns": []}
+                self.edit_call = (name, block.get("tool_use_id", ""))
             return
 
         # A saved or updated report gets its button whether or not this call carried a
@@ -558,9 +790,14 @@ class _CohortTracker:
             "cohort_def": args["cohort_def"],
             "columns": [c for c in (args.get("columns") or []) if isinstance(c, dict)],
         }
+        self.cohort_call = (name, block.get("tool_use_id", ""))
 
     def final(self) -> dict | None:
         return self.cohort or self.last_edit
+
+    def final_call(self) -> tuple[str, str] | None:
+        """(tool, tool_use id) behind final()."""
+        return self.cohort_call if self.cohort else self.edit_call if self.last_edit else None
 
 
 _FOLLOWUPS = re.compile(r"```followups\s*([\s\S]*?)```", re.I)
@@ -569,23 +806,50 @@ _UNANSWERABLE = re.compile(
     r"\b(average|mean|median|sum|totals?|costs?|spend|price|age groups?|by age)\b", re.I)
 
 
-def split_followups(text: str) -> tuple[str, list[str]]:
-    """The answer without its ```followups block, and up to 3 usable suggestions."""
-    found: list[str] = []
+def followup_audit(text: str) -> list[dict]:
+    """Every suggestion the model wrote, whether the page shows it, and if not, why."""
+    out: list[dict] = []
+    shown: list[str] = []
     for block in _FOLLOWUPS.findall(text or ""):
         try:
             items = json.loads(block)
         except ValueError:
+            out.append({"q": block.strip()[:200], "shown": False, "why": "the block is not valid JSON"})
             continue
         for q in items if isinstance(items, list) else []:
             q = " ".join(str(q).split())
-            if (q and len(q) <= 90 and not _UNANSWERABLE.search(q)
-                    and q.lower() not in (f.lower() for f in found)):
-                found.append(q)
-    return _FOLLOWUPS.sub("", text or "").rstrip(), found[:3]
+            why = ("empty" if not q
+                   else "longer than 90 characters" if len(q) > 90
+                   else "asks for something the tools cannot do" if _UNANSWERABLE.search(q)
+                   else "repeats another suggestion" if q.lower() in (f.lower() for f in shown)
+                   else "only 3 are shown" if len(shown) >= 3
+                   else None)
+            if not why:
+                shown.append(q)
+            out.append({"q": q, "shown": not why, "why": why})
+    return out
+
+
+def split_followups(text: str) -> tuple[str, list[str]]:
+    """The answer without its ```followups block, and up to 3 usable suggestions."""
+    found = [f["q"] for f in followup_audit(text) if f["shown"]]
+    return _FOLLOWUPS.sub("", text or "").rstrip(), found
 
 
 _NUMBER = re.compile(r"(?<![\w.,])\d{1,3}(?:,\d{3})+(?![\d])|(?<![\w.,])\d+(?![\d,])")
+
+
+def _numbers_in(content) -> set[int]:
+    """Every whole number in a tool result's text ("12,755" and 12755 alike)."""
+    if isinstance(content, list):
+        content = "".join(c.get("text", "") for c in content if isinstance(c, dict))
+    out = set()
+    for m in re.finditer(r"\d{1,3}(?:,\d{3})+(?!\d)|\d+", str(content or "")):
+        try:
+            out.add(int(m.group().replace(",", "")))
+        except ValueError:
+            pass
+    return out
 
 
 def headline_figure(answer: str) -> int | None:
@@ -643,12 +907,14 @@ def states_count(answer: str, n: int) -> bool:
     return False
 
 
-def verify_cohort(state: dict, username: str, allow_superuser: bool) -> dict | None:
+def verify_cohort(state: dict, username: str, allow_superuser: bool,
+                  why: list | None = None) -> dict | None:
     """Re-check a cohort as the requesting user before offering a button for it.
 
     Runs the same validation /load will run and counts it, so every Query button that
     appears is one that works, and it can say how many subjects it will load. Returns
-    None for whole-dataset cohorts (nothing to load) and anything that fails.
+    None for whole-dataset cohorts (nothing to load) and anything that fails, and says
+    which in `why` when given one.
     """
     from chiron.query_engine import get_querytool
     from chiron_mcp import identity, server as S
@@ -661,10 +927,14 @@ def verify_cohort(state: dict, username: str, allow_superuser: bool) -> dict | N
         identity.require_subject_level(ident)
         cohort = S._validated_cohort(ident, state.get("cohort_def") or [])
         if not cohort.cohort_def:
+            if why is not None:
+                why.append("The cohort has no filters (the whole dataset), so there is nothing to load.")
             return None
         n = get_querytool(identity.checked_chironuser(ident), cohort.cohort_def).get_cohort_count()
         return {**state, "cohort_def": cohort.cohort_def, "subject_count": int(n)}
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        if why is not None:
+            why.append(f"{type(exc).__name__}: {exc}"[:500])
         return None
 
 
@@ -684,10 +954,43 @@ def _state_dir() -> Path:
     return d
 
 
+def _group_counts(tid: str) -> set[int]:
+    try:
+        return {g.get("count") for g in json.loads(_groups_file(tid).read_text()).values()
+                if isinstance(g.get("count"), int)}
+    except (OSError, ValueError, AttributeError):
+        return set()
+
+
+def _groups_note(tid: str) -> str:
+    try:
+        groups = json.loads(_groups_file(tid).read_text())
+    except (OSError, ValueError):
+        return ""
+    if not groups:
+        return ""
+    items = list(groups.items())[-8:]
+    lines = [f"- {name}: {g.get('label') or g.get('what')} ({g.get('count'):,} patients)"
+             if isinstance(g.get("count"), int) else f"- {name}: {g.get('label') or g.get('what')}"
+             for name, g in items]
+    return ("\n\nGroups so far in this conversation (start_from takes the name; the latest is "
+            f"{items[-1][0]}):\n" + "\n".join(lines))
+
+
+def _groups_file(tid: str) -> Path:
+    """Where chiron_query keeps a conversation's groups (cohort definitions, no patients)."""
+    return _state_dir() / "groups" / f"{tid}.json"
+
+
 def _neutral_dir() -> str:
     wd = _state_dir() / "workdir"
     wd.mkdir(exist_ok=True)
     return str(wd)
+
+
+def _trace_root() -> Path:
+    """Where answers' traces are kept, one folder per conversation (see trace.py)."""
+    return _state_dir() / "traces"
 
 
 THREAD_TTL_HOURS = float(os.environ.get("CHIRON_MCP_THREAD_TTL_HOURS", "12"))
@@ -703,7 +1006,7 @@ class _Threads:
 
     Claude Code saves each session's transcript to disk, tool results included, which
     means patient-level data. So a thread's transcript is deleted when it is cleared or
-    once it has been idle for THREAD_TTL_HOURS.
+    once it has been idle for THREAD_TTL_HOURS, and its answers' traces with it.
     """
 
     def __init__(self):
@@ -787,6 +1090,8 @@ class _Threads:
         for d in root.glob(f"*/{tid}"):
             if d.is_dir():
                 _sh.rmtree(d, ignore_errors=True)
+        tracing.delete_thread(_trace_root(), tid)
+        _groups_file(tid).unlink(missing_ok=True)
 
     def forget(self, tid: str, user: str) -> bool:
         with self._guard:
@@ -810,6 +1115,9 @@ class _Threads:
                 self._save()
         for tid in stale:
             self._delete_transcript(tid)
+        # Also any trace left by a conversation that was never registered (the browser
+        # went away before its first answer finished).
+        tracing.prune(_trace_root(), THREAD_TTL_HOURS)
 
 
 THREADS = _Threads()
@@ -845,6 +1153,22 @@ def tidy(answer: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", out).strip()
 
 
+def _tidy_audit(before: str, after: str) -> dict:
+    """What tidy() took out of an answer, for its trace."""
+    base = CONFIG.ui_url.rstrip("/")
+    links = [m for m in _URL.finditer(before or "")
+             if base and (m.group(2) or m.group(3) or "").startswith(base)]
+    return {"changed": (before or "").strip() != after, "links_removed": len(links),
+            "emails_redacted": len(_EMAIL.findall(before or "")),
+            "paths_removed": len(_PATH.findall(before or "")), "before": before}
+
+
+def _redact(text: str) -> str:
+    """The operator's email and paths never reach a trace (the page shows it to whoever
+    asked, who may not be the operator)."""
+    return _PATH.sub("[path]", _EMAIL.sub("[email]", text))
+
+
 _NOT_LOGGED_IN = re.compile(
     r"invalid api key|please run /login|not logged in|log ?in to|authenticat|oauth|"
     r"credit balance|x-api-key", re.I)
@@ -873,8 +1197,15 @@ def _pump(stream, lines: "queue.Queue") -> None:
         lines.put(None)
 
 
+def _drain(trace):
+    """The trace's changed steps as page events."""
+    for step in trace.drain():
+        yield "trace", step
+
+
 def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: dict,
-                 inherited: dict | None = None, tid: str = ""):
+                 inherited: dict | None = None, tid: str = "", trace=tracing.OFF,
+                 known: set | None = None):
     """One headless Claude run, translated into page events.
 
     `inherited` is the cohort behind the conversation's previous Query button. A
@@ -888,6 +1219,9 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
     PING_SECONDS. The write fails once the browser has gone (reloaded, closed, or
     stopped), and that ends the run, so an abandoned answer never keeps its
     conversation locked. A run is stopped after TURN_SECONDS.
+
+    Every event is also fed to `trace`, which records the run step by step, and the
+    steps it changes go to the page as "trace" events (see trace.py).
     """
     import queue
     import time
@@ -897,6 +1231,7 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
         stdin=subprocess.DEVNULL, text=True, bufsize=1, cwd=_neutral_dir(),
     )
     tracker = _CohortTracker()
+    tool_numbers: set[int] = set()
     outcome.update(answered=False, rc=None, stderr="")
     THREADS.started(tid, proc, outcome)
     lines: queue.Queue = queue.Queue()
@@ -910,7 +1245,10 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 outcome["answered"] = True
                 took = (f"{TURN_SECONDS // 60} minutes" if TURN_SECONDS >= 120
                         else f"{TURN_SECONDS} seconds")
-                yield "error", f"No answer after {took}, so it was stopped. Claude may be busy; ask again."
+                message = f"No answer after {took}, so it was stopped. Claude may be busy; ask again."
+                trace.error(message)
+                yield from _drain(trace)
+                yield "error", message
                 break
             try:
                 line = lines.get(timeout=min(PING_SECONDS, left))
@@ -926,6 +1264,9 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 ev = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            trace.feed(ev)
+            trace.raw(line, ev)
+            yield from _drain(trace)
 
             kind = ev.get("type")
             if kind == "system" and ev.get("subtype") == "api_retry":
@@ -945,43 +1286,105 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                 for block in ev.get("message", {}).get("content", []) or []:
                     if isinstance(block, dict) and block.get("type") == "tool_result":
                         tracker.tool_result(block)
+                        if not block.get("is_error"):
+                            tool_numbers.update(_numbers_in(block.get("content")))
             elif kind == "result":
                 if ev.get("is_error"):
-                    yield "error", explain_claude_error(ev.get("result") or "Claude returned an error.")
+                    message = explain_claude_error(ev.get("result") or "Claude returned an error.")
+                    trace.error(message)
+                    yield from _drain(trace)
+                    yield "error", message
                     outcome["answered"] = True
                     continue
                 # The suggested follow-ups travel separately; everything below judges
                 # the answer itself, never numbers that only appear in a suggestion.
                 text, followups = split_followups(ev.get("result", ""))
+                # The answer's lead figure must be one a tool returned (plan P7). When it is
+                # not, the answer is held back and the caller asks once for a checked one.
+                lead = headline_figure(text)
+                if (known is not None and tracker.counted and lead is not None
+                        and lead not in tool_numbers and lead not in known):
+                    outcome.update(answered=True, unbacked=lead)
+                    trace.note("Lead figure not from a tool",
+                               f"The answer led with {lead:,}, which no tool returned; it was not "
+                               "shown, and the model was asked to check it.", status="warn")
+                    yield from _drain(trace)
+                    continue
+                # A count came back but the answer states no figure in digits ("Twenty
+                # patients have asthma"): held back the same way, for the figure in digits.
+                # A count of 0 is left alone ("No patients have ...").
+                if (known is not None and lead is None and tracker.count_value
+                        and not re.search(r"\d", text)):
+                    outcome.update(answered=True, nodigits=tracker.count_value)
+                    trace.note("No figure in digits",
+                               f"A tool returned the count {tracker.count_value:,}, but the answer states no "
+                               "figure in digits; it was not shown, and the model was asked for the figure.",
+                               status="warn")
+                    yield from _drain(trace)
+                    continue
+                trace.post("followups", followup_audit(ev.get("result", "")))
+                trace.post("charts", tracing.chart_audit(text))
                 # Earlier answers may carry Report buttons for what was just deleted;
                 # the page retires them.
                 for rid in tracker.deleted:
                     yield "deleted", rid
                 if tracker.link:
                     yield "link", tracker.link
+                trace.post("link", tracker.link)
+                trace.post("deleted", tracker.deleted)
+                # Why the answer did or did not get a Query button, for the trace.
+                decision: dict = {"offered": None}
                 # A workspace hand-off has already loaded the query, and its link says
                 # so; a second Query button for the same cohort would just repeat it.
                 if not (tracker.link and tracker.link.get("mode") in ("workspace", "results")):
                     state = tracker.final() or inherited
-                    verified = state and verify_cohort(state, username, allow_superuser)
+                    call = tracker.final_call() if tracker.final() else None
+                    why: list[str] = []
+                    verified = state and verify_cohort(state, username, allow_superuser, why)
                     # The button is labelled with its count; offer it only when that is
                     # the figure the answer leads with, so it is never about other
                     # patients than the ones the answer describes. If the answer leads
                     # with one group of a breakdown, offer that group's cohort instead.
                     figure = headline_figure(text)
+                    decision.update(
+                        source=(f"the cohort passed to {call[0]}" if call else
+                                "the previous answer's cohort" if state else None),
+                        step=trace.step_for_call(call[1]) if call else None,
+                        cohort=tracing.cohort_lines(state.get("cohort_def")) if state else None,
+                        figure=figure, verified=verified["subject_count"] if verified else None,
+                        verify_error=why[0] if why else None)
                     if verified and verified["subject_count"] != figure:
                         verified = None
                         sub = tracker.breakdown and figure is not None and subgroup_cohort(
                             tracker.breakdown, figure, username, allow_superuser)
                         checked = sub and verify_cohort(sub, username, allow_superuser)
+                        if tracker.breakdown and figure is not None:
+                            decision["subgroup"] = {
+                                "found": bool(sub),
+                                "count": checked["subject_count"] if checked else None}
                         if checked and checked["subject_count"] == figure:
                             state, verified = sub, checked
+                            decision["source"] = "one group of the breakdown"
                     if verified:
                         outcome["cohort"] = state
+                        decision["offered"] = verified["subject_count"]
                         yield "cohort", verified
+                    else:
+                        decision["reason"] = (
+                            "No cohort was built or counted, and none carried over." if not state
+                            else "The cohort could not be re-checked." if decision["verified"] is None
+                            else f"The answer leads with {figure if figure is not None else 'no figure'}, "
+                                 f"not the cohort's {decision['verified']:,} patients.")
+                else:
+                    decision["reason"] = "The answer already put this in Chiron; its own button opens it."
+                trace.post("cohort", decision)
                 if followups:
                     yield "followups", followups
-                yield "answer", tidy(text)
+                answer = tidy(text)
+                trace.post("tidy", _tidy_audit(text, answer))
+                trace.answer(answer)
+                yield from _drain(trace)
+                yield "answer", answer
                 outcome["answered"] = True
         proc.wait(timeout=10)
         outcome["rc"] = proc.returncode
@@ -1002,9 +1405,13 @@ def ask_stream(
     """Answer one question as `username`, continuing `thread` when it is theirs.
 
     Events: thread (the conversation id to send back with a follow-up), step, link,
-    cohort (verified, with its subject count), answer, error.
+    cohort (verified, with its subject count), answer, error. With tracing on, also
+    trace_start (the trace's id and what it is about), trace (one step, new or changed)
+    and trace_end (totals and checks); the whole trace is then at /trace?id=.
     """
     import uuid
+
+    global THINKING_DISPLAY
 
     claude = shutil.which("claude") or os.path.expanduser("~/.local/bin/claude")
     if not Path(claude).exists():
@@ -1024,13 +1431,22 @@ def ask_stream(
             yield "error", "Still answering your previous question in this conversation."
             return
 
-    cfg = _mcp_config(username, allow_superuser)
+    cfg = _mcp_config(username, allow_superuser, thread=tid)
+    trace = tracing.OFF
+    outcome: dict = {}
     try:
         yield "thread", tid
+        if TRACE:
+            trace = tracing.Trace(
+                question=question, dataset=dataset, user=username, thread=tid, followup=resume,
+                prior=tracing.prior(_trace_root(), tid, username) if resume else [],
+                inherited=THREADS.cohort(tid) if resume else None, redact=_redact)
+            yield "trace_start", trace.head()
         for _attempt in range(2):
             if resume:
-                # The dataset brief is already in the conversation.
-                prompt = f"Follow-up question: {question}"
+                # The dataset brief is already in the conversation. The groups chiron_query
+                # made so far are listed, so "them" and "the widowed patients" find theirs.
+                prompt = f"Follow-up question: {question}" + _groups_note(tid)
                 session = ["--resume", tid]
             else:
                 prompt = question
@@ -1043,31 +1459,27 @@ def ask_stream(
                         prompt = f"[dataset: {dataset}]\n\n{question}\n\n(Access check: {exc})"
                 session = ["--session-id", tid]
 
-            # Isolate the headless session from the operator's own Claude Code setup.
-            # Without this it inherits their git identity, project files, memory and
-            # every other MCP server they have configured, and repeats them in answers.
-            # The account email is injected by Claude Code itself and cannot be switched
-            # off without an API key (--bare), which is why tidy() also redacts.
-            cmd = [
-                claude, "-p", prompt, *session,
-                "--mcp-config", str(cfg),
-                "--strict-mcp-config",
-                "--setting-sources", "",
-                # No built-in tools at all (Bash, Read, Write, WebFetch...): the only thing
-                # a question can make Claude do is call Chiron. Without this, a visitor
-                # could ask it to read files on the server, the Claude login among them.
-                "--tools", "",
-                "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in TOOLS),
-                "--system-prompt", SYSTEM_PROMPT,
-                "--output-format", "stream-json",
-                "--verbose",
-            ]
-            outcome: dict = {}
             inherited = THREADS.cohort(tid) if resume else None
-            yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid)
+            for _flag in range(2):
+                cmd = _claude_command(claude, prompt, session, cfg)
+                outcome = {}
+                trace.launched(cmd, prompt, SYSTEM_PROMPT, resume)
+                yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid, trace,
+                                        known=_numbers_in(question) | _group_counts(tid))
+                if outcome.get("answered") or not _thinking_flag_refused(outcome):
+                    break
+                # A Claude Code too old for --thinking-display: ask again without it, and
+                # stop passing it for as long as this server runs.
+                THINKING_DISPLAY = None
+                trace.note("Reasoning summaries unavailable",
+                           "This Claude Code does not know --thinking-display, so the question was "
+                           "asked again without it; the trace shows no reasoning.", status="info")
+                yield from _drain(trace)
 
             if outcome.get("cancelled"):
-                yield "error", "Stopped, because a newer question in this conversation replaced it."
+                message = "Stopped, because a newer question in this conversation replaced it."
+                trace.error(message)
+                yield "error", message
                 break
             if outcome.get("answered"):
                 break
@@ -1076,18 +1488,79 @@ def ask_stream(
                 # question as a fresh conversation rather than failing it.
                 resume = False
                 tid = str(uuid.uuid4())
+                trace.restarted(tid)
+                yield from _drain(trace)
                 yield "thread", tid
                 continue
             if outcome.get("stderr"):
-                yield "error", explain_claude_error(outcome["stderr"][:500])
+                message = explain_claude_error(outcome["stderr"][:500])
+                trace.error(message)
+                yield "error", message
             break
+        if (outcome.get("unbacked") is not None or outcome.get("nodigits")) and not outcome.get("cancelled"):
+            # Held back: its lead figure came from no tool, or it states no figure in digits.
+            # Ask once for a checked answer, and show that one whatever it says.
+            if outcome.get("unbacked") is not None:
+                fig = outcome["unbacked"]
+                note = (f"Check before answering: your answer led with {fig:,}, but no tool returned "
+                        "that figure. Every figure must come from a tool result: get it with a tool "
+                        "(chiron_query does any arithmetic exactly), then give the whole answer again.")
+            else:
+                note = (f"Check before answering: a tool returned the count {outcome['nodigits']:,}, but your "
+                        "answer states no figure in digits. Give the whole answer again with the figure "
+                        "in digits (20, not \"twenty\").")
+            cmd = _claude_command(claude, note, ["--resume", tid], cfg)
+            outcome = {}
+            trace.launched(cmd, note, SYSTEM_PROMPT, True)
+            yield from _claude_turn(cmd, username, allow_superuser, outcome,
+                                    THREADS.cohort(tid), tid, trace)
         THREADS.touch(tid, username, dataset, outcome.get("cohort"))
+        if TRACE:
+            trace.finish(outcome.get("rc"), outcome.get("stderr", ""))
+            trace.save(_trace_root())
+            yield from _drain(trace)
+            yield "trace_end", trace.tail()
     finally:
+        if TRACE and trace is not tracing.OFF and not trace.data.get("done"):
+            # The page went away (or a newer question stopped this one) mid-answer:
+            # keep what was recorded, so a stuck answer can still be looked into.
+            trace.note("Stopped before the end",
+                       "The page closed, or a newer question replaced this one, before the answer "
+                       "finished.", status="warn")
+            trace.finish(outcome.get("rc"), outcome.get("stderr", ""))
+            trace.save(_trace_root())
         lock.release()
         try:
             cfg.unlink()
         except OSError:
             pass
+
+
+def _claude_command(claude: str, prompt: str, session: list[str], cfg: Path) -> list[str]:
+    # Isolate the headless session from the operator's own Claude Code setup.
+    # Without this it inherits their git identity, project files, memory and
+    # every other MCP server they have configured, and repeats them in answers.
+    # The account email is injected by Claude Code itself and cannot be switched
+    # off without an API key (--bare), which is why tidy() also redacts.
+    return [
+        claude, "-p", prompt, *session,
+        "--mcp-config", str(cfg),
+        "--strict-mcp-config",
+        "--setting-sources", "",
+        # No built-in tools at all (Bash, Read, Write, WebFetch...): the only thing
+        # a question can make Claude do is call Chiron. Without this, a visitor
+        # could ask it to read files on the server, the Claude login among them.
+        "--tools", "",
+        "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in TOOLS),
+        "--system-prompt", SYSTEM_PROMPT,
+        *(["--thinking-display", THINKING_DISPLAY] if THINKING_DISPLAY else []),
+        "--output-format", "stream-json",
+        "--verbose",
+    ]
+
+
+def _thinking_flag_refused(outcome: dict) -> bool:
+    return bool(THINKING_DISPLAY) and "thinking-display" in (outcome.get("stderr") or "")
 
 
 # The session-cookie lookup lives in identity, shared with the OAuth login page.
@@ -1154,6 +1627,10 @@ class Handler(BaseHTTPRequestHandler):
             if not self._same_site():
                 return self.send_error(403, "cross-site request refused")
             return self._ask(parse_qs(url.query))
+        if url.path == "/trace":
+            if not self._same_site():
+                return self.send_error(403, "cross-site request refused")
+            return self._trace(parse_qs(url.query))
 
         self.send_error(404)
 
@@ -1282,6 +1759,17 @@ class Handler(BaseHTTPRequestHandler):
         tid = body.get("thread") or ""
         return self._json({"forgotten": bool(tid) and THREADS.forget(tid, who)})
 
+    def _trace(self, params):
+        """One answer's full trace, for the person who asked it (see trace.py)."""
+        who, _ = request_identity(self.headers.get("Cookie"))
+        data = tracing.find(_trace_root(), (params.get("id") or [""])[0], who)
+        if data is None:
+            return self._json({"error": (
+                "No trace for this answer. Traces are kept only as long as their conversation "
+                f"({THREAD_TTL_HOURS:g} hours after its last question), and only for the person "
+                "who asked.")})
+        return self._json(data)
+
     def _ask(self, params):
         question = (params.get("q") or [""])[0].strip()
         dataset = (params.get("dataset") or [None])[0]
@@ -1330,11 +1818,17 @@ def main() -> int:
     from chiron_mcp.bootstrap import ensure_django
 
     ensure_django()
+    # The Ask page shows the model's reasoning in its traces, so ask for it.
+    global THINKING_DISPLAY
+    if THINKING_DISPLAY is None:
+        THINKING_DISPLAY = "summarized"
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"Chiron Ask running at http://localhost:{PORT}")
     print("  identity : the user logged into Chiron; with no session, "
           f"{CONFIG.username} (ceiling {CONFIG.max_access_level})")
     print(f"  chiron ui: {CONFIG.ui_url}")
+    print(f"  traces   : {'on' if TRACE else 'off'}"
+          + (f", reasoning {THINKING_DISPLAY}" if TRACE and THINKING_DISPLAY else ""))
     print("  Ctrl-C to stop")
     try:
         srv.serve_forever()

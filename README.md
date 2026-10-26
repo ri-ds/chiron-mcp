@@ -97,6 +97,18 @@ What the Ask tab does:
   builder, and N is Chiron's own count for them.
 - **Tables and charts** for rankings and comparisons. Two-variable breakdowns chart as
   grouped bars with a legend, so no bar is ever an unlabelled slice of the table.
+- **A trace under every answer**, for finding out why one is wrong. **Trace** opens it, and
+  **Traces** in the header opens it under every answer. It shows a timeline of each step
+  (start-up, every model call, every Chiron tool call, the server's checks), plus time,
+  tokens and cost. Below that, at three levels of detail (Summary, Detailed, Debug), it
+  shows each step: the model's summarised reasoning, the exact input and output of each
+  tool call, where each figure in the answer came from, and the raw stream. Checks point
+  at the step where something went wrong:
+  - a figure that appears in no tool result, with the nearest count Chiron did return;
+  - a cohort the model wrote by hand;
+  - a field Chiron silently ignored;
+  - a count rule Chiron does not read;
+  - a spelling variant left out.
 
 Questions take roughly 10 to 40 seconds, because the model makes several Chiron tool
 calls. Each one shows as a chip while it works.
@@ -533,7 +545,9 @@ The Ask server (`python -m chiron_mcp.webapp`) adds:
 | `CHIRON_MCP_ALLOW_SUPERUSER` | off | Lets a *logged-in* superuser use Ask as themselves. The fallback identity can never be a superuser |
 | `CHIRON_MCP_THREAD_TTL_HOURS` | `12` | How long a conversation can be continued. After that its transcript is deleted |
 | `CHIRON_MCP_TURN_SECONDS` | `240` | How long one answer may take before it is stopped and the page says to ask again |
-| `CHIRON_MCP_STATE_DIR` | `~/.cache/chiron-ask` | Conversation index and the neutral working directory Claude runs in |
+| `CHIRON_MCP_STATE_DIR` | `~/.cache/chiron-ask` | Conversation index, answer traces (`traces/`) and the neutral working directory Claude runs in |
+| `CHIRON_MCP_TRACE` | on | `0` stops recording answer traces (the **Trace** under each answer) |
+| `CHIRON_MCP_THINKING_DISPLAY` | `summarized` | Passed to Claude Code as `--thinking-display`, so traces show the model's reasoning. Empty leaves the flag off. Code that imports `ask_stream` rather than running the server leaves it off unless set |
 
 See `.env.example`. A superuser is refused in analyst mode; point it at a dedicated service user.
 

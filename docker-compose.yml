@@ -4,6 +4,7 @@ services:
   chiron-mcp-db:
     image: postgres:16
     container_name: chiron-mcp-db
+    shm_size: 1g  # parallel query workers; see deploy/compose.yml
     environment:
       POSTGRES_USER: chiron
       POSTGRES_PASSWORD: chiron

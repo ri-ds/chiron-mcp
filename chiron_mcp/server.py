@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 from typing import Any
 
@@ -26,6 +27,7 @@ ensure_django()
 from mcp.server.mcpserver import MCPServer  # noqa: E402
 
 from chiron_mcp import filters, identity  # noqa: E402
+from chiron_mcp import pg  # noqa: E402,F401  (the connection hook for the shared-memory retry)
 from chiron_mcp.config import CONFIG  # noqa: E402
 from chiron_mcp.identity import AccessError  # noqa: E402
 
@@ -47,6 +49,20 @@ def _err(exc: Exception) -> dict:
     return {"error": str(exc)}
 
 
+def _again_without_parallel_workers(call, may_repeat=lambda: True) -> dict:
+    """A tool's result. When Postgres had no shared memory left for parallel workers (big
+    queries at the same time), the same call once more without them: slower, but it needs
+    none (chiron_mcp.pg)."""
+    from chiron_mcp import pg
+
+    out = call()
+    if isinstance(out, dict) and "error" in out and pg.out_of_shared_memory(json.dumps(out, default=str)) \
+            and may_repeat():
+        with pg.without_parallel_workers():
+            out = call()
+    return out
+
+
 def _concept(ident, concept_id: str):
     from chiron import models
 
@@ -60,6 +76,162 @@ def _concept(ident, concept_id: str):
     return oConcept
 
 
+# --- strict inputs ---------------------------------------------------------------------
+#
+# Chiron reads only the fields it knows and silently ignores the rest, and it stores any
+# count-rule type it is given while counting every unknown one as "exactly". A model that
+# guesses a field ("criteria_set_id", "min_count") or writes "at_least" therefore gets a
+# normal-looking wrong number. These checks turn each such guess into an error that says
+# what to do instead, or, for a count rule spelled another common way, into the rule it
+# plainly meant (and the reply says so).
+
+COUNT_RULES = ("at least", "at most", "exactly")
+_RULE_ALIASES = {
+    **{k: "at least" for k in ("at_least", "atleast", "at-least", "least", "min", "minimum",
+                               ">=", "≥", "gte", "ge", "more than or equal", "or more")},
+    **{k: "at most" for k in ("at_most", "atmost", "at-most", "most", "max", "maximum",
+                              "<=", "≤", "lte", "le", "or fewer", "or less")},
+    **{k: "exactly" for k in ("exact", "=", "==", "eq", "equal", "equals", "equal to",
+                              "exactly_n")},
+}
+
+# The filter fields Chiron's filter processors read (chiron/processors/cohort_def/*.py);
+# which of them a given variable takes is in chiron_describe_concept's filter_input.
+FILTER_FIELDS = frozenset({
+    "selected_categories", "exclude_selected", "include_null_and_missing", "cd_numeric_min",
+    "cd_numeric_max", "query_type", "days_ago", "ignore_warnings", "include_ontology_unknown",
+    "chiron_text_field_selection", "chiron_ontology_field_selection", "cd_age_min_year",
+    "cd_age_min_day", "cd_age_max_year", "cd_age_max_day",
+})
+# Fields each transformation reads (chiron/api/utils/cohort_def.py), besides "type".
+TRANSFORM_FIELDS = {
+    "add_entry": frozenset({"concept_id", "entry_id", "prefilter_value", "validate_only"}) | FILTER_FIELDS,
+    "delete_entry": frozenset({"entry_id", "remove_empty_criteria_sets"}),
+    "add_criteria_set": frozenset({"collection_id"}),
+    "delete_criteria_set": frozenset({"entry_id"}),
+    "change_to_boolean_or": frozenset({"entry_id"}),
+    "change_to_boolean_and": frozenset({"entry_id"}),
+    "sort_cd_entries": frozenset({"entry_id", "child_ids"}),
+    "clear_all": frozenset(),
+    "add_criteria_set_count_rule": frozenset({"entry_id", "rule_operator", "rule_count"}),
+    "set_criteria_set_alias": frozenset({"entry_id", "alias"}),
+    "create_event_rule": frozenset({"entry_id"}),
+    "delete_event_rule": frozenset({"entry_id"}),
+    # modify_event_rule also takes the chosen option's own fields (chiron_event_rule_options)
+}
+TRANSFORM_REQUIRED = {
+    "add_entry": ("concept_id",),
+    "delete_entry": ("entry_id",),
+    "add_criteria_set": ("collection_id",),
+    "delete_criteria_set": ("entry_id",),
+    "change_to_boolean_or": ("entry_id",),
+    "change_to_boolean_and": ("entry_id",),
+    "sort_cd_entries": ("entry_id", "child_ids"),
+    "add_criteria_set_count_rule": ("entry_id", "rule_operator", "rule_count"),
+    "set_criteria_set_alias": ("entry_id", "alias"),
+    "create_event_rule": ("entry_id",),
+    "modify_event_rule": ("entry_id", "option_type"),
+    "delete_event_rule": ("entry_id",),
+}
+
+PLACE_IN_GROUP = (
+    "A new filter always goes into the FIRST group (criteria set) of its table, so two "
+    "filters on one table describe ONE record. To ask about two different records of the "
+    "same table (asthma AND, separately, COPD; an HbA1c of 6.5 or more and, at another "
+    "time, one below 5.7): add_criteria_set with that table's collection_id, add_entry "
+    "the second filter, then sort_cd_entries with entry_id = the new group's entry_id and "
+    "child_ids = [the new group's filters..., the new filter's entry_id], which moves it "
+    "into the new group. Groups combine with AND."
+)
+_KEY_HINTS = (
+    (("criteria_set_id", "criteria_set", "criteria_set_entry_id", "parent_id", "parent_entry_id",
+      "set_id", "set_entry_id", "target_entry_id", "group_id", "group", "target_set"),
+     PLACE_IN_GROUP),
+    (("min_count", "max_count", "count", "rule", "rule_type", "subcol_count_restriction",
+      "at_least", "at_most", "exactly", "times", "occurrences"),
+     "Counting records (\"at least 3 emergency visits\") is its own transformation: "
+     "{'type': 'add_criteria_set_count_rule', 'entry_id': <the group's entry_id>, "
+     "'rule_operator': 'at least' | 'at most' | 'exactly', 'rule_count': 3}."),
+    (("min", "max", "minimum", "maximum", "value", "values", "gt", "gte", "lt", "lte", "operator", "op"),
+     "Number and date limits are cd_numeric_min / cd_numeric_max (both inclusive); "
+     "category values go in selected_categories. Check chiron_describe_concept's filter_input."),
+)
+_HAS_VALUE_WORDS = ("has_value", "is_not_missing", "not_missing", "not_null", "is_not_null",
+                    "exists", "present", "has_date", "not_empty", "notnull")
+HAS_VALUE_HINT = (
+    "To require that a date is present (\"has died\" = has a death date), use "
+    "query_type 'date_range' with only cd_numeric_min set long before any record: "
+    "'01/01/1800', or the year 1800 where chiron_describe_concept says the date takes "
+    "years (de-identified dates). For a number, use cd_numeric_min below any possible "
+    "value. Chiron has no separate has-value filter."
+)
+
+
+def normalize_count_rule(rule) -> tuple[str, str | None]:
+    """A count-rule operator as Chiron reads it, and a note when it was spelled another way."""
+    text = str(rule or "").strip()
+    if text in COUNT_RULES:
+        return text, None
+    canon = _RULE_ALIASES.get(text.lower()) or (text.lower() if text.lower() in COUNT_RULES else None)
+    if canon is None:
+        raise AccessError(f"Unknown count rule {rule!r}. Chiron's count rules are "
+                          f"{', '.join(repr(r) for r in COUNT_RULES)} (with a space).")
+    return canon, f"Count rule {rule!r} read as {canon!r}; Chiron spells it {canon!r}."
+
+
+def check_transformation(transformation: dict) -> tuple[dict, list[str]]:
+    """The transformation as Chiron should receive it, plus notes; raises AccessError with
+    the fix when it carries a field no transformation reads, misses a required field, or
+    asks for a filter Chiron does not have."""
+    if not isinstance(transformation, dict):
+        raise AccessError("transformation must be an object with a 'type'.")
+    t = dict(transformation)
+    ttype = t.get("type")
+    notes: list[str] = []
+    missing = [k for k in TRANSFORM_REQUIRED.get(ttype, ()) if t.get(k) in (None, "", [])]
+    if missing:
+        raise AccessError(f"{ttype} needs {', '.join(missing)}.")
+    allowed = TRANSFORM_FIELDS.get(ttype)
+    if allowed is not None:
+        unknown = sorted(set(t) - allowed - {"type"})
+        if unknown:
+            hints = [h for keys, h in _KEY_HINTS if any(k.lower() in keys for k in unknown)]
+            raise AccessError(
+                f"{ttype} does not read {', '.join(repr(k) for k in unknown)}: Chiron would "
+                f"silently ignore {'it' if len(unknown) == 1 else 'them'}. "
+                + (" ".join(dict.fromkeys(hints)) + " " if hints else "")
+                + f"Fields {ttype} reads: {', '.join(sorted(allowed))}.")
+    if ttype == "add_criteria_set_count_rule":
+        t["rule_operator"], note = normalize_count_rule(t.get("rule_operator"))
+        if note:
+            notes.append(note)
+        try:
+            n = int(str(t.get("rule_count")).strip())
+        except ValueError:
+            raise AccessError(f"rule_count must be a whole number, not {t.get('rule_count')!r}.") from None
+        if n < 0:
+            raise AccessError("rule_count cannot be negative.")
+        t["rule_count"] = n
+    if ttype == "add_entry":
+        qt = str(t.get("query_type") or "").strip().lower()
+        if qt in _HAS_VALUE_WORDS or str(t.get("chiron_text_field_selection") or "").lower() in _HAS_VALUE_WORDS:
+            raise AccessError(f"There is no {qt or 'has-value'!r} filter. " + HAS_VALUE_HINT)
+    return t, notes
+
+
+def normalize_cohort_rules(cohort_def: list) -> tuple[list, list[str]]:
+    """The cohort with every count rule spelled the way Chiron reads it (a definition
+    written by hand may say "at_least"), plus notes; raises on an unknown rule."""
+    cd = copy.deepcopy(cohort_def or [])
+    notes: list[str] = []
+    for entry in cd:
+        rule = (entry or {}).get("subcol_count_restriction") if isinstance(entry, dict) else None
+        if isinstance(rule, dict) and rule.get("type") not in (None, *COUNT_RULES):
+            rule["type"], note = normalize_count_rule(rule.get("type"))
+            notes.append(note)
+    return cd, notes
+
+
 def _validated_cohort(ident, cohort_def: list):
     """Build a Cohort and refuse to proceed if it has errors.
 
@@ -67,9 +239,13 @@ def _validated_cohort(ident, cohort_def: list):
     with an EMPTY list (chiron/query_definition/cohort_def_functions.py:72-75), and
     an empty cohort_def matches EVERY subject.  Running an errored definition would
     therefore silently return the whole dataset instead of failing.
+
+    Count rules spelled another common way are corrected first (normalize_cohort_rules);
+    the corrections are added to the cohort's warnings so the caller sees them.
     """
     from chiron import query_definition as qdef
 
+    cohort_def, rule_notes = normalize_cohort_rules(cohort_def)
     try:
         cohort = qdef.Cohort(identity.checked_chironuser(ident), cohort_def or [])
     except Exception as exc:  # noqa: BLE001
@@ -84,6 +260,8 @@ def _validated_cohort(ident, cohort_def: list):
             "reduced to an empty one, which would match every subject in the dataset). "
             f"Errors: {cohort.errors}"
         )
+    if rule_notes:
+        cohort.warnings = list(cohort.warnings or []) + rule_notes
     return cohort
 
 
@@ -145,6 +323,9 @@ def _column_transformation(cu, oConcept, col: dict) -> dict:
             allowed = {i["id"] for i in methods[agg].get_inputs(
                 cu, {"concept_id": oConcept.permanent_id})}
             settings = dict(col.get("settings") or {})
+            for key in ("aggregation_criteria_set", "only_records_in"):
+                if key in settings and key not in col:  # passed among the settings
+                    col = {**col, key: settings.pop(key)}
             for key in allowed:  # settings passed at the top level, the older way
                 if key in col and key not in settings:
                     settings[key] = col[key]
@@ -157,17 +338,53 @@ def _column_transformation(cu, oConcept, col: dict) -> dict:
             if isinstance(settings.get("values"), str):
                 settings["values"] = [settings["values"]]
             transformation.update(settings)
+    # Summarise only the records one group of the cohort matches ("highest HbA1c" = max of
+    # the value over the HbA1c group's results), Chiron's aggregation_criteria_set. It is
+    # a column option, not one of the aggregation's own settings.
+    only_in = col.get("aggregation_criteria_set") or col.get("only_records_in")
+    if only_in:
+        if agg in (None, "stack"):
+            raise AccessError("aggregation_criteria_set needs an aggregation such as max, min or has_value.")
+        transformation["aggregation_criteria_set"] = only_in
     if col.get("alias"):
         transformation["entry_alias"] = col["alias"]
     return transformation
 
 
+# Variables whose values identify a person outright. A dictionary marks such a concept
+# has_phi; these short names cover one that does not (a synthetic dataset's "first" and
+# "last"). The patient id is a pseudonymous key and stays, as in Chiron's own Results tab.
+_DIRECT_IDENTIFIERS = {"first", "last", "name", "firstname", "lastname", "fullname", "maiden",
+                       "ssn", "drivers", "passport", "address", "phone", "email"}
+
+
+def _identifies_person(oConcept) -> bool:
+    short = str(getattr(oConcept, "permanent_id", "") or "").split("__")[-1].lower()
+    return bool(getattr(oConcept, "has_phi", False)) or short in _DIRECT_IDENTIFIERS
+
+
+def _require_columns_viewable(ident, concepts: list) -> None:
+    """An identity that may not view subject details gets no column that identifies a
+    person, in a list, in Results or in a report: refused outright, as Chiron's own
+    patient-detail page is for that identity, rather than shown and left to the model."""
+    if ident.can_view_subject_details:
+        return
+    hidden = [c for c in concepts if _identifies_person(c)]
+    if hidden:
+        names = ", ".join(str(getattr(c, "name", None) or str(c.permanent_id).split("__")[-1]) for c in hidden)
+        raise AccessError(
+            f"{names}: these identify people, and this account (de-identified access) may not view "
+            "subject details, so they cannot be listed, put in Results or saved in a report. Say so, "
+            "and offer columns that do not identify anyone (birthdate, gender, city) or counts.")
+
+
 def _table_def_from_columns(ident, cohort_def: list, columns: list[dict]) -> dict:
     """Turn a plain column list into a real table_def via Chiron's own transformations."""
     cu = identity.checked_chironuser(ident)
+    concepts = [_concept(ident, col["concept_id"]) for col in columns]
+    _require_columns_viewable(ident, concepts)
     table_def: dict = {}
-    for col in columns:
-        oConcept = _concept(ident, col["concept_id"])
+    for col, oConcept in zip(columns, concepts):
         table_def = _apply_td(cu, table_def, _column_transformation(cu, oConcept, col))
     return table_def
 
@@ -543,7 +760,14 @@ def chiron_edit_cohort(
     For "add_entry" also pass "concept_id" plus that concept's filter fields --
     get them from chiron_describe_concept's `filter_input`. Field names are HTML form
     names such as cd_numeric_min / selected_categories / chiron_text_field_selection,
-    NOT cohort_def keys.
+    NOT cohort_def keys. Limits (cd_numeric_min, cd_numeric_max) are inclusive.
+
+    A new filter goes into the FIRST group (criteria set) of its table, so two filters on
+    one table describe one record. For two different records of one table, add a group
+    (add_criteria_set), add the filter, then move it into the new group with
+    sort_cd_entries. "At least N" records: add_criteria_set_count_rule with rule_operator
+    'at least' | 'at most' | 'exactly'. A field no transformation reads is refused,
+    rather than silently ignored.
     """
     from chiron.api.utils import cohort_def as cd_utils
     from chiron.query_definition import cohort_def_functions as cdfuncs
@@ -554,12 +778,13 @@ def chiron_edit_cohort(
         identity.require_subject_level(ident)
         cu = identity.checked_chironuser(ident)
 
-        ttype = transformation.get("type")
+        ttype = (transformation or {}).get("type") if isinstance(transformation, dict) else None
         lookup = cd_utils.transformation_function_lookup
         if ttype not in lookup:
             raise AccessError(
                 f"Unknown transformation type {ttype!r}. Available: {sorted(lookup)}"
             )
+        transformation, notes = check_transformation(transformation)
 
         # Chiron's transformations are not all pure: apply_transformation_add_entry
         # mutates the list it is handed (unlike create_event_rule, which deepcopies).
@@ -587,6 +812,8 @@ def chiron_edit_cohort(
                 "and use the exact names in its filter_input block. DO NOT reuse "
                 "unchanged_cohort_def as if the filter had applied."
             )
+            if any("minimum or maximum" in str(e) for e in out["errors"] or []):
+                out["hint"] = HAS_VALUE_HINT + " " + out["hint"]
             return out
 
         # Copy the result too, not just the input: unpatched Chiron hands back filter
@@ -599,6 +826,8 @@ def chiron_edit_cohort(
         }
         if result.get("entry_id"):
             out["entry_id"] = result["entry_id"]
+        if notes:
+            out["notes"] = notes
         try:
             cd_info = cdfuncs.clean_cohort_def(out["cohort_def"], cu, include_metadata=True)
             out["describe"] = cdfuncs.describe_cohort_def(cd_info["extended_cohort_def"])
@@ -609,6 +838,75 @@ def chiron_edit_cohort(
         return out
     except Exception as exc:  # noqa: BLE001
         return _err(exc)
+
+
+@mcp.tool()
+def chiron_query(
+    dataset: str,
+    where: list[dict] | None = None,
+    match: str = "all",
+    start_from: str | None = None,
+    show: dict | None = None,
+    label: str | None = None,
+) -> dict:
+    """Answer a question about patients in one call: describe it in plain terms and Chiron
+    MCP builds the query, checks it and counts with Chiron's engine. Use this first.
+
+    dataset: its name as the user says it ("Synthea 100k", "Synthea 300"). An unknown name
+        is refused: then say that dataset is not available, never answer from another.
+    where: the conditions, all of which must hold (match="any": at least one). Each is
+        one object; plain words are fine, every spelling of a value is found for you:
+          {"condition": "asthma"}                      has asthma (any record)
+          {"condition": "COPD", "never": true}         has never had COPD
+          {"medication": "metformin"}                  ever prescribed metformin
+          {"procedure": "throat culture", "at_least": 5}
+          {"visit": "emergency", "at_least": 3}        3 or more ER visits
+          {"visit": "urgent care", "exactly": 1}       also at_most, more_than, fewer_than
+          {"lab": "HbA1c", "op": ">=", "value": 6.5}   one result of 6.5 or more
+          {"lab": "TSH", "op": ">", "value": 4.5}      ">" means strictly above
+          {"lab": "total cholesterol", "between": [200, 239]}
+          {"condition": "hypothyroidism", "year_between": [2010, 2015]}   diagnosed then
+          {"visit": "emergency", "year": 2019}         a visit in 2019
+          {"medication": "atorvastatin", "before": "2010-01-01"}           started before
+          {"visit": "self-pay", "with": [{"field": "cost", "op": ">", "value": 1000}]}
+                                                       payer and cost on the SAME visit
+          {"field": "gender", "is": "female"}          also "is": ["a", "b"], "is_not"
+          {"field": "income", "op": ">", "value": 150000}
+          {"field": "death date", "has_value": true}   has died
+          {"field": "death date", "year": 2020}        died in 2020
+          {"field": "birthdate", "before": "1945-01-01"}
+          {"field": "county", "is": "Hamilton"}
+        Two conditions on the same kind of record are two different records ("asthma" and
+        "COPD"; an HbA1c >= 6.5 and, separately, one < 5.7): just list both.
+    start_from: a group from an earlier answer ("g1") to narrow down, for follow-ups such
+        as "how many of them...". Every reply names its group. Or a saved report:
+        "report:<name>" or "report:latest".
+    show: what to return besides the count (default: just the count):
+          {"breakdown": ["gender", "ethnicity"]}      patients per group (one or two)
+          {"top": 5, "of": "condition"}              most common conditions/medications
+          {"list": ["birthdate", "death date", "city"], "limit": 10}   patient rows
+          {"range": {"lab": "HbA1c"}}                 lowest and highest recorded value
+          {"values": "lab"}                           the labs recorded (also "units",
+                                                      "visit type", "condition", ...)
+          {"results": {"columns": [...], "sort": [...]}}   put them in the Results tab
+          {"report": {"name": "X", "columns": [...]}}      save them as a report
+          {"report": {"name": "X", "update": true}}         change that report's filters
+          {"query_builder": true}                     load them into the query builder
+    label: a short name for this group, for later follow-ups.
+
+    Returns count (distinct patients), what_was_counted (Chiron's own words), matched (the
+    values and spellings used), group, and the cohort_def for chiron_update_results,
+    chiron_open_in_ui or a report. It refuses, with the reason, anything it cannot express.
+    """
+    from chiron_mcp import query
+
+    def once() -> dict:
+        try:
+            return query.run(dataset, where, match, start_from, show, label)
+        except Exception as exc:  # noqa: BLE001
+            return _err(exc)
+
+    return _again_without_parallel_workers(once, lambda: query.may_repeat(dataset, show))
 
 
 @mcp.tool()
@@ -671,12 +969,15 @@ def chiron_count_cohort(dataset_id: str, cohort_def: list) -> dict:
         cu = identity.checked_chironuser(ident)
         cohort = _validated_cohort(ident, cohort_def)
         count = get_querytool(cu, cohort.cohort_def).get_cohort_count()
-        return {
+        out = {
             "dataset_id": dataset_id,
             "subject_count": int(count),
             "warnings": cohort.warnings,
             "is_whole_dataset": not cohort.cohort_def,
         }
+        if not cohort.cohort_def:
+            out["note"] = "No filters: this is every patient in the dataset."
+        return out
     except Exception as exc:  # noqa: BLE001
         return _err(exc)
 
@@ -921,17 +1222,18 @@ def _groups(counts: dict, top: int) -> tuple[list[dict], int]:
         g["approx"] += n
         if n > g["best"][0]:
             g["best"] = (n, value)
-    # Fold truncations into the name they cut short ("asthm" into "asthma", "essential
-    # hypertensio" into "essential hypertension"), so a ranking agrees with a direct
-    # count. Conservative on purpose: the short form must cover at least 80% of the
-    # longer name, be 5+ characters, and match exactly one larger group.
+    # Fold a cut-off spelling into the name it cuts short ("asthm" into "asthma",
+    # "essential hypertensio" into "essential hypertension"), so a ranking agrees with a
+    # direct count. A cut-off spelling is 5+ characters covering at least 80% of exactly
+    # one longer name, and is rare next to it (at most a tenth as many). "prov-14" next
+    # to "prov-140".."prov-149", or "prov-40" with as many patients as "prov-400", is a
+    # value of its own.
     for key in sorted(merged, key=len):
         if key not in merged or len(key) < 5:
             continue
-        hosts = [k for k in merged if k != key and k.startswith(key)
-                 and len(key) >= 0.8 * len(k) and merged[k]["approx"] > merged[key]["approx"]]
-        if len(hosts) == 1:
-            g, host = merged.pop(key), merged[hosts[0]]
+        longer = [k for k in merged if k != key and k.startswith(key) and len(key) >= 0.8 * len(k)]
+        if len(longer) == 1 and merged[longer[0]]["approx"] >= 10 * merged[key]["approx"]:
+            g, host = merged.pop(key), merged[longer[0]]
             host["values"] += g["values"]
             host["approx"] += g["approx"]
     ordered = sorted(merged.values(), key=lambda g: -g["approx"])
@@ -1138,9 +1440,15 @@ def chiron_saved_reports(
                     "description": oReport.description,
                     "public": oReport.public,
                     "mine": mine,
+                    "owner": "you" if mine else "another user (public)",
                 }
             )
-        return {"dataset_id": dataset_id, "count": len(out), "reports": out}
+        yours = sum(1 for r in out if r["mine"])
+        return {"dataset_id": dataset_id, "count": len(out), "yours": yours, "others_public": len(out) - yours,
+                "reports": out,
+                "note": ("Only your own reports can be changed or deleted; the others are other users' public "
+                         "reports. Several reports may share a name: refer to one by id, 'report:<id>'."
+                         if len(out) > yours else None)}
     except Exception as exc:  # noqa: BLE001
         return _err(exc)
 
@@ -1150,6 +1458,11 @@ def chiron_run_saved_report(
     dataset_id: str, report_id: int, page: int = 1, records_per_page: int = 10
 ) -> dict:
     """Run a saved report by id, using its own stored definitions."""
+    return _again_without_parallel_workers(
+        lambda: _run_saved_report(dataset_id, report_id, page, records_per_page))
+
+
+def _run_saved_report(dataset_id: str, report_id: int, page: int, records_per_page: int) -> dict:
     from chiron import query_definition as qdef
     from chiron.api.utils.export import get_paginated_preview
 
@@ -1166,7 +1479,7 @@ def chiron_run_saved_report(
         if not oReport:
             raise AccessError(f"No viewable report {report_id} on {dataset_id!r}.")
 
-        definition = oReport.get_def_value()
+        definition = oReport.get_definition() or {}
         cohort_def = definition.get("cohort_def") or []
         table_def = definition.get("table_def") or {}
         cohort = _validated_cohort(ident, cohort_def)
@@ -1389,6 +1702,10 @@ def chiron_results(dataset_id: str, rows: int = 5) -> dict:
     the sort, how many rows and patients, and the first `rows` rows. Rows are grouped by
     the stacked columns, so record_count can be far below subject_count.
     """
+    return _again_without_parallel_workers(lambda: _results_now(dataset_id, rows))
+
+
+def _results_now(dataset_id: str, rows: int) -> dict:
     from chiron import models
 
     try:
@@ -1428,9 +1745,12 @@ def chiron_update_results(
 
     `cohort_def` replaces the filters open in their query builder (and so the patients
     in Results). `columns` replaces all columns; `add_columns` [{concept_id,
-    aggregation?, settings?}], `remove_columns` [column], `set_aggregation` [{column,
-    aggregation, settings?}], `order` [column, ...] and `sort` [{column, direction:
-    asc|desc}] edit the current ones. A column is named by its entry_id, concept_id or
+    aggregation?, settings?, aggregation_criteria_set?}], `remove_columns` [column],
+    `set_aggregation` [{column, aggregation, settings?}], `order` [column, ...] and `sort`
+    [{column, direction: asc|desc}] edit the current ones. aggregation_criteria_set (the
+    entry_id of one group in the cohort) limits a summary to that group's records: the
+    highest HbA1c is max of the lab value over an HbA1c group. chiron_query's
+    show={"results": ...} builds all of this from plain columns. A column is named by its entry_id, concept_id or
     name (chiron_results lists them). Aggregation is "stack" or a method from
     chiron_column_options. Every change is saved as a new step in Chiron's history, so
     the user's undo still works. Requires CHIRON_MCP_ALLOW_SAVE=1.
@@ -1789,8 +2109,24 @@ def chiron_explain_access(dataset_id: str, concept_id: str) -> dict:
         return _err(exc)
 
 
+def limit_tools(names: str | None = None) -> list[str]:
+    """Expose only the tools named in CHIRON_MCP_TOOLS (comma-separated), when it is set.
+
+    A client's allow-list only governs permission: the model still sees every tool and
+    can reach for one it should not use. Ask's short mode names its tools here, so the
+    rest are not offered at all. Returns the tools that remain."""
+    names = names if names is not None else os.environ.get("CHIRON_MCP_TOOLS", "")
+    keep = {n.strip().replace("mcp__chiron__", "") for n in names.split(",") if n.strip()}
+    if keep:
+        for name in list(mcp._tool_manager._tools):
+            if name not in keep:
+                mcp.remove_tool(name)
+    return sorted(mcp._tool_manager._tools)
+
+
 def main() -> None:
     CONFIG.validate()
+    limit_tools()
     if CONFIG.oauth:
         who = "whoever signs in (OAuth)"
     else:
@@ -1807,21 +2143,43 @@ def main() -> None:
         file=sys.stderr,
     )
     if CONFIG.transport == "http":
-        from chiron_mcp.config import HTTP_HOST
-
-        # Loopback only, and the library's DNS-rebinding protection stays on (it is
-        # enabled by default for a loopback host), so a web page in the user's browser
-        # cannot reach this endpoint by pointing a hostname at 127.0.0.1.
         auth = (
             "sign in as a Chiron user (OAuth)" if CONFIG.oauth
             else f"no authentication, every caller is {CONFIG.username!r}"
         )
+        if CONFIG.hosted:
+            import os
+            from urllib.parse import urlsplit
+
+            from mcp.server.transport_security import TransportSecuritySettings
+
+            # Published by a proxy (validate() has required OAuth and HTTPS). The library's
+            # Host/Origin checks stay on, admitting the public name and the hops a proxy
+            # in front uses to reach this port; extend them with CHIRON_MCP_ALLOWED_HOSTS.
+            public = urlsplit(CONFIG.public_url)
+            extra = [h.strip() for h in os.environ.get("CHIRON_MCP_ALLOWED_HOSTS", "").split(",")]
+            security = TransportSecuritySettings(
+                enable_dns_rebinding_protection=True,
+                allowed_hosts=[public.netloc, "localhost:*", "127.0.0.1:*", *filter(None, extra)],
+                allowed_origins=[f"{public.scheme}://{public.netloc}"],
+            )
+            print(
+                f"chiron-mcp: streamable HTTP published at {oauth.resource_url()} "
+                f"(listening on {CONFIG.http_host}:{CONFIG.http_port}; {auth})",
+                file=sys.stderr,
+            )
+            mcp.run("streamable-http", host=CONFIG.http_host, port=CONFIG.http_port,
+                    transport_security=security)
+            return
+        # Loopback only, and the library's DNS-rebinding protection stays on (it is
+        # enabled by default for a loopback host), so a web page in the user's browser
+        # cannot reach this endpoint by pointing a hostname at 127.0.0.1.
         print(
             f"chiron-mcp: streamable HTTP at http://localhost:{CONFIG.http_port}/mcp "
             f"(loopback only; {auth})",
             file=sys.stderr,
         )
-        mcp.run("streamable-http", host=HTTP_HOST, port=CONFIG.http_port)
+        mcp.run("streamable-http", host=CONFIG.http_host, port=CONFIG.http_port)
     else:
         mcp.run()
 

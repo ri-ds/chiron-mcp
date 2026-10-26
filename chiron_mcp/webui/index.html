@@ -255,6 +255,157 @@
 
   .scrim { display: none; }
 
+  /* ---------------------------------------------------------------- trace */
+  :root {
+    --k-request: #455a64; --k-startup: #8a97a1; --k-model: #7b1fa2; --k-tool: #00796b;
+    --k-post: #1976d2; --k-retry: #f57c00; --k-note: #98a2ab; --k-error: #b3261e;
+    --warn: #8a5300; --warn-bg: #fff4e2; --info: #1a5aa6; --info-bg: #eef4fb;
+    --pass: #2e7d32; --pass-bg: #edf7ee; --tl-label: 230px;
+  }
+  .trace-toggle {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none;
+    font-size: 12.5px; color: var(--ink-2); background: none; border: 1px solid var(--line);
+    padding: 5px 10px; border-radius: 9px; cursor: pointer;
+  }
+  .trace-toggle:hover { background: var(--panel); }
+  .trace-toggle[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-strong); }
+
+  .trace-slot { margin-top: 14px; }
+  .trace-slot:empty { display: none; }
+  .trace-bar {
+    display: inline-flex; align-items: center; flex-wrap: wrap; gap: 7px; cursor: pointer;
+    font-size: 12.5px; color: var(--muted); background: none; border: 1px solid var(--line-2);
+    padding: 4px 10px 4px 8px; border-radius: 8px; text-align: left;
+  }
+  .trace-bar:hover, .trace-bar[aria-expanded="true"] { border-color: var(--line); color: var(--ink-2); background: var(--panel); }
+  .trace-bar .chev { transition: transform .15s; }
+  .trace-bar[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.1s ease-in-out infinite; }
+  .badge { font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 999px; line-height: 18px; white-space: nowrap; }
+  .badge.fail { background: var(--danger-bg); color: var(--danger); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.pass { background: var(--pass-bg); color: var(--pass); }
+
+  .trace {
+    margin-top: 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg);
+    font-size: 13px; line-height: 1.5; overflow: hidden;
+  }
+  .tr-head {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 9px 12px;
+    border-bottom: 1px solid var(--line-2); background: var(--panel);
+  }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); flex: none; }
+  .seg button { border: 0; background: none; padding: 4px 11px; font-size: 12.5px; cursor: pointer; color: var(--ink-2); }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+  .tr-meta { flex: 1; min-width: 180px; color: var(--muted); font-size: 12px; }
+  .tr-tools { display: flex; gap: 6px; flex: none; }
+  .mini-btn {
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink-2); font-size: 12px;
+    padding: 3px 9px; border-radius: 7px; cursor: pointer;
+  }
+  .mini-btn:hover { border-color: var(--accent-line); background: var(--accent-soft); }
+  .mini-btn:disabled { opacity: .5; cursor: default; }
+  .tr-sec { padding: 10px 12px; border-bottom: 1px solid var(--line-2); min-width: 0; }
+  .tr-sec:last-child { border-bottom: 0; }
+  .tr-sec > h4 {
+    margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--faint);
+  }
+  .tr-msg { color: var(--muted); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; }
+  .stat { background: var(--panel); border-radius: 8px; padding: 5px 9px; min-width: 0; }
+  .stat b { display: block; font-size: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stat span { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .split { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 8px; background: var(--line-2); }
+  .split i { display: block; height: 100%; }
+
+  .checks { display: flex; flex-direction: column; gap: 5px; }
+  .check { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: start; padding: 6px 9px; border-radius: 8px; }
+  .check.fail { background: var(--danger-bg); } .check.warn { background: var(--warn-bg); }
+  .check.info { background: var(--info-bg); } .check.pass { background: var(--pass-bg); }
+  .check .ic { font-weight: 700; text-align: center; line-height: 1.5; }
+  .check.fail .ic { color: var(--danger); } .check.warn .ic { color: var(--warn); }
+  .check.info .ic { color: var(--info); } .check.pass .ic { color: var(--pass); }
+  .check .t { color: var(--ink); word-break: break-word; }
+  .check .d { color: var(--ink-2); font-size: 12px; opacity: .85; }
+  .link-btn {
+    border: 0; background: none; color: var(--accent-strong); cursor: pointer; font-size: 12px;
+    padding: 0; white-space: nowrap; text-decoration: underline; text-underline-offset: 2px;
+  }
+
+  .tl-axis, .tl-row { display: grid; grid-template-columns: var(--tl-label) minmax(0, 1fr); }
+  .tl-ticks { position: relative; height: 18px; font-size: 10.5px; color: var(--faint); border-bottom: 1px solid var(--line-2); }
+  .tl-ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+  .tl-ticks span:first-child { transform: none; }
+  .tl-row { align-items: center; min-height: 24px; cursor: pointer; border-radius: 6px; }
+  .tl-row:hover { background: var(--panel); }
+  .tl-row.sel { background: var(--accent-soft); }
+  .tl-name { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 8px 0 4px; font-size: 12px; color: var(--ink-2); }
+  .tl-name span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-name.sub { padding-left: 18px; }
+  .tl-row.error .tl-name { color: var(--danger); }
+  .kdot { flex: none; width: 8px; height: 8px; border-radius: 2px; }
+  .tl-track { position: relative; height: 24px; }
+  .tl-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-2); }
+  .tl-bar { position: absolute; top: 6px; height: 12px; border-radius: 3px; min-width: 3px; }
+  .tl-bar.running {
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.4) 0 5px, transparent 5px 10px);
+    background-size: 14px 14px; animation: crawl .8s linear infinite;
+  }
+  @keyframes crawl { to { background-position: 14px 0; } }
+  .tl-mark { position: absolute; top: 5px; width: 10px; height: 10px; margin-left: -5px; transform: rotate(45deg); border-radius: 2px; }
+  .tl-dur { position: absolute; top: 4px; font-size: 10.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+  .story { display: flex; flex-direction: column; gap: 6px; }
+  .st { border: 1px solid var(--line-2); border-radius: 9px; min-width: 0; }
+  .st.sel { border-color: var(--accent-line); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .st-h { display: grid; grid-template-columns: 54px 10px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 6px 10px; cursor: pointer; }
+  .st-h:hover { background: #fafbfb; border-radius: 9px; }
+  .st-t { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .st-h .kdot { align-self: center; }
+  .st-l { color: var(--ink); min-width: 0; font-weight: 500; word-break: break-word; }
+  .st-l small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .st.error .st-l small, .st.error .st-l { color: var(--danger); }
+  .st.warn .st-l small { color: var(--warn); }
+  .st-d { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .st-b { padding: 2px 12px 10px 82px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .lbl { font-size: 10.5px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+  .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 0; font-size: 12.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; color: var(--ink); word-break: break-word; }
+  .kv dd.warn { color: var(--warn); }
+  .think {
+    border-left: 3px solid var(--k-model); background: #f8f4fb; padding: 6px 10px;
+    border-radius: 0 7px 7px 0; white-space: pre-wrap; color: var(--ink-2); word-break: break-word;
+  }
+  .said { border-left: 3px solid var(--line); padding: 3px 10px; white-space: pre-wrap; color: var(--ink-2); word-break: break-word; }
+  .desc { white-space: pre-wrap; color: var(--ink-2); background: var(--panel); border-radius: 7px; padding: 6px 10px; word-break: break-word; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; word-break: break-word; }
+  .chip.no { text-decoration: line-through; color: var(--faint); }
+  ul.cd { margin: 0; padding-left: 18px; color: var(--ink-2); }
+  ul.cd li { margin: 1px 0; word-break: break-word; }
+  .faint { color: var(--faint); }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  pre.json {
+    margin: 4px 0 0; max-height: 340px; overflow: auto; font-family: var(--mono); font-size: 11.5px;
+    line-height: 1.45; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px;
+    padding: 8px 10px; white-space: pre; color: var(--ink-2);
+  }
+  pre.json.wrap { white-space: pre-wrap; word-break: break-word; }
+  details.more > summary { cursor: pointer; color: var(--accent-strong); font-size: 12px; width: fit-content; }
+  details.more > summary:hover { text-decoration: underline; }
+  .figs { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .figs th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11.5px; padding: 3px 8px; border-bottom: 1px solid var(--line); }
+  .figs td { padding: 4px 8px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .figs td:first-child { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .figs tr.missing td:first-child, .figs tr.missing td:last-child { color: var(--warn); }
+  .ok-t { color: var(--pass); } .no-t { color: var(--warn); }
+
   /* ------------------------------------------------------------- narrow */
   @media (max-width: 760px) {
     .sidebar {
@@ -271,6 +422,11 @@
     .composer-wrap { padding: 6px 12px 12px; }
     .cards { grid-template-columns: 1fr; }
     .msg.user .bubble { max-width: 88%; }
+    :root { --tl-label: 128px; }
+    .trace-toggle span { display: none; }
+    .st-h { grid-template-columns: 44px 8px minmax(0, 1fr) auto; gap: 6px; padding: 6px 8px; }
+    .st-b { padding: 2px 10px 10px 12px; }
+    .tr-tools { width: 100%; }
   }
 </style>
 </head>
@@ -297,6 +453,11 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <h1 id="chat-title">New chat</h1>
+    <button class="trace-toggle" id="trace-all" type="button" aria-pressed="false"
+            title="Open the trace under every answer: each step, its timing, and checks on what may have gone wrong">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+      <span>Traces</span>
+    </button>
   </div>
 
   <main id="scroller">
@@ -331,7 +492,7 @@ const DATASET = new URLSearchParams(location.search).get('dataset') || '';
 
 // What each Chiron tool call means to someone waiting for an answer.
 const STEP_LABELS = {
-  datasets: 'Checking access', find_concepts: 'Finding variables',
+  query: 'Asking Chiron', datasets: 'Checking access', find_concepts: 'Finding variables',
   describe_concept: 'Reading a variable', concept_values: 'Looking up values',
   edit_cohort: 'Building filters', event_rule_options: 'Checking date rules',
   count_cohort: 'Counting patients', run_table: 'Pulling rows', export_table: 'Exporting',
@@ -619,6 +780,7 @@ function paintBot(body, turn) {
       steps.appendChild(chip);
     });
     body.appendChild(steps);
+    body.appendChild(traceSlot(turn));
     return;
   }
   if (turn.fresh) {
@@ -649,6 +811,7 @@ function paintBot(body, turn) {
     });
     body.appendChild(box);
   }
+  body.appendChild(traceSlot(turn));
 }
 
 // Repaint one answer wherever it is on screen (it is not, if another chat is open).
@@ -734,6 +897,36 @@ function ask(text) {
     if (same) { same.n += 1; if (same !== last) { turn.steps.splice(turn.steps.indexOf(same), 1); turn.steps.push(same); } }
     else turn.steps.push({ label, n: 1 });
     repaint(turn);
+  });
+  // The answer's trace: started, built step by step as Claude works, then finished
+  // with its totals and checks (see the traces section below).
+  src.addEventListener('trace_start', e => {
+    const h = parse(e); if (!h || !h.id) return;
+    turn.trace = { id: h.id };
+    LIVE[turn.id] = { turn, head: h, steps: [], byId: {}, tail: null, at: performance.now(), lastT: 0 };
+    save();
+    repaintTrace(turn);
+  });
+  src.addEventListener('trace', e => {
+    const s = parse(e), live = LIVE[turn.id]; if (!s || !live) return;
+    if (live.byId[s.id]) Object.assign(live.byId[s.id], s);
+    else { live.byId[s.id] = s; live.steps.push(s); }
+    live.lastT = Math.max(live.lastT, s.t1 == null ? s.t0 : s.t1);
+    live.at = performance.now();
+    repaintTrace(turn);
+  });
+  src.addEventListener('trace_end', e => {
+    const t = parse(e), live = LIVE[turn.id]; if (!t || !t.id) return;
+    if (live) live.tail = t;
+    const checks = t.checks || [];
+    turn.trace = {
+      id: t.id, ms: t.ended, model: t.model, n: live ? live.steps.length : null,
+      fail: checks.filter(c => c.level === 'fail').length,
+      warn: checks.filter(c => c.level === 'warn').length,
+    };
+    delete TRACES[t.id];   // fetch the finished record, not one taken mid-answer
+    save();
+    repaintTrace(turn);
   });
   src.addEventListener('link', e => { turn.link = parse(e); });
   src.addEventListener('deleted', e => { retireReport(parse(e)); });
@@ -911,6 +1104,608 @@ function drawChart(canvas, spec) {
     },
   });
 }
+
+// --- traces --------------------------------------------------------------------------
+// Every answer keeps a trace: how it was produced, step by step, against the clock, with
+// checks that point at the step where something went wrong. It opens under its answer
+// on request, or under every answer with Traces on. While the answer streams the page
+// builds it from the server's "trace" events; once it is done the page fetches the whole
+// record (tool outputs, the raw stream) from trace?id=.
+const KINDS = {
+  request: ['Question', '--k-request'], startup: ['Start-up', '--k-startup'],
+  model: ['Model', '--k-model'], tool: ['Chiron tool', '--k-tool'],
+  post: ['Server checks', '--k-post'], retry: ['Retry or limit', '--k-retry'],
+  note: ['Note', '--k-note'], error: ['Error', '--k-error'],
+};
+const LEVELS = [['summary', 'Summary'], ['detailed', 'Detailed'], ['debug', 'Debug']];
+const CHECK_ICON = { fail: '✕', warn: '!', info: 'i', pass: '✓' };
+const TRACE_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>';
+const CHEV_ICON = '<svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+const TRACE_UI = {};   // turn id -> { open, sel, keys }: what the reader has opened
+const TRACES = {};     // trace id -> the full trace, or { loading } / { error }
+const LIVE = {};       // turn id -> the trace as it streams in
+let TRACE_ALL = false, TRACE_LEVEL = 'summary';
+try {
+  TRACE_ALL = localStorage.getItem('chiron-ask:trace-all') === '1';
+  TRACE_LEVEL = localStorage.getItem('chiron-ask:trace-level') || 'summary';
+} catch (_) {}
+if (!LEVELS.some(l => l[0] === TRACE_LEVEL)) TRACE_LEVEL = 'summary';
+
+const kindColor = k => `var(${(KINDS[k] || KINDS.note)[1]})`;
+function uiFor(turn) {
+  return TRACE_UI[turn.id] || (TRACE_UI[turn.id] = { open: TRACE_ALL, sel: null, keys: new Set() });
+}
+function fmtMs(ms) {
+  if (ms == null || isNaN(ms)) return '–';
+  if (ms < 1000) return Math.round(ms) + ' ms';
+  const s = ms / 1000;
+  if (s < 60) return (s < 10 ? s.toFixed(2) : s.toFixed(1)) + ' s';
+  return Math.floor(s / 60) + ' m ' + Math.round(s % 60) + ' s';
+}
+function fmtTok(n) {
+  if (n == null) return '–';
+  return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k'
+    : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
+}
+const fmtAt = ms => (ms / 1000).toFixed(ms < 100000 ? 1 : 0) + 's';
+const num = v => (typeof v === 'number' ? v.toLocaleString() : String(v));
+const json = v => JSON.stringify(v, null, 2);
+function kb(n) { return n == null ? '' : n < 1024 ? n + ' B' : (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' KB'; }
+function liveNow(live) { return live.tail ? live.tail.ended : live.lastT + (performance.now() - live.at); }
+
+function pre(text, wrap) { const p = el('pre', 'json' + (wrap ? ' wrap' : '')); p.textContent = text; return p; }
+function kv(pairs) {
+  const dl = el('dl', 'kv');
+  pairs.forEach(([k, v, cls]) => {
+    if (v == null || v === '' || (Array.isArray(v) && !v.length)) return;
+    dl.appendChild(el('dt', null, k));
+    const dd = el('dd', cls || null);
+    if (v instanceof Node) dd.appendChild(v); else dd.textContent = String(v);
+    dl.appendChild(dd);
+  });
+  return dl;
+}
+function chips(items, cls) {
+  const box = el('div', 'chips');
+  items.forEach(t => box.appendChild(el('span', 'chip' + (cls ? ' ' + cls : ''), String(t))));
+  return box;
+}
+function block(label, node) {
+  const d = el('div'); d.appendChild(el('div', 'lbl', label)); d.appendChild(node); return d;
+}
+// A collapsed section whose content is only built when it is opened (outputs and the
+// raw stream can be large), and stays open across repaints.
+function lazy(ui, key, title, fill) {
+  const d = el('details', 'more');
+  d.appendChild(el('summary', null, title));
+  const open = () => { if (!d.dataset.filled) { d.dataset.filled = '1'; d.appendChild(fill()); } };
+  if (ui.keys.has(key)) { d.open = true; open(); }
+  d.addEventListener('toggle', () => { if (d.open) { ui.keys.add(key); open(); } else ui.keys.delete(key); });
+  return d;
+}
+
+// What to draw: the full record once fetched, else what has streamed in so far.
+function traceView(turn) {
+  const id = turn.trace && turn.trace.id, full = id && TRACES[id];
+  if (full && full.steps) return full;
+  const live = LIVE[turn.id];
+  if (live) return Object.assign({ partial: true }, live.head, live.tail || {}, { steps: live.steps, done: !!live.tail });
+  return null;
+}
+function ensureFull(turn) {
+  const id = turn.trace && turn.trace.id;
+  if (!id || TRACES[id]) return;
+  TRACES[id] = { loading: true };
+  fetch('trace?id=' + encodeURIComponent(id))
+    .then(r => r.json())
+    .then(d => { TRACES[id] = d && d.steps ? d : { error: (d && d.error) || 'The trace could not be read.' }; })
+    .catch(() => { TRACES[id] = { error: 'The trace could not be fetched from the Ask server.' }; })
+    .then(() => repaintTrace(turn));
+}
+function findTurn(id) {
+  for (const c of chats) { const t = c.turns.find(x => x.id === id); if (t) return t; }
+  return null;
+}
+
+function traceSlot(turn) {
+  const slot = el('div', 'trace-slot');
+  slot.dataset.traceFor = turn.id;
+  renderTraceSlot(slot, turn);
+  return slot;
+}
+function repaintTrace(turn) {
+  const slot = threadEl.querySelector(`.trace-slot[data-trace-for="${turn.id}"]`);
+  if (slot) renderTraceSlot(slot, turn);
+}
+function repaintAllTraces() {
+  threadEl.querySelectorAll('.trace-slot').forEach(slot => {
+    const t = findTurn(slot.dataset.traceFor); if (t) renderTraceSlot(slot, t);
+  });
+}
+function renderTraceSlot(slot, turn) {
+  // Keep the reader's place: a repaint must not scroll a long trace out from under them.
+  const keep = scroller.scrollTop;
+  slot.textContent = '';
+  const live = LIVE[turn.id];
+  if (!turn.trace && !live) return;   // answered before traces existed, or tracing is off
+  const ui = uiFor(turn);
+  // The full record is fetched once the answer is done; until then, what streamed in.
+  if (ui.open && (!live || live.tail)) ensureFull(turn);
+  slot.appendChild(traceBar(turn, ui));
+  if (ui.open) slot.appendChild(tracePanel(turn, ui));
+  if (!atBottom() && scroller.scrollTop !== keep) {
+    scroller.style.scrollBehavior = 'auto';
+    scroller.scrollTop = keep;
+  }
+}
+
+function traceBar(turn, ui) {
+  const b = el('button', 'trace-bar'); b.type = 'button';
+  b.setAttribute('aria-expanded', ui.open ? 'true' : 'false');
+  b.title = ui.open ? 'Hide how this answer was produced' : 'Show how this answer was produced, step by step';
+  b.innerHTML = TRACE_ICON;
+  b.appendChild(el('span', null, 'Trace'));
+  const live = LIVE[turn.id], sum = turn.trace || {};
+  if (live && !live.tail) {
+    b.appendChild(el('span', 'live-dot'));
+    b.appendChild(el('span', null, `live · ${live.steps.length} steps · ${fmtMs(liveNow(live))}`));
+  } else {
+    const bits = [];
+    if (sum.n != null) bits.push(`${sum.n} steps`);
+    if (sum.ms != null) bits.push(fmtMs(sum.ms));
+    if (sum.model) bits.push(sum.model);
+    if (bits.length) b.appendChild(el('span', null, bits.join(' · ')));
+    if (sum.fail) b.appendChild(el('span', 'badge fail', `${sum.fail} failed`));
+    if (sum.warn) b.appendChild(el('span', 'badge warn', `${sum.warn} to check`));
+    if (sum.n != null && !sum.fail && !sum.warn) b.appendChild(el('span', 'badge pass', 'no problems found'));
+  }
+  b.insertAdjacentHTML('beforeend', CHEV_ICON);
+  b.onclick = () => { ui.open = !ui.open; repaintTrace(turn); };
+  return b;
+}
+
+function tracePanel(turn, ui) {
+  const box = el('div', 'trace');
+  const data = traceView(turn);
+  box.appendChild(traceHead(turn, data));
+  if (!data) {
+    const st = TRACES[turn.trace && turn.trace.id];
+    box.appendChild(el('div', 'tr-sec tr-msg', st && st.error ? st.error : 'Loading the trace…'));
+    return box;
+  }
+  const lvl = TRACE_LEVEL;
+  if (data.stats && data.stats.total_ms != null) box.appendChild(statsSection(data));
+  if (data.checks) box.appendChild(checksSection(turn, data));
+  if (lvl !== 'summary' && data.figures && data.figures.length) box.appendChild(figuresSection(turn, data));
+  box.appendChild(timelineSection(turn, data, ui));
+  box.appendChild(storySection(turn, data, ui, lvl));
+  if (lvl === 'debug') box.appendChild(debugSection(data, ui));
+  if (data.partial && turn.trace && TRACES[turn.trace.id] && TRACES[turn.trace.id].loading) {
+    box.appendChild(el('div', 'tr-sec tr-msg', 'Fetching the full record (tool outputs, raw stream)…'));
+  }
+  return box;
+}
+
+function traceHead(turn, data) {
+  const head = el('div', 'tr-head');
+  const seg = el('div', 'seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Detail level');
+  LEVELS.forEach(([key, name]) => {
+    const b = el('button', null, name); b.type = 'button';
+    b.setAttribute('aria-pressed', TRACE_LEVEL === key ? 'true' : 'false');
+    b.title = { summary: 'Timeline, checks and one line per step',
+                detailed: 'Plus the model\'s reasoning, each tool\'s input and result, and where each figure came from',
+                debug: 'Plus full inputs and outputs, token usage, the prompt, the command and the raw stream' }[key];
+    b.onclick = () => {
+      TRACE_LEVEL = key;
+      try { localStorage.setItem('chiron-ask:trace-level', key); } catch (_) {}
+      repaintAllTraces();
+    };
+    seg.appendChild(b);
+  });
+  head.appendChild(seg);
+  const meta = [];
+  if (data) {
+    if (data.model) meta.push(data.model);
+    if (data.claude_version) meta.push('Claude Code ' + data.claude_version);
+    if (data.followup_lost) meta.push('conversation had expired: asked as a new one');
+    else if (data.followup) meta.push(`follow-up #${data.turn}, continuing the conversation`);
+    else meta.push('new conversation');
+    if (data.dataset) meta.push(data.dataset);
+  }
+  head.appendChild(el('div', 'tr-meta', meta.join(' · ')));
+  const tools = el('div', 'tr-tools');
+  const full = turn.trace && TRACES[turn.trace.id];
+  const ready = !!(full && full.steps && full.done);
+  const copy = el('button', 'mini-btn', 'Copy JSON'); copy.type = 'button'; copy.disabled = !ready;
+  copy.title = 'Copy the whole trace, to paste into a bug report or compare models';
+  copy.onclick = () => {
+    navigator.clipboard.writeText(JSON.stringify(full, null, 2))
+      .then(() => { copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy JSON'), 1500); })
+      .catch(() => { copy.textContent = 'Copy blocked: use Download'; });
+  };
+  const dl = el('button', 'mini-btn', 'Download'); dl.type = 'button'; dl.disabled = !ready;
+  dl.onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(full, null, 2)], { type: 'application/json' }));
+    a.download = `chiron-ask-trace-${full.id}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  tools.append(copy, dl);
+  head.appendChild(tools);
+  return head;
+}
+
+function statsSection(data) {
+  const sec = el('div', 'tr-sec');
+  const st = data.stats, box = el('div', 'stats');
+  const tile = (value, label, title) => {
+    const t = el('div', 'stat'); if (title) t.title = title;
+    t.append(el('b', null, value), el('span', null, label)); box.appendChild(t);
+  };
+  tile(fmtMs(st.total_ms), 'total time');
+  tile(fmtMs(st.model_ms), `model · ${st.model_calls} call${st.model_calls === 1 ? '' : 's'}`,
+       'Time the model spent reasoning and writing (between tool calls)');
+  tile(fmtMs(st.chiron_ms), `Chiron · ${st.tool_calls} call${st.tool_calls === 1 ? '' : 's'}` +
+       (st.tool_errors ? ` · ${st.tool_errors} rejected` : ''), 'Time inside Chiron tools (overlapping calls counted once)');
+  tile(fmtMs(st.startup_ms), 'start-up', 'Starting Claude Code and connecting the Chiron tools');
+  tile(fmtMs(st.post_ms), 'server checks', 'Re-counting the cohort for the Query button, reading follow-ups and charts');
+  if (st.retry_ms) tile(fmtMs(st.retry_ms), 'waiting on retries');
+  tile(`${fmtTok(st.input_tokens)} / ${fmtTok(st.output_tokens)}`, 'tokens in / out',
+       `Input includes ${fmtTok(st.cache_read_tokens)} read from cache` +
+       (st.thinking_tokens ? `; output includes ${fmtTok(st.thinking_tokens)} of reasoning` : ''));
+  if (st.cost_usd != null) tile('$' + st.cost_usd.toFixed(st.cost_usd < 0.1 ? 4 : 3), 'cost (API list price)',
+       'Claude Code\'s own cost figure for this answer; on a subscription this is what it would cost on the API');
+  else if (st.cost_usd_cumulative != null) tile('$' + st.cost_usd_cumulative.toFixed(3), 'cost, whole conversation',
+       'Claude Code reports cost summed over the conversation; the previous answer was not traced, so this answer\'s share is unknown');
+  sec.appendChild(box);
+  const total = st.total_ms || 1, split = el('div', 'split');
+  const other = Math.max(0, total - st.startup_ms - st.model_ms - st.chiron_ms - st.post_ms - (st.retry_ms || 0));
+  [['startup', st.startup_ms], ['model', st.model_ms], ['tool', st.chiron_ms], ['retry', st.retry_ms || 0],
+   ['post', st.post_ms], ['note', other]].forEach(([k, v]) => {
+    if (v <= 0) return;
+    const i = el('i'); i.style.width = (100 * v / total) + '%'; i.style.background = kindColor(k);
+    i.title = `${(KINDS[k] || ['Other'])[0] === 'Note' ? 'Other (gaps, overlap)' : KINDS[k][0]}: ${fmtMs(v)}`;
+    split.appendChild(i);
+  });
+  sec.appendChild(split);
+  return sec;
+}
+
+function checksSection(turn, data) {
+  const sec = el('div', 'tr-sec');
+  sec.appendChild(el('h4', null, 'Checks'));
+  const list = el('div', 'checks');
+  if (!data.checks.length) list.appendChild(el('div', 'tr-msg', 'Nothing to report.'));
+  data.checks.forEach(c => {
+    const row = el('div', 'check ' + c.level);
+    row.appendChild(el('span', 'ic', CHECK_ICON[c.level] || '•'));
+    const txt = el('div');
+    txt.appendChild(el('div', 't', c.title));
+    if (c.detail) txt.appendChild(el('div', 'd', c.detail));
+    row.appendChild(txt);
+    if (c.step) {
+      const go = el('button', 'link-btn', 'Show step'); go.type = 'button';
+      go.onclick = () => jumpTo(turn, c.step);
+      row.appendChild(go);
+    } else row.appendChild(el('span'));
+    list.appendChild(row);
+  });
+  sec.appendChild(list);
+  return sec;
+}
+
+function figuresSection(turn, data) {
+  const sec = el('div', 'tr-sec');
+  sec.appendChild(el('h4', null, 'Where the answer\'s figures came from (10 and up)'));
+  const t = el('table', 'figs');
+  t.innerHTML = '<thead><tr><th>Figure</th><th>Source</th></tr></thead>';
+  const tb = el('tbody');
+  data.figures.forEach(f => {
+    const tr = el('tr', f.status);
+    tr.appendChild(el('td', null, f.text));
+    const td = el('td');
+    if (f.status === 'tool') {
+      const go = el('button', 'link-btn', `${f.label} (${f.tool})`); go.type = 'button';
+      go.onclick = () => jumpTo(turn, f.step);
+      td.append('In the result of ', go);
+    } else {
+      td.textContent = {
+        question: 'In the question or the dataset description',
+        earlier: 'From an earlier answer in this conversation',
+        derived: 'Worked out by the model (a percentage or decimal); in no tool result',
+        missing: 'In no tool result: computed by the model or made up',
+      }[f.status] || f.status;
+      if (f.near) {
+        const go = el('button', 'link-btn', `${num(f.near.value)} from ${f.near.label} (${f.near.tool})`); go.type = 'button';
+        go.onclick = () => jumpTo(turn, f.near.step);
+        td.append('. Nearest figure Chiron returned: ', go);
+      }
+    }
+    tr.appendChild(td);
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  sec.appendChild(t);
+  return sec;
+}
+
+function niceStep(total, most) {
+  const steps = [100, 200, 500, 1e3, 2e3, 5e3, 1e4, 15e3, 3e4, 6e4, 12e4, 3e5, 6e5];
+  return steps.find(s => total / s <= most) || 6e5;
+}
+
+function timelineSection(turn, data, ui) {
+  const sec = el('div', 'tr-sec');
+  sec.appendChild(el('h4', null, 'Timeline'));
+  const live = LIVE[turn.id];
+  const steps = data.steps || [];
+  const total = Math.max(1, data.ended != null ? data.ended
+    : live ? liveNow(live) : Math.max(0, ...steps.map(s => s.t1 == null ? s.t0 : s.t1)));
+  const axis = el('div', 'tl-axis');
+  axis.appendChild(el('div'));
+  const ticks = el('div', 'tl-ticks');
+  // Fewer, rounder ticks on a phone, where the time axis is narrow.
+  const every = niceStep(total, innerWidth < 760 ? 3 : 6);
+  for (let t = 0; t <= total; t += every) {
+    const s = el('span', null, (t / 1000).toFixed(every < 1000 ? 1 : 0) + 's');
+    s.style.left = (100 * t / total) + '%'; ticks.appendChild(s);
+  }
+  axis.appendChild(ticks);
+  sec.appendChild(axis);
+  const gridAt = [];
+  for (let t = every; t < total; t += every) gridAt.push(100 * t / total);
+
+  steps.forEach(s => {
+    const row = el('div', 'tl-row' + (ui.sel === s.id ? ' sel' : '') + (s.status === 'error' ? ' error' : ''));
+    const end = s.t1 == null ? total : s.t1;
+    const dur = end - s.t0;
+    row.title = `${s.label}\n${fmtAt(s.t0)} → ${s.t1 == null ? 'still running' : fmtAt(s.t1)}  (${fmtMs(dur)})` +
+      (s.summary ? `\n${s.summary}` : '');
+    const name = el('div', 'tl-name' + (s.kind === 'tool' ? ' sub' : ''));
+    const dot = el('span', 'kdot'); dot.style.background = kindColor(s.status === 'error' ? 'error' : s.kind);
+    name.append(dot, el('span', null, (s.kind === 'tool' ? '↳ ' : '') + s.label));
+    const track = el('div', 'tl-track');
+    gridAt.forEach(p => { const g = el('i', 'tl-grid'); g.style.left = p + '%'; track.appendChild(g); });
+    const left = 100 * s.t0 / total, width = 100 * dur / total;
+    const color = kindColor(s.status === 'error' ? 'error' : s.status === 'warn' && s.kind !== 'retry' ? 'retry' : s.kind);
+    if (s.t1 != null && dur <= 0) {
+      const m = el('i', 'tl-mark'); m.style.left = left + '%'; m.style.background = color; track.appendChild(m);
+    } else {
+      const bar = el('i', 'tl-bar' + (s.t1 == null ? ' running' : ''));
+      bar.style.left = left + '%'; bar.style.width = Math.max(width, 0.4) + '%'; bar.style.background = color;
+      track.appendChild(bar);
+      const lab = el('span', 'tl-dur', fmtMs(dur));
+      if (left + width < 82) lab.style.left = `calc(${left + width}% + 5px)`;
+      else lab.style.right = `calc(${100 - left}% + 5px)`;
+      track.appendChild(lab);
+    }
+    row.append(name, track);
+    row.onclick = () => jumpTo(turn, s.id);
+    sec.appendChild(row);
+  });
+  const legend = el('div', 'legend');
+  const used = new Set(steps.map(s => s.status === 'error' ? 'error' : s.kind));
+  Object.keys(KINDS).filter(k => used.has(k)).forEach(k => {
+    const s = el('span'); const d = el('span', 'kdot'); d.style.background = kindColor(k);
+    s.append(d, KINDS[k][0]); legend.appendChild(s);
+  });
+  sec.appendChild(legend);
+  return sec;
+}
+
+function jumpTo(turn, sid) {
+  const ui = uiFor(turn);
+  ui.sel = sid; ui.open = true;
+  repaintTrace(turn);
+  const card = threadEl.querySelector(`.trace-slot[data-trace-for="${turn.id}"] [data-step="${sid}"]`);
+  if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function storySection(turn, data, ui, lvl) {
+  const sec = el('div', 'tr-sec');
+  sec.appendChild(el('h4', null, lvl === 'summary' ? 'Steps (click one for its details)' : 'Steps'));
+  const list = el('div', 'story');
+  (data.steps || []).forEach(s => list.appendChild(stepCard(turn, data, s, ui, lvl)));
+  sec.appendChild(list);
+  return sec;
+}
+
+function stepCard(turn, data, s, ui, lvl) {
+  const card = el('div', 'st' + (s.status === 'error' ? ' error' : s.status === 'warn' ? ' warn' : '') +
+    (ui.sel === s.id ? ' sel' : ''));
+  card.dataset.step = s.id;
+  const h = el('div', 'st-h');
+  const dot = el('span', 'kdot'); dot.style.background = kindColor(s.status === 'error' ? 'error' : s.kind);
+  const lab = el('div', 'st-l', (s.kind === 'tool' ? '↳ ' : '') + s.label);
+  if (s.summary) lab.appendChild(el('small', null, s.summary));
+  const dur = s.t1 == null ? 'running…' : s.t1 > s.t0 ? fmtMs(s.t1 - s.t0) : '';
+  h.append(el('span', 'st-t', fmtAt(s.t0)), dot, lab, el('span', 'st-d', dur));
+  h.onclick = () => { ui.sel = ui.sel === s.id ? null : s.id; repaintTrace(turn); };
+  card.appendChild(h);
+  if (lvl !== 'summary' || ui.sel === s.id) {
+    const body = stepBody(turn, data, s, ui, lvl === 'summary' ? 'detailed' : lvl);
+    if (body.childNodes.length) card.appendChild(body);
+  }
+  return card;
+}
+
+function stepBody(turn, data, s, ui, lvl) {
+  const b = el('div', 'st-b');
+  const debug = lvl === 'debug';
+  if (s.kind === 'request') {
+    b.appendChild(block('Question', el('div', 'said', data.question || '')));
+    if (data.previous && data.previous.length) {
+      const ol = el('ul', 'cd'); data.previous.forEach(q => ol.appendChild(el('li', null, q)));
+      b.appendChild(block('Earlier questions in this conversation (the model has their context)', ol));
+    }
+    if (data.inherited && data.inherited.length) {
+      b.appendChild(block('Cohort behind the previous answer\'s Query button', cohortList(data.inherited)));
+    }
+  } else if (s.kind === 'model') {
+    if (s.thinking) b.appendChild(block('Reasoning (the model\'s own summary)', el('div', 'think', s.thinking)));
+    else if (s.thinking_tokens) b.appendChild(el('div', 'faint',
+      `Reasoned for about ${num(s.thinking_tokens)} tokens; the reasoning text was not recorded.`));
+    const said = (s.text || []).join('\n\n');
+    if (said && s.chose && s.chose.length) b.appendChild(block('Said', el('div', 'said', said)));
+    else if (said) b.appendChild(lazy(ui, s.id + ':said', `The answer as written, before the server tidied it (${num(said.length)} characters)`,
+      () => el('div', 'said', said)));
+    if (s.chose && s.chose.length) b.appendChild(block('Chose', chips(s.chose)));
+    const u = s.usage || {};
+    const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+    b.appendChild(kv([
+      ['Context sent', ctx ? `${num(ctx)} tokens (${num(u.cache_read_input_tokens || 0)} from cache)` : null],
+      ['Time to first token', s.ttft != null ? fmtMs(s.ttft) : null],
+      ['Stopped because', debug ? s.stop_reason : null],
+      ['Message id', debug ? s.msg_id : null],
+    ]));
+    if (debug && s.usage) b.appendChild(lazy(ui, s.id + ':usage', 'Token usage (raw)', () => pre(json(s.usage))));
+  } else if (s.kind === 'tool') {
+    toolBody(b, turn, data, s, ui, debug);
+  } else if (s.kind === 'post') {
+    postBody(b, turn, data, ui, debug);
+  } else if (s.kind === 'startup') {
+    b.appendChild(kv([['Model', data.model], ['Claude Code', data.claude_version],
+      ['Chiron tools', (data.mcp_servers || []).map(m => `${m.name}: ${m.status}`).join(', ')],
+      ['Tools offered', debug ? (data.tools || []).join(', ') : (data.tools || []).length || null]]));
+  } else if (s.kind === 'retry' && debug && s.detail) {
+    b.appendChild(pre(json(s.detail)));
+  }
+  return b;
+}
+
+function cohortList(lines) {
+  if (!lines || !lines.length) return el('div', 'faint', 'Empty: no filters yet (every patient).');
+  const ul = el('ul', 'cd'); lines.forEach(l => ul.appendChild(el('li', null, l))); return ul;
+}
+
+function toolBody(b, turn, data, s, ui, debug) {
+  const inp = s.input || {};
+  const t = inp.transformation || null;
+  b.appendChild(kv([
+    ['Tool', el('span', 'mono', s.tool || '')],
+    ['Dataset', inp.dataset_id, s.off_dataset ? 'warn' : null],
+    ['Variable', inp.concept_id],
+    ['Running for', s.still_running_s ? `${s.still_running_s} s when last heard from` : null],
+  ]));
+  if (t) {
+    const sel = t.selected_categories;
+    b.appendChild(block('Change asked for', kv([
+      ['Type', t.type], ['Variable', t.concept_id],
+      ['Values', Array.isArray(sel) ? chips(sel) : null],
+      ['Excluding them', t.exclude_selected ? 'yes: has a record that is something else' : null, 'warn'],
+      ['From', t.cd_numeric_min], ['To', t.cd_numeric_max], ['Date query', t.query_type],
+      ['Text terms', t.chiron_text_field_selection],
+      ['Rule', t.rule_operator != null ? `${t.rule_operator} ${t.rule_count}` : null],
+      ['Entry', t.entry_id],
+    ])));
+  }
+  if (s.cohort) b.appendChild(block('Cohort handed in', cohortList(s.cohort)));
+  const rest = Object.keys(inp).filter(k => !['dataset_id', 'concept_id', 'cohort_def', 'transformation'].includes(k));
+  if (rest.length) b.appendChild(block('Other input', kv(rest.map(k => [k, typeof inp[k] === 'object' ? JSON.stringify(inp[k]) : inp[k]]))));
+  if (s.facts && s.facts.length) b.appendChild(block('Result', kv(s.facts)));
+  if (s.describe) b.appendChild(block('Chiron\'s description of the result', el('div', 'desc', s.describe)));
+  const full = s.output !== undefined && s.output !== null ? json(s.output) : s.output_text || null;
+  const text = full || s.output_preview;
+  if (text) b.appendChild(lazy(ui, s.id + ':out', `Output${s.output_size ? ' (' + kb(s.output_size) + ')' : ''}` +
+    (full ? '' : ' · preview'), () => pre(text)));
+  if (debug) {
+    b.appendChild(lazy(ui, s.id + ':in', 'Input (raw)', () => pre(json(inp))));
+    b.appendChild(kv([['Call id', s.call_id], ['Cohort fingerprint', s.cohort_hash]]));
+  }
+}
+
+function postBody(b, turn, data, ui, debug) {
+  const p = data.post;
+  if (!p) { b.appendChild(el('div', 'faint', 'Available once the answer is done.')); return; }
+  const c = p.cohort || {};
+  const rows = [
+    ['Query button', c.offered != null ? `offered, for ${num(c.offered)} patients` : 'not offered', c.offered != null ? 'ok-t' : null],
+    ['Why not', c.offered == null ? c.reason : null],
+    ['The answer leads with', c.figure != null ? num(c.figure) : c.source ? 'no figure' : null],
+    ['Cohort taken from', c.source],
+    ['Re-counted', c.verified != null ? `${num(c.verified)} patients` : null],
+    ['Re-check failed', c.verify_error],
+    ['A breakdown group', c.subgroup ? (c.subgroup.found ? `matched: ${num(c.subgroup.count)} patients` : 'no group had that figure') : null],
+  ];
+  b.appendChild(block('Query button', kv(rows)));
+  if (c.cohort && c.cohort.length) b.appendChild(block('That cohort', cohortList(c.cohort)));
+  if (p.link) b.appendChild(kv([['Button to Chiron', `${p.link.label} (${p.link.mode || 'link'})`]]));
+  if (p.deleted && p.deleted.length) b.appendChild(kv([['Reports deleted', p.deleted.join(', ')]]));
+  if (p.followups && p.followups.length) {
+    const ul = el('ul', 'cd');
+    p.followups.forEach(f => {
+      const li = el('li');
+      li.appendChild(el('span', f.shown ? 'ok-t' : 'no-t', f.shown ? '✓ ' : '✕ '));
+      li.append(f.q + (f.shown ? '' : ` (${f.why})`));
+      ul.appendChild(li);
+    });
+    b.appendChild(block('Suggested follow-ups', ul));
+  } else b.appendChild(kv([['Suggested follow-ups', 'none written']]));
+  (p.charts || []).forEach((ch, i) => {
+    const box = el('div');
+    box.appendChild(kv([['Chart ' + (i + 1), ch.ok ? ((ch.spec && ch.spec.title) || 'untitled') : 'not valid: dropped from the page', ch.ok ? null : 'warn']]));
+    if (ch.issues && ch.issues.length) { const ul = el('ul', 'cd'); ch.issues.forEach(x => ul.appendChild(el('li', 'no-t', x))); box.appendChild(ul); }
+    box.appendChild(lazy(ui, 'chart' + i, 'Chart spec', () => pre(ch.ok ? json(ch.spec) : ch.source)));
+    b.appendChild(block('Chart', box));
+  });
+  const td = p.tidy || {};
+  if (td.changed) b.appendChild(kv([['Tidied', [
+    td.links_removed ? `${td.links_removed} link(s) into Chiron removed` : '',
+    td.emails_redacted ? `${td.emails_redacted} email address(es) redacted` : '',
+    td.paths_removed ? `${td.paths_removed} file path(s) removed` : '',
+  ].filter(Boolean).join(', ') || 'whitespace only']]));
+  if (debug && td.before) b.appendChild(lazy(ui, 'tidy', 'The answer before tidying', () => pre(td.before, true)));
+}
+
+function debugSection(data, ui) {
+  const sec = el('div', 'tr-sec');
+  sec.appendChild(el('h4', null, 'Run details'));
+  if (data.partial) { sec.appendChild(el('div', 'tr-msg', 'The full run details arrive once the answer is done.')); return sec; }
+  const res = data.result || {};
+  const pr = data.prompt || {};
+  sec.appendChild(kv([
+    ['Conversation', el('span', 'mono', data.thread || '')],
+    ['Session', pr.resume ? 'resumed (follow-up)' : 'new'],
+    ['Claude session id', res.session_id ? el('span', 'mono', res.session_id) : null],
+    ['Model', data.model], ['Claude Code', data.claude_version], ['Permission mode', data.permission_mode],
+    ['Model turns', res.num_turns], ['API time', res.duration_api_ms != null ? fmtMs(res.duration_api_ms) + (data.followup ? ' (whole conversation)' : '') : null],
+    ['Ended because', [res.stop_reason, res.terminal_reason].filter(Boolean).join(' / ')],
+    ['Exit code', data.rc],
+  ]));
+  const add = (key, title, make) => sec.appendChild(lazy(ui, key, title, make));
+  add('prompt', 'Prompt sent to the model (question and dataset description)', () => pre(pr.text || '', true));
+  add('system', 'System prompt', () => pre(pr.system || '', true));
+  add('cmd', 'Claude Code command', () => pre((data.command || []).join(' '), true));
+  if (res.usage) add('usage', 'Token usage for this answer', () => pre(json(res.usage)));
+  if (res.model_usage) add('musage', 'Per-model usage and cost (whole conversation)', () => pre(json(res.model_usage)));
+  if (data.rate_limit) add('rate', 'Rate limit status', () => pre(json(data.rate_limit)));
+  if (data.stderr) add('stderr', 'Claude Code stderr', () => pre(data.stderr, true));
+  if (data.trace_errors && data.trace_errors.length) add('terr', `Tracing problems (${data.trace_errors.length})`, () => pre(data.trace_errors.join('\n'), true));
+  const raw = data.raw || [];
+  const skipped = Object.entries(data.raw_skipped || {}).map(([k, v]) => `${num(v)} ${k}`).join(', ');
+  add('raw', `Raw stream from Claude Code (${raw.length} events${skipped ? '; not kept: ' + skipped : ''})`, () => {
+    const lines = raw.map(r => `[${fmtAt(r.t)}] ${r.type || ''}${r.subtype ? '/' + r.subtype : ''}  ` +
+      (r.event ? JSON.stringify(r.event) : r.clipped || ''));
+    return pre(lines.join('\n'), true);
+  });
+  return sec;
+}
+
+// Keep the clock moving on an answer that is still coming.
+setInterval(() => {
+  Object.values(LIVE).forEach(l => { if (!l.tail && l.turn.pending) repaintTrace(l.turn); });
+}, 1000);
+
+function setTraceAll(on) {
+  TRACE_ALL = on;
+  try { localStorage.setItem('chiron-ask:trace-all', on ? '1' : '0'); } catch (_) {}
+  $('trace-all').setAttribute('aria-pressed', on ? 'true' : 'false');
+  Object.values(TRACE_UI).forEach(u => (u.open = on));
+  repaintAllTraces();
+}
+$('trace-all').onclick = () => setTraceAll(!TRACE_ALL);
+$('trace-all').setAttribute('aria-pressed', TRACE_ALL ? 'true' : 'false');
 
 // --- start ---------------------------------------------------------------------------
 // Who is asking decides whose conversations to show, so nothing renders until then.

@@ -17,6 +17,9 @@
 	redir / {$BASE_PATH}/ 302
 	redir {$BASE_PATH} {$BASE_PATH}/ 308
 
+	# MCP OAuth discovery lives at the site root, outside the prefix.
+	import /etc/caddy/mcp-wellknown.caddy
+
 	# Strip the prefix, then route exactly as at the root. Django puts the prefix back
 	# on the URLs it builds (FORCE_SCRIPT_NAME), and the UI is built with it as its base.
 	handle_path {$BASE_PATH}/* {

@@ -8,6 +8,8 @@ overrides only the two storage locations and the debug posture.
 imports this module, which is what makes the star-import below resolve.
 """
 
+import os
+
 from chiron_mcp.config import CONFIG
 
 # The host project's settings module, e.g. test_project/project/settings.py
@@ -50,8 +52,49 @@ if CONFIG.metadata_db:
         }
 
 # Warehouse: reached only through SQLAlchemy, never the Django ORM. Same rule.
+#
+# Two Postgres settings ride on every warehouse connection (libpq "options"):
+# - client_connection_check_interval: when a question is stopped, its Chiron MCP process
+#   dies, and Postgres cancels that process's running query within seconds instead of
+#   finishing a minutes-long scan nobody will read. Such leftovers used to pile up and
+#   fill Postgres's shared memory, so the next questions failed.
+# - statement_timeout: one query never runs past CHIRON_MCP_STATEMENT_TIMEOUT (seconds,
+#   default 240, inside Ask's answer limit), so a too-slow step fails with an error the
+#   model can report instead of silently using up the whole answer.
+# A connection string that already sets "options" is left alone.
+
+
+def _statement_timeout_ms() -> int:
+    return int(float(os.environ.get("CHIRON_MCP_STATEMENT_TIMEOUT", "240")) * 1000)
+
+
+def _with_pg_options(url: str) -> str:
+    from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
+
+    if not url.startswith(("postgres://", "postgresql://", "postgresql+")):
+        return url
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    if "options" in query:
+        return url
+    query["options"] = f"-c client_connection_check_interval=2000 -c statement_timeout={_statement_timeout_ms()}"
+    return urlunsplit(parts._replace(query=urlencode(query, quote_via=quote)))
+
+
 if CONFIG.warehouse_url:
-    CHIRON_SQL_ALCHEMY_CONNECTION_STRING = CONFIG.warehouse_url
+    CHIRON_SQL_ALCHEMY_CONNECTION_STRING = _with_pg_options(CONFIG.warehouse_url)
+
+# The URL's "options" reach only our own connections (chiron_mcp.query's engine). Chiron
+# builds an engine per dataset with libpq options of its own (the schema's search_path plus
+# CHIRON_PG_CONN_OPTIONS_SITE), and those replace the URL's, so without this Chiron's
+# queries ran under its default statement_timeout of 30 minutes: a stopped question's
+# query kept running for minutes after the question was gone. Site connections are the
+# ones Chiron MCP and Ask use; the MGMT setting (Chiron's own management commands, i.e. an
+# ETL) keeps Chiron's default, because an ETL step may legitimately take longer.
+CHIRON_PG_CONN_OPTIONS_SITE = {
+    "statement_timeout": _statement_timeout_ms(),
+    "client_connection_check_interval": 2000,
+}
 
 # Never leak tracebacks through tool output.
 DEBUG = False

@@ -111,6 +111,18 @@ answer is still running replaces that answer, and an answer still going after
 the Claude API is busy the CLI retries by itself, sometimes for minutes; the page shows
 "Claude is busy, retrying" while it does.
 
+### Traces
+
+The server records how each answer was produced (`chiron_mcp/trace.py`) and the page shows
+it under the answer on request. While the answer streams, the page receives each step as a
+`trace` event (after a `trace_start`, ending with a `trace_end` that carries the totals
+and checks). Afterwards it fetches the whole record, including tool outputs and the raw
+stream, from `trace?id=`.
+
+Traces are kept in `CHIRON_MCP_STATE_DIR/traces/<conversation>/`, readable only by the
+person who asked, and they are deleted with the conversation (see below). Operator email
+addresses and file paths are removed before a trace is stored or sent.
+
 Claude Code writes each conversation's transcript to
 `~/.claude/projects/<working-dir>/<id>.jsonl`. Transcripts contain tool results, which
 means patient data. Deleting a conversation in the sidebar deletes its transcript at once,
