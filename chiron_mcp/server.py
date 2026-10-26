@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 from typing import Any
 
@@ -2046,8 +2047,24 @@ def chiron_explain_access(dataset_id: str, concept_id: str) -> dict:
         return _err(exc)
 
 
+def limit_tools(names: str | None = None) -> list[str]:
+    """Expose only the tools named in CHIRON_MCP_TOOLS (comma-separated), when it is set.
+
+    A client's allow-list only governs permission: the model still sees every tool and
+    can reach for one it should not use. Ask's short mode names its tools here, so the
+    rest are not offered at all. Returns the tools that remain."""
+    names = names if names is not None else os.environ.get("CHIRON_MCP_TOOLS", "")
+    keep = {n.strip().replace("mcp__chiron__", "") for n in names.split(",") if n.strip()}
+    if keep:
+        for name in list(mcp._tool_manager._tools):
+            if name not in keep:
+                mcp.remove_tool(name)
+    return sorted(mcp._tool_manager._tools)
+
+
 def main() -> None:
     CONFIG.validate()
+    limit_tools()
     if CONFIG.oauth:
         who = "whoever signs in (OAuth)"
     else:

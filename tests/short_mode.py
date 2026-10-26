@@ -69,6 +69,18 @@ tr.tool_result({"tool_use_id": "b", "content": json.dumps({
 check("Results gets its button", (tr.link or {}).get("label") == "Results", str(tr.link))
 check("an empty cohort is not a Query button", tr.final() is None)
 
+# the MCP server offers only the short list when told to
+from chiron_mcp import server as S  # noqa: E402
+
+everything = S.limit_tools("")
+left = S.limit_tools(",".join(webapp.TOOLS))
+check("the server can offer only the short list", left == sorted(webapp.TOOLS), str(left))
+check("low-level tools are not offered", "chiron_edit_cohort" in everything and "chiron_edit_cohort" not in left)
+cfg = webapp._mcp_config("tester", False, thread="t-2")
+env = json.loads(cfg.read_text())["mcpServers"]["chiron"]["env"]
+cfg.unlink()
+check("Ask's config names the short list", env.get("CHIRON_MCP_TOOLS") == ",".join(webapp.TOOLS), env.get("CHIRON_MCP_TOOLS"))
+
 print()
 print("all passed" if not fails else f"{len(fails)} failed: {fails}")
 sys.exit(1 if fails else 0)

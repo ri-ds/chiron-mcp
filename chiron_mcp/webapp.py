@@ -660,6 +660,8 @@ def _mcp_config(username: str, allow_superuser: bool, thread: str | None = None)
         env["CHIRON_MCP_ALLOW_SUPERUSER"] = "1"
     if thread:
         env["CHIRON_MCP_GROUPS_FILE"] = str(_groups_file(thread))
+    if ASK_TOOLS != "full":
+        env["CHIRON_MCP_TOOLS"] = ",".join(TOOLS)  # the short list is all the model sees
 
     console = Path(sys.executable).parent / "chiron-mcp"
     cfg = {"mcpServers": {"chiron": {"command": str(console), "env": env}}}
