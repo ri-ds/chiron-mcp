@@ -60,6 +60,162 @@ def _concept(ident, concept_id: str):
     return oConcept
 
 
+# --- strict inputs ---------------------------------------------------------------------
+#
+# Chiron reads only the fields it knows and silently ignores the rest, and it stores any
+# count-rule type it is given while counting every unknown one as "exactly". A model that
+# guesses a field ("criteria_set_id", "min_count") or writes "at_least" therefore gets a
+# normal-looking wrong number. These checks turn each such guess into an error that says
+# what to do instead, or, for a count rule spelled another common way, into the rule it
+# plainly meant (and the reply says so).
+
+COUNT_RULES = ("at least", "at most", "exactly")
+_RULE_ALIASES = {
+    **{k: "at least" for k in ("at_least", "atleast", "at-least", "least", "min", "minimum",
+                               ">=", "≥", "gte", "ge", "more than or equal", "or more")},
+    **{k: "at most" for k in ("at_most", "atmost", "at-most", "most", "max", "maximum",
+                              "<=", "≤", "lte", "le", "or fewer", "or less")},
+    **{k: "exactly" for k in ("exact", "=", "==", "eq", "equal", "equals", "equal to",
+                              "exactly_n")},
+}
+
+# The filter fields Chiron's filter processors read (chiron/processors/cohort_def/*.py);
+# which of them a given variable takes is in chiron_describe_concept's filter_input.
+FILTER_FIELDS = frozenset({
+    "selected_categories", "exclude_selected", "include_null_and_missing", "cd_numeric_min",
+    "cd_numeric_max", "query_type", "days_ago", "ignore_warnings", "include_ontology_unknown",
+    "chiron_text_field_selection", "chiron_ontology_field_selection", "cd_age_min_year",
+    "cd_age_min_day", "cd_age_max_year", "cd_age_max_day",
+})
+# Fields each transformation reads (chiron/api/utils/cohort_def.py), besides "type".
+TRANSFORM_FIELDS = {
+    "add_entry": frozenset({"concept_id", "entry_id", "prefilter_value", "validate_only"}) | FILTER_FIELDS,
+    "delete_entry": frozenset({"entry_id", "remove_empty_criteria_sets"}),
+    "add_criteria_set": frozenset({"collection_id"}),
+    "delete_criteria_set": frozenset({"entry_id"}),
+    "change_to_boolean_or": frozenset({"entry_id"}),
+    "change_to_boolean_and": frozenset({"entry_id"}),
+    "sort_cd_entries": frozenset({"entry_id", "child_ids"}),
+    "clear_all": frozenset(),
+    "add_criteria_set_count_rule": frozenset({"entry_id", "rule_operator", "rule_count"}),
+    "set_criteria_set_alias": frozenset({"entry_id", "alias"}),
+    "create_event_rule": frozenset({"entry_id"}),
+    "delete_event_rule": frozenset({"entry_id"}),
+    # modify_event_rule also takes the chosen option's own fields (chiron_event_rule_options)
+}
+TRANSFORM_REQUIRED = {
+    "add_entry": ("concept_id",),
+    "delete_entry": ("entry_id",),
+    "add_criteria_set": ("collection_id",),
+    "delete_criteria_set": ("entry_id",),
+    "change_to_boolean_or": ("entry_id",),
+    "change_to_boolean_and": ("entry_id",),
+    "sort_cd_entries": ("entry_id", "child_ids"),
+    "add_criteria_set_count_rule": ("entry_id", "rule_operator", "rule_count"),
+    "set_criteria_set_alias": ("entry_id", "alias"),
+    "create_event_rule": ("entry_id",),
+    "modify_event_rule": ("entry_id", "option_type"),
+    "delete_event_rule": ("entry_id",),
+}
+
+PLACE_IN_GROUP = (
+    "A new filter always goes into the FIRST group (criteria set) of its table, so two "
+    "filters on one table describe ONE record. To ask about two different records of the "
+    "same table (asthma AND, separately, COPD; an HbA1c of 6.5 or more and, at another "
+    "time, one below 5.7): add_criteria_set with that table's collection_id, add_entry "
+    "the second filter, then sort_cd_entries with entry_id = the new group's entry_id and "
+    "child_ids = [the new group's filters..., the new filter's entry_id], which moves it "
+    "into the new group. Groups combine with AND."
+)
+_KEY_HINTS = (
+    (("criteria_set_id", "criteria_set", "criteria_set_entry_id", "parent_id", "parent_entry_id",
+      "set_id", "set_entry_id", "target_entry_id", "group_id", "group", "target_set"),
+     PLACE_IN_GROUP),
+    (("min_count", "max_count", "count", "rule", "rule_type", "subcol_count_restriction",
+      "at_least", "at_most", "exactly", "times", "occurrences"),
+     "Counting records (\"at least 3 emergency visits\") is its own transformation: "
+     "{'type': 'add_criteria_set_count_rule', 'entry_id': <the group's entry_id>, "
+     "'rule_operator': 'at least' | 'at most' | 'exactly', 'rule_count': 3}."),
+    (("min", "max", "minimum", "maximum", "value", "values", "gt", "gte", "lt", "lte", "operator", "op"),
+     "Number and date limits are cd_numeric_min / cd_numeric_max (both inclusive); "
+     "category values go in selected_categories. Check chiron_describe_concept's filter_input."),
+)
+_HAS_VALUE_WORDS = ("has_value", "is_not_missing", "not_missing", "not_null", "is_not_null",
+                    "exists", "present", "has_date", "not_empty", "notnull")
+HAS_VALUE_HINT = (
+    "To require that a date is present (\"has died\" = has a death date), use "
+    "query_type 'date_range' with only cd_numeric_min set long before any record: "
+    "'01/01/1800', or the year 1800 where chiron_describe_concept says the date takes "
+    "years (de-identified dates). For a number, use cd_numeric_min below any possible "
+    "value. Chiron has no separate has-value filter."
+)
+
+
+def normalize_count_rule(rule) -> tuple[str, str | None]:
+    """A count-rule operator as Chiron reads it, and a note when it was spelled another way."""
+    text = str(rule or "").strip()
+    if text in COUNT_RULES:
+        return text, None
+    canon = _RULE_ALIASES.get(text.lower()) or (text.lower() if text.lower() in COUNT_RULES else None)
+    if canon is None:
+        raise AccessError(f"Unknown count rule {rule!r}. Chiron's count rules are "
+                          f"{', '.join(repr(r) for r in COUNT_RULES)} (with a space).")
+    return canon, f"Count rule {rule!r} read as {canon!r}; Chiron spells it {canon!r}."
+
+
+def check_transformation(transformation: dict) -> tuple[dict, list[str]]:
+    """The transformation as Chiron should receive it, plus notes; raises AccessError with
+    the fix when it carries a field no transformation reads, misses a required field, or
+    asks for a filter Chiron does not have."""
+    if not isinstance(transformation, dict):
+        raise AccessError("transformation must be an object with a 'type'.")
+    t = dict(transformation)
+    ttype = t.get("type")
+    notes: list[str] = []
+    missing = [k for k in TRANSFORM_REQUIRED.get(ttype, ()) if t.get(k) in (None, "", [])]
+    if missing:
+        raise AccessError(f"{ttype} needs {', '.join(missing)}.")
+    allowed = TRANSFORM_FIELDS.get(ttype)
+    if allowed is not None:
+        unknown = sorted(set(t) - allowed - {"type"})
+        if unknown:
+            hints = [h for keys, h in _KEY_HINTS if any(k.lower() in keys for k in unknown)]
+            raise AccessError(
+                f"{ttype} does not read {', '.join(repr(k) for k in unknown)}: Chiron would "
+                f"silently ignore {'it' if len(unknown) == 1 else 'them'}. "
+                + (" ".join(dict.fromkeys(hints)) + " " if hints else "")
+                + f"Fields {ttype} reads: {', '.join(sorted(allowed))}.")
+    if ttype == "add_criteria_set_count_rule":
+        t["rule_operator"], note = normalize_count_rule(t.get("rule_operator"))
+        if note:
+            notes.append(note)
+        try:
+            n = int(str(t.get("rule_count")).strip())
+        except ValueError:
+            raise AccessError(f"rule_count must be a whole number, not {t.get('rule_count')!r}.") from None
+        if n < 0:
+            raise AccessError("rule_count cannot be negative.")
+        t["rule_count"] = n
+    if ttype == "add_entry":
+        qt = str(t.get("query_type") or "").strip().lower()
+        if qt in _HAS_VALUE_WORDS or str(t.get("chiron_text_field_selection") or "").lower() in _HAS_VALUE_WORDS:
+            raise AccessError(f"There is no {qt or 'has-value'!r} filter. " + HAS_VALUE_HINT)
+    return t, notes
+
+
+def normalize_cohort_rules(cohort_def: list) -> tuple[list, list[str]]:
+    """The cohort with every count rule spelled the way Chiron reads it (a definition
+    written by hand may say "at_least"), plus notes; raises on an unknown rule."""
+    cd = copy.deepcopy(cohort_def or [])
+    notes: list[str] = []
+    for entry in cd:
+        rule = (entry or {}).get("subcol_count_restriction") if isinstance(entry, dict) else None
+        if isinstance(rule, dict) and rule.get("type") not in (None, *COUNT_RULES):
+            rule["type"], note = normalize_count_rule(rule.get("type"))
+            notes.append(note)
+    return cd, notes
+
+
 def _validated_cohort(ident, cohort_def: list):
     """Build a Cohort and refuse to proceed if it has errors.
 
@@ -67,9 +223,13 @@ def _validated_cohort(ident, cohort_def: list):
     with an EMPTY list (chiron/query_definition/cohort_def_functions.py:72-75), and
     an empty cohort_def matches EVERY subject.  Running an errored definition would
     therefore silently return the whole dataset instead of failing.
+
+    Count rules spelled another common way are corrected first (normalize_cohort_rules);
+    the corrections are added to the cohort's warnings so the caller sees them.
     """
     from chiron import query_definition as qdef
 
+    cohort_def, rule_notes = normalize_cohort_rules(cohort_def)
     try:
         cohort = qdef.Cohort(identity.checked_chironuser(ident), cohort_def or [])
     except Exception as exc:  # noqa: BLE001
@@ -84,6 +244,8 @@ def _validated_cohort(ident, cohort_def: list):
             "reduced to an empty one, which would match every subject in the dataset). "
             f"Errors: {cohort.errors}"
         )
+    if rule_notes:
+        cohort.warnings = list(cohort.warnings or []) + rule_notes
     return cohort
 
 
@@ -543,7 +705,14 @@ def chiron_edit_cohort(
     For "add_entry" also pass "concept_id" plus that concept's filter fields --
     get them from chiron_describe_concept's `filter_input`. Field names are HTML form
     names such as cd_numeric_min / selected_categories / chiron_text_field_selection,
-    NOT cohort_def keys.
+    NOT cohort_def keys. Limits (cd_numeric_min, cd_numeric_max) are inclusive.
+
+    A new filter goes into the FIRST group (criteria set) of its table, so two filters on
+    one table describe one record. For two different records of one table, add a group
+    (add_criteria_set), add the filter, then move it into the new group with
+    sort_cd_entries. "At least N" records: add_criteria_set_count_rule with rule_operator
+    'at least' | 'at most' | 'exactly'. A field no transformation reads is refused,
+    rather than silently ignored.
     """
     from chiron.api.utils import cohort_def as cd_utils
     from chiron.query_definition import cohort_def_functions as cdfuncs
@@ -554,12 +723,13 @@ def chiron_edit_cohort(
         identity.require_subject_level(ident)
         cu = identity.checked_chironuser(ident)
 
-        ttype = transformation.get("type")
+        ttype = (transformation or {}).get("type") if isinstance(transformation, dict) else None
         lookup = cd_utils.transformation_function_lookup
         if ttype not in lookup:
             raise AccessError(
                 f"Unknown transformation type {ttype!r}. Available: {sorted(lookup)}"
             )
+        transformation, notes = check_transformation(transformation)
 
         # Chiron's transformations are not all pure: apply_transformation_add_entry
         # mutates the list it is handed (unlike create_event_rule, which deepcopies).
@@ -587,6 +757,8 @@ def chiron_edit_cohort(
                 "and use the exact names in its filter_input block. DO NOT reuse "
                 "unchanged_cohort_def as if the filter had applied."
             )
+            if any("minimum or maximum" in str(e) for e in out["errors"] or []):
+                out["hint"] = HAS_VALUE_HINT + " " + out["hint"]
             return out
 
         # Copy the result too, not just the input: unpatched Chiron hands back filter
@@ -599,6 +771,8 @@ def chiron_edit_cohort(
         }
         if result.get("entry_id"):
             out["entry_id"] = result["entry_id"]
+        if notes:
+            out["notes"] = notes
         try:
             cd_info = cdfuncs.clean_cohort_def(out["cohort_def"], cu, include_metadata=True)
             out["describe"] = cdfuncs.describe_cohort_def(cd_info["extended_cohort_def"])
@@ -671,12 +845,15 @@ def chiron_count_cohort(dataset_id: str, cohort_def: list) -> dict:
         cu = identity.checked_chironuser(ident)
         cohort = _validated_cohort(ident, cohort_def)
         count = get_querytool(cu, cohort.cohort_def).get_cohort_count()
-        return {
+        out = {
             "dataset_id": dataset_id,
             "subject_count": int(count),
             "warnings": cohort.warnings,
             "is_whole_dataset": not cohort.cohort_def,
         }
+        if not cohort.cohort_def:
+            out["note"] = "No filters: this is every patient in the dataset."
+        return out
     except Exception as exc:  # noqa: BLE001
         return _err(exc)
 
