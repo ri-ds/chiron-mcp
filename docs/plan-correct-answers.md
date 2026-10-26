@@ -416,3 +416,10 @@ Running the larger models on only the 49 plus the new questions about halves the
     - q36, Haiku: "Twenty patients in Synthea 300 have ... asthma", right, in words. The
       instructions now say "the figure in digits (20, not 'twenty')", and the answer check
       holds back an answer that states no figure in digits although a tool returned a count.
+  - With the digits check live and "datasets" restored, set c's s14 re-run (`20261026-112633`)
+    is right for all three, swapped in: **set c 49/49 for all three.** So every re-phrased
+    question (147) and every held-out question (40) has been answered right by Opus 5.5,
+    Sonnet 5.5 and Haiku 5.5.
+- **Final run** (all 236 questions, one model at a time) started after a warm-up of the value
+  and range caches for Synthea 100k and Synthea 300: see `results/runs/` for its id
+  (scratchpad run_final.id), and AUDIT notes to follow.
