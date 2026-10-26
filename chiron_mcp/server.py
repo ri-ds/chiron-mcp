@@ -27,6 +27,7 @@ ensure_django()
 from mcp.server.mcpserver import MCPServer  # noqa: E402
 
 from chiron_mcp import filters, identity  # noqa: E402
+from chiron_mcp import pg  # noqa: E402,F401  (the connection hook for the shared-memory retry)
 from chiron_mcp.config import CONFIG  # noqa: E402
 from chiron_mcp.identity import AccessError  # noqa: E402
 
@@ -46,6 +47,20 @@ else:
 
 def _err(exc: Exception) -> dict:
     return {"error": str(exc)}
+
+
+def _again_without_parallel_workers(call, may_repeat=lambda: True) -> dict:
+    """A tool's result. When Postgres had no shared memory left for parallel workers (big
+    queries at the same time), the same call once more without them: slower, but it needs
+    none (chiron_mcp.pg)."""
+    from chiron_mcp import pg
+
+    out = call()
+    if isinstance(out, dict) and "error" in out and pg.out_of_shared_memory(json.dumps(out, default=str)) \
+            and may_repeat():
+        with pg.without_parallel_workers():
+            out = call()
+    return out
 
 
 def _concept(ident, concept_id: str):
@@ -857,10 +872,13 @@ def chiron_query(
     """
     from chiron_mcp import query
 
-    try:
-        return query.run(dataset, where, match, start_from, show, label)
-    except Exception as exc:  # noqa: BLE001
-        return _err(exc)
+    def once() -> dict:
+        try:
+            return query.run(dataset, where, match, start_from, show, label)
+        except Exception as exc:  # noqa: BLE001
+            return _err(exc)
+
+    return _again_without_parallel_workers(once, lambda: query.may_repeat(dataset, show))
 
 
 @mcp.tool()
@@ -1405,6 +1423,11 @@ def chiron_run_saved_report(
     dataset_id: str, report_id: int, page: int = 1, records_per_page: int = 10
 ) -> dict:
     """Run a saved report by id, using its own stored definitions."""
+    return _again_without_parallel_workers(
+        lambda: _run_saved_report(dataset_id, report_id, page, records_per_page))
+
+
+def _run_saved_report(dataset_id: str, report_id: int, page: int, records_per_page: int) -> dict:
     from chiron import query_definition as qdef
     from chiron.api.utils.export import get_paginated_preview
 
@@ -1644,6 +1667,10 @@ def chiron_results(dataset_id: str, rows: int = 5) -> dict:
     the sort, how many rows and patients, and the first `rows` rows. Rows are grouped by
     the stacked columns, so record_count can be far below subject_count.
     """
+    return _again_without_parallel_workers(lambda: _results_now(dataset_id, rows))
+
+
+def _results_now(dataset_id: str, rows: int) -> dict:
     from chiron import models
 
     try:

@@ -803,6 +803,25 @@ def run(dataset: str, where: list | None = None, match: str = "all", start_from:
     return out
 
 
+def may_repeat(dataset: str, show) -> bool:
+    """Whether running a failed query again is harmless. Counting, listing and the writes that
+    replace (Results, a report's changes, the query builder) are; a new report only when the
+    failed attempt did not save it."""
+    rep = show.get("report") if isinstance(show, dict) else None
+    if rep is None or (isinstance(rep, dict) and rep.get("update")):
+        return True
+    name = rep.get("name") if isinstance(rep, dict) else rep
+    from chiron_mcp import server as S
+
+    try:
+        find_report(S, resolve_dataset(dataset), name, mine=True)
+    except AccessError as exc:
+        return str(exc).startswith("No report called")
+    except Exception:  # noqa: BLE001  the database is still struggling: don't risk a second copy
+        return False
+    return False
+
+
 def _label(clauses, base_text) -> str:
     parts = [f.split(" (")[0] for c in clauses for _, _, f in c.filters]
     return "; ".join(parts)[:160] or (base_text or "everyone")
@@ -891,21 +910,24 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
         out["range"] = _stats(ident, S, cd, show)
     elif show.get("results") is not None:
         spec = show["results"] if isinstance(show["results"], dict) else {"columns": show["results"]}
-        cd2, cols, sort = plain_columns(ident, cd, spec.get("columns") or [], spec.get("sort"))
+        words: list[str] = []
+        cd2, cols, sort = plain_columns(ident, cd, spec.get("columns") or [], spec.get("sort"), words)
         r = S.chiron_update_results(ds, cd2, cols, sort=sort or None)
         if r.get("error"):
             raise AccessError(f"Results not changed: {r['error']} To answer in the chat instead (no change "
                               "to Results): show={'list': [fields], 'limit': N} lists patients, "
                               "show={'range': {'lab': 'HbA1c'}} gives the lowest and highest value.")
         out["results"] = _written(S, ds, r)
+        _say_columns(out["results"], words, notes)
         notes.append("The Results tab now holds these patients and columns; check `results` for what "
                      "Chiron shows, and report its row count.")
     elif show.get("report") is not None and isinstance(show["report"], dict) and show["report"].get("update"):
         spec = show["report"]
         rep = find_report(S, ds, spec.get("name") or "latest", mine=True)
         kw: dict = {"cohort_def": cd}
+        words = []
         if spec.get("columns"):
-            cd2, cols, sort = plain_columns(ident, cd, spec["columns"], spec.get("sort"))
+            cd2, cols, sort = plain_columns(ident, cd, spec["columns"], spec.get("sort"), words)
             kw.update(cohort_def=cd2, columns=cols, sort=sort or None)
         if spec.get("new_name"):
             kw["name"] = spec["new_name"]
@@ -918,11 +940,13 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
         out["report"] = {"report_id": rep["report_id"], "name": after.get("name"),
                          "public": after.get("public"), "patients_now": out["count"],
                          "filters_now": describe(ident, after.get("cohort_def") or [])}
+        _say_columns(out["report"], words, notes)
     elif show.get("report") is not None:
         spec = show["report"] if isinstance(show["report"], dict) else {"name": show["report"]}
         if not spec.get("name"):
             raise AccessError("A report needs a name: {'report': {'name': ..., 'columns': [...]}}.")
-        cd2, cols, sort = plain_columns(ident, cd, spec.get("columns") or [], spec.get("sort"))
+        words = []
+        cd2, cols, sort = plain_columns(ident, cd, spec.get("columns") or [], spec.get("sort"), words)
         r = S.chiron_open_in_ui(ds, cd2, cols or None, spec["name"], "report",
                                 spec.get("description"), sort or None)
         if r.get("error"):
@@ -932,6 +956,7 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
             if u.get("error"):
                 notes.append(f"Saved, but not made public: {u['error']}")
         out["report"] = _written(S, ds, r)
+        _say_columns(out["report"], words, notes)
     elif show.get("query_builder") or show.get("load_query"):
         r = S.chiron_open_in_ui(ds, cd, None, show.get("name") or "Query from Ask", "workspace")
         if r.get("error"):
@@ -943,6 +968,17 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
                           "{'results': {'columns': [...], 'sort': [...]}}, "
                           "{'report': {'name': ..., 'columns': [...], 'public': false}} or {'query_builder': true}.")
     return out
+
+
+def _say_columns(written: dict, words: list[str], notes: list) -> None:
+    """The asked-for columns in plain words, and that summary columns never drop patients."""
+    if not words:
+        return
+    written["columns_in_words"] = words
+    if any("blank for a patient with none" in w for w in words):
+        notes.append("Every patient counted is a row. A summary column looks only at its own records "
+                     "and is blank for a patient who has none; it never removes patients, so no extra "
+                     "filter is needed for it.")
 
 
 def _is_report_ref(ref) -> bool:
@@ -990,7 +1026,7 @@ _SUMMARIES = {"max": "max", "highest": "max", "min": "min", "lowest": "min", "av
               "earliest": "earliest", "first": "earliest", "last": "latest"}
 
 
-def plain_columns(ident, cd: list, columns: list, sort=None) -> tuple[list, list, list]:
+def plain_columns(ident, cd: list, columns: list, sort=None, words: list | None = None) -> tuple[list, list, list]:
     """Plain columns -> Chiron columns, plus the cohort they need.
 
       "birthdate", "gender", "city"          one value per patient (rows stay one per patient)
@@ -1004,8 +1040,10 @@ def plain_columns(ident, cd: list, columns: list, sort=None) -> tuple[list, list
     A lab-limited summary needs a group in the cohort that holds that lab's results; it is
     added with the count rule "at least 0", which Chiron reads as no condition on patients,
     so the patients stay exactly the cohort's. The patient id comes first when the dataset
-    has one, so every row is one patient.
+    has one, so every row is one patient. `words`, when given, gets each asked-for column in
+    plain words, in order.
     """
+    words = [] if words is None else words
     cd2 = copy.deepcopy(cd)
     cols: list[dict] = []
     labels: list[tuple[str, int]] = []
@@ -1019,6 +1057,7 @@ def plain_columns(ident, cd: list, columns: list, sort=None) -> tuple[list, list
             if var.cid not in [x["concept_id"] for x in cols]:
                 cols.append({"concept_id": var.cid})
             labels.append((D.norm(c), len(cols) - 1))
+            words.append(var.label())
             continue
         if not isinstance(c, dict) or len(c) != 1:
             raise AccessError(f"Not a column: {c!r}. " + plain_columns.__doc__.split("\n\n")[0])
@@ -1030,6 +1069,7 @@ def plain_columns(ident, cd: list, columns: list, sort=None) -> tuple[list, list
             values = fields.get("selected_categories") or fields.get("chiron_text_field_selection", "").split("\n")
             cols.append({"concept_id": var.cid, "aggregation": "has_value",
                          "settings": {"values": values, "return_value": "boolean"}})
+            words.append(f"yes/no: has a {_records_named(clause)} record")
         elif k in _SUMMARIES or k in ("count", "count_all"):
             clause = parse_condition(ident, target if isinstance(target, dict) else {"lab": target})
             if k in _SUMMARIES:
@@ -1042,10 +1082,16 @@ def plain_columns(ident, cd: list, columns: list, sort=None) -> tuple[list, list
                 var, agg = clause.filters[0][0], "count_all"
             cd2, group = _column_group(ident, cu, cd2, clause)
             cols.append({"concept_id": var.cid, "aggregation": agg, "aggregation_criteria_set": group})
+            named = _records_named(clause)
+            words.append(f"number of each patient's {named} records" if agg == "count_all" else
+                         f"{_SUMMARY_WORDS[agg]} {var.label()} among each patient's {named} records only "
+                         "(blank for a patient with none)")
         elif k in ("count_distinct", "list", "list_distinct"):
             var = _by_var(ident, target)
             cols.append({"concept_id": var.cid,
                          "aggregation": "count_distinct" if k == "count_distinct" else "list_distinct"})
+            words.append(f"number of different {var.label()} per patient" if k == "count_distinct" else
+                         f"the different {var.label()} of each patient")
         else:
             raise AccessError(f"Unknown column kind {kind!r}: use has, max, min, average, median, sum, "
                               "latest, earliest, count, count_distinct or list.")
@@ -1064,6 +1110,16 @@ def plain_columns(ident, cd: list, columns: list, sort=None) -> tuple[list, list
             raise AccessError(f"Sort column {col!r} is not one of the columns asked for.")
         out_sort.append({"column": cols[idx]["concept_id"], "direction": srt.get("direction", "asc")})
     return cd2, cols, out_sort
+
+
+_SUMMARY_WORDS = {"max": "highest", "min": "lowest", "average": "average", "median": "median", "sum": "total",
+                  "latest": "latest", "earliest": "earliest"}
+
+
+def _records_named(clause: Clause) -> str:
+    """What records a column looks at, by the names Chiron matched ("FEV1/FVC")."""
+    names = [m["matched"] for m in clause.matched if m.get("matched")]
+    return " or ".join(dict.fromkeys(names)) if names else clause.text
 
 
 def _column_var(ident, phrase: str) -> Var:

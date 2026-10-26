@@ -22,6 +22,10 @@ x-app-env: &app-env
 services:
   db:
     image: postgres:17
+    # Parallel query workers share their work in /dev/shm; Docker's default 64 MB runs out
+    # when a few big lab queries run at once ("could not resize shared memory segment").
+    # What they need grows with work_mem and how many run together, not with the data.
+    shm_size: 1g
     environment:
       POSTGRES_USER: chiron
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./setup.sh first}
