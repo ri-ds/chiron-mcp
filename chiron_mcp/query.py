@@ -795,7 +795,9 @@ def run(dataset: str, where: list | None = None, match: str = "all", start_from:
                            f"public setting, call chiron_query again with start_from='report:{rep['report_id']}', "
                            f"the new conditions in where, and show={{'report': {{'name': {rep['name']!r}, "
                            "'update': true}}} (with 'new_name' or 'public' as needed); a count alone, as "
-                           "here, changes nothing.")
+                           "here, changes nothing. If the person asked for the report to be changed "
+                           "(restricted, filtered, renamed or shared), make that call before answering: "
+                           "the report they look at stays as it was until you do.")
     elif start_from:
         g = get_group(start_from)
         if g.get("dataset_id") != dataset_id:
