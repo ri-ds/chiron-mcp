@@ -28,6 +28,7 @@ import itertools
 import json
 import os
 import re
+import time
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -193,14 +194,55 @@ def resolve_field(ident, phrase: str, collection: str | None = None) -> Var:
 
 # --- values ----------------------------------------------------------------------------------
 def _groups(ident, var: Var) -> tuple[list[dict], dict]:
+    """A variable's recorded values, spelling variants merged. Listing them reads every
+    record (seconds to a minute on large tables) and every question runs a fresh Chiron MCP
+    process, so the list is also kept on disk until the dataset is next loaded (or a week).
+    It holds the variable's values only, never patient data."""
     key = f"vals:{ident.dataset_id}:{var.cid}"
-    if key not in _CACHE:
-        from chiron_mcp import server as S
+    if key in _CACHE:
+        return _CACHE[key]
+    path = _value_cache_file(ident.dataset_id, var.cid)
+    stamp = _etl_stamp(ident.dataset_id)
+    try:
+        cached = json.loads(path.read_text())
+        if cached.get("stamp") == stamp and time.time() - cached.get("made", 0) < 7 * 86400:
+            _CACHE[key] = (cached["groups"], cached["counts"])
+            return _CACHE[key]
+    except (OSError, ValueError, KeyError):
+        pass
+    from chiron_mcp import server as S
 
-        counts = S._value_counts(ident, [], var.concept)
-        groups, _ = S._groups(counts, 10 ** 6)
-        _CACHE[key] = (groups, counts)
+    counts = S._value_counts(ident, [], var.concept)
+    groups, _ = S._groups(counts, 10 ** 6)
+    _CACHE[key] = (groups, counts)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"stamp": stamp, "made": time.time(), "groups": groups,
+                                   "counts": {str(k): v for k, v in counts.items()}}))
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except OSError:
+        pass
     return _CACHE[key]
+
+
+def _value_cache_file(dataset_id: str, cid: str):
+    from pathlib import Path
+
+    base = Path(os.environ.get("CHIRON_MCP_CACHE_DIR") or Path.home() / ".cache" / "chiron-mcp")
+    return base / "values" / re.sub(r"[^A-Za-z0-9_.-]", "_", dataset_id) / (re.sub(r"[^A-Za-z0-9_.-]", "_", cid) + ".json")
+
+
+def _etl_stamp(dataset_id: str):
+    """The dataset's latest load in Chiron's ETL log: a new load refreshes cached values."""
+    try:
+        from chiron import models
+
+        last = models.EtlLog.objects.filter(dataset=dataset_id).order_by("-id").first()
+        return last.id if last else 0
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _contains(label: str, cand: str) -> bool:
@@ -732,5 +774,9 @@ def _stats(ident, S, cd, show: dict) -> dict:
         var = resolve_field(ident, of)
         scope = cd
     proc = var.concept.get_cohort_def_processor(cu)
-    stats = proc.get_statistics(copy.deepcopy(scope))
-    return {"variable": var.label(), "within": describe(ident, scope), "statistics": stats}
+    raw = proc.get_statistics(copy.deepcopy(scope)) or {}
+    st = raw.get("stats") or {}
+    return {"variable": var.label(), "within": describe(ident, scope),
+            "min": st.get("min"), "max": st.get("max"), "average": st.get("avg"),
+            "results": st.get("count_non_null"), "patients": st.get("unique_patients"),
+            "results_without_a_value": raw.get("count_missing_values")}
