@@ -470,3 +470,8 @@ Running the larger models on only the 49 plus the new questions about halves the
   Haiku 5.5 235, local Opus 5.5 236 of 236; Bedrock cost $5.55 / $2.57 / $0.18.
 - The identifying-columns guard (4afc8f7) is merged into main after that run, so no benchmark
   answer here ran with it; it is checked live as the benchmark's de-identified user instead.
+- Report: `chiron-benchmark/results/reports/chiron-ask-benchmark-final.pdf` (scripts/make_pdf_final.py:
+  Part 1 the merged four-model run on the 236 known questions, Part 2 the fresh 40, every answer of every
+  model, notes). All three runs are in LangSmith (one dataset, one experiment per model per run; the
+  links are in each run's `langsmith.json`); the exporter now trusts the public CAs through certifi and
+  rounds its price score to the four decimals LangSmith accepts.
