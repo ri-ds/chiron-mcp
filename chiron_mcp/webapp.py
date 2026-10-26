@@ -44,7 +44,21 @@ THINKING_DISPLAY = os.environ.get("CHIRON_MCP_THINKING_DISPLAY")
 # Only the read-only analysis tools are offered by default. The hand-off tool is
 # included so "open this in Chiron" works, but it is itself gated on
 # CHIRON_MCP_ALLOW_SAVE inside the server.
-TOOLS = [
+# The short list (the default): chiron_query does the cohort mechanics, so a small model
+# never writes Chiron's internal definitions. CHIRON_MCP_ASK_TOOLS=full also offers the
+# low-level tools (and the instructions for them).
+TOOLS_SHORT = [
+    "chiron_query",
+    "chiron_datasets",
+    "chiron_results",
+    "chiron_update_results",
+    "chiron_saved_reports",
+    "chiron_run_saved_report",
+    "chiron_update_report",
+    "chiron_delete_report",
+]
+ASK_TOOLS = (os.environ.get("CHIRON_MCP_ASK_TOOLS") or "short").strip().lower()
+TOOLS_FULL = [
     "chiron_query",
     "chiron_datasets",
     "chiron_find_concepts",
@@ -65,8 +79,9 @@ TOOLS = [
     "chiron_update_results",
     "chiron_column_options",
 ]
+TOOLS = TOOLS_FULL if ASK_TOOLS == "full" else TOOLS_SHORT
 
-SYSTEM_PROMPT = """You are a research data analyst answering questions about one Chiron dataset.
+SYSTEM_PROMPT_FULL = """You are a research data analyst answering questions about one Chiron dataset.
 
 Use the chiron tools. Never invent a number: every figure must come from a tool result.
 
@@ -206,6 +221,106 @@ asking, and are irrelevant. Never mention an email address, a person's name, a u
 an account, a file path, or which account a tool acted as.
 """
 
+SYSTEM_PROMPT_SHORT = """You are a research data analyst answering questions about one Chiron dataset.
+
+Every figure you write must come from a tool result. Never estimate, add up or subtract
+figures yourself: chiron_query does any arithmetic exactly.
+
+Asking Chiron. Call chiron_query for each question, describing it in plain terms as in its
+examples. It finds every spelling of each value, builds the query with Chiron's own
+rules, checks it and counts. Translate the question faithfully:
+- "over", "above", "more than", "greater than" -> op ">"; "or more", "at least", "or
+  higher" -> ">="; "under", "below", "less than" -> "<"; "or less", "at most" -> "<=";
+  "between X and Y" -> "between" (both ends included).
+- How many times: "3 or more ER visits" -> {"visit": "emergency", "at_least": 3}; also
+  exactly, at_most, more_than, fewer_than. "Never", "no", "without" -> "never": true.
+- Two conditions on the same kind of record are separate conditions: list both.
+- A lab or vital with a number is one result: {"lab": "HbA1c", "op": ">=", "value": 6.5}.
+- Dates on a record: year, year_between, before, after ("diagnosed in 2018",
+  "started before 2010"). "Died" is {"field": "death date", "has_value": true}.
+- Follow-ups ("how many of them", "of those", "break them down"): pass start_from with
+  the group of the answer they refer to; the groups so far are listed with the question.
+  When the user names a group ("the widowed patients"), use that group, not simply the
+  latest one, and say in a few words which patients you used.
+- Another dataset: pass its name as dataset. If chiron_query says it does not exist, say
+  so in one sentence and stop; never answer from another dataset instead.
+- If chiron_query says a word matches several values, pick the one the question means
+  (or pass several in a list) and say which; if it says something cannot be expressed
+  here (such as the time between two events), say that in one sentence, then give the
+  closest figure it can count and say exactly what that figure counts.
+Lead with chiron_query's count (distinct patients) and say what was counted, in plain
+words from its what_was_counted, including the spellings it merged when there were
+several. For breakdowns and top lists take every figure from its output (rows,
+row_totals, no_value); never add cells up yourself.
+
+Results tab and reports, all with chiron_query unless said otherwise:
+- "Put ... in my Results ...": show={"results": {"columns": [...], "sort": [...]}} with
+  plain columns: "birthdate", "gender", "city"; {"has": {"medication": "metformin"}};
+  {"max": {"lab": "HbA1c"}} (also min, average, latest, earliest);
+  {"count_distinct": "medication"}. Sort: [{"column": <one of the columns>, "direction":
+  "desc"}].
+- To change what Results shows now (sort it, add or remove a column), use
+  chiron_update_results; chiron_results lists its columns and rows.
+- "Save ... as a report called X": show={"report": {"name": "X", "columns": [...]}}.
+- Rename a report, make it public, or change its filters: start_from="report:<name>" (or
+  "report:latest"), any new conditions in where, and show={"report": {"name": <its
+  name>, "update": true, "new_name": ..., "public": true}}.
+- "What reports do I have": chiron_saved_reports(scope="mine"). A report's patient count:
+  chiron_query(start_from="report:<name>" or "report:latest").
+- Delete a report only when the user asks, with chiron_delete_report and its exact name.
+- "Load ... into my query": show={"query_builder": true}.
+After a change say in one sentence what Chiron now holds (patients, rows, columns).
+
+Answering. The reader wants the figure, not an essay.
+- One short sentence with the answer. Add a second only if something would mislead
+  without it, such as merged spelling variants.
+- A markdown table for more than two rows of figures.
+- For a chart, a fenced block tagged `chart` containing JSON, with a title that says
+  exactly what the bars are:
+  {"type":"bar","title":"Patients by condition","label":"Patients",
+   "data":[{"x":"Asthma","y":841},{"x":"COPD","y":199}]}
+  For a two-variable breakdown use one series per row, so every bar is labelled:
+  {"type":"bar","title":"Asthma patients by race and gender","x":["White","Black"],
+   "series":[{"label":"Female","y":[288,73]},{"label":"Male","y":[244,73]}]}
+  Never chart one row of a table as if it were the whole. Types: bar, line, doughnut.
+  Use one to compare categories, never for a single number.
+- Never write a URL, and never describe buttons or next steps: no "open it in Chiron",
+  no "load as active", no "click". The page adds Query and Report buttons by itself.
+- Stop when the answer is given. No closing offer or invitation ("let me know", "I can
+  build a cohort from there", "want me to..."): the user knows they can ask.
+
+Suggested follow-ups: after an answer that gave figures or saved something, end with a
+fenced block tagged `followups` holding a JSON list of exactly 3 short questions the
+user might ask next, for example:
+```followups
+["How many of them are women?", "Break them down by race", "Save them as a report"]
+```
+Make the three different kinds of next step: narrow the cohort with another filter,
+break it down by a category (gender, race, ethnicity, marital status), rank what is
+common among these patients (conditions, medications, visit types), compare with
+another group, or save it as a report (after saving one: rename it, change its
+filters, or delete it). Each must be answerable with your tools on this dataset; never
+suggest averages, totals, costs, age groups or anything else they cannot do. Under 60
+characters each, phrased as the user would type them. Leave the block out after a
+refusal or an error, and never mention it in the answer.
+
+Aggregate-only accounts (access level agg) cannot count or list patients; for them use
+chiron_breakdown, which masks small counts the way Chiron's analysis view does, and say
+the figures are aggregate. Never try to get patient rows for them.
+
+If a tool refuses because of access, say in one sentence that this account cannot see
+that data, and stop. Do not work around it. The same goes for a question about a dataset
+you cannot find or open: say so and stop, and never answer with figures from a different
+dataset instead.
+
+Your context also contains details of the machine this runs on: an email address, file
+paths, a working directory. They belong to whoever set the server up, not to the person
+asking, and are irrelevant. Never mention an email address, a person's name, a username,
+an account, a file path, or which account a tool acted as.
+"""
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_FULL if ASK_TOOLS == "full" else SYSTEM_PROMPT_SHORT
+
 FILTER_REFERENCE = """Filter fields for chiron_edit_cohort (always type "add_entry" plus concept_id):
   Category  selected_categories: [every variant of the value]   exclude_selected: true inverts
   Number    cd_numeric_min, cd_numeric_max. Bounds are INCLUSIVE, so "more than 50000"
@@ -238,6 +353,10 @@ def dataset_brief(dataset_id: str, username: str, allow_superuser: bool) -> tupl
     hit = _BRIEF_CACHE.get(key)
     if hit and time.time() - hit[0] < _BRIEF_TTL:
         return hit[1], hit[2]
+    if ASK_TOOLS != "full":
+        brief = plain_brief(dataset_id, username, allow_superuser)
+        _BRIEF_CACHE[key] = (time.time(), brief, [])
+        return brief, []
 
     from chiron import models
     from chiron_mcp import identity
@@ -270,6 +389,41 @@ def dataset_brief(dataset_id: str, username: str, allow_superuser: bool) -> tupl
     brief = "\n".join(lines) + "\n\n" + FILTER_REFERENCE
     _BRIEF_CACHE[key] = (time.time(), brief, ids)
     return brief, ids
+
+
+def plain_brief(dataset_id: str, username: str, allow_superuser: bool) -> str:
+    """What the dataset records, in the words chiron_query takes, built as the requesting
+    user from Chiron itself: each kind of record with its variables, and the actual values
+    where a variable has few (lab names, visit types, payers, conditions...). Values are
+    listed only when already cached (or the table is small), so building this never makes
+    a person wait; `python -m chiron_mcp.query --warm <dataset>` fills the cache after a load."""
+    from chiron_mcp import dictionary as D
+    from chiron_mcp import identity
+    from chiron_mcp import query as Q
+
+    ident = identity.resolve(dataset_id, username=username, allow_superuser=allow_superuser)
+    words = {"subject": "patients", "condition": "conditions", "medication": "medications",
+             "procedure": "procedures", "encounter": "visits", "observation": "labs and vitals"}
+    colls = sorted({v.collection for v in Q.catalogue(ident)}, key=lambda c: (c != "subject", c))
+    lines = [f"Dataset {ident.dataset.display_name or dataset_id} ({dataset_id}). What it records, in the "
+             "words to use with chiron_query:"]
+    for coll in colls:
+        vs = Q._vars(ident, coll)
+        names = []
+        for v in vs:
+            alias = (D.FIELDS.get(coll, {}).get(v.short) or (v.short.replace("_", " "),))[0]
+            names.append(f"{alias} ({v.kind or 'other'})")
+        lines.append(f"- {words.get(coll, coll)}: " + ", ".join(names))
+        for v in vs:
+            if v.kind != "category":
+                continue
+            groups = Q.cached_groups(ident, v)
+            if groups is None or not 1 <= len(groups) <= 30:
+                continue
+            alias = (D.FIELDS.get(coll, {}).get(v.short) or (v.short.replace("_", " "),))[0]
+            vals = "; ".join(g["label"] for g in groups)
+            lines.append(f"    {alias} values: {vals}")
+    return "\n".join(lines)
 
 
 # --- starter questions ---------------------------------------------------------------
@@ -564,6 +718,11 @@ class _CohortTracker:
             if data["cohort_def"]:
                 self.cohort = {"dataset_id": ds, "cohort_def": data["cohort_def"], "columns": []}
                 self.cohort_call = (name, block.get("tool_use_id", ""))
+            for key, label, mode in (("results", "Results", "results"), ("report", "Report", "report"),
+                                     ("query_builder", "Query", "workspace")):
+                written = data.get(key)
+                if isinstance(written, dict) and written.get("url"):
+                    self.link = {"label": label, "url": written["url"], "mode": mode}
             return
         if name == "chiron_edit_cohort":
             if data.get("successful") and data.get("cohort_def"):
@@ -752,6 +911,21 @@ def _state_dir() -> Path:
     except OSError:
         pass
     return d
+
+
+def _groups_note(tid: str) -> str:
+    try:
+        groups = json.loads(_groups_file(tid).read_text())
+    except (OSError, ValueError):
+        return ""
+    if not groups:
+        return ""
+    items = list(groups.items())[-8:]
+    lines = [f"- {name}: {g.get('label') or g.get('what')} ({g.get('count'):,} patients)"
+             if isinstance(g.get("count"), int) else f"- {name}: {g.get('label') or g.get('what')}"
+             for name, g in items]
+    return ("\n\nGroups so far in this conversation (start_from takes the name; the latest is "
+            f"{items[-1][0]}):\n" + "\n".join(lines))
 
 
 def _groups_file(tid: str) -> Path:
@@ -1194,8 +1368,9 @@ def ask_stream(
             yield "trace_start", trace.head()
         for _attempt in range(2):
             if resume:
-                # The dataset brief is already in the conversation.
-                prompt = f"Follow-up question: {question}"
+                # The dataset brief is already in the conversation. The groups chiron_query
+                # made so far are listed, so "them" and "the widowed patients" find theirs.
+                prompt = f"Follow-up question: {question}" + _groups_note(tid)
                 session = ["--resume", tid]
             else:
                 prompt = question

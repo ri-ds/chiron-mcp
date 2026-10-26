@@ -835,12 +835,19 @@ def chiron_query(
         Two conditions on the same kind of record are two different records ("asthma" and
         "COPD"; an HbA1c >= 6.5 and, separately, one < 5.7): just list both.
     start_from: a group from an earlier answer ("g1") to narrow down, for follow-ups such
-        as "how many of them...". Every reply names its group.
+        as "how many of them...". Every reply names its group. Or a saved report:
+        "report:<name>" or "report:latest".
     show: what to return besides the count (default: just the count):
           {"breakdown": ["gender", "ethnicity"]}      patients per group (one or two)
           {"top": 5, "of": "condition"}              most common conditions/medications
           {"list": ["birthdate", "death date", "city"], "limit": 10}   patient rows
           {"range": {"lab": "HbA1c"}}                 lowest and highest recorded value
+          {"values": "lab"}                           the labs recorded (also "units",
+                                                      "visit type", "condition", ...)
+          {"results": {"columns": [...], "sort": [...]}}   put them in the Results tab
+          {"report": {"name": "X", "columns": [...]}}      save them as a report
+          {"report": {"name": "X", "update": true}}         change that report's filters
+          {"query_builder": true}                     load them into the query builder
     label: a short name for this group, for later follow-ups.
 
     Returns count (distinct patients), what_was_counted (Chiron's own words), matched (the

@@ -227,6 +227,60 @@ def _groups(ident, var: Var) -> tuple[list[dict], dict]:
     return _CACHE[key]
 
 
+SMALL_TABLES = 200_000  # records; listing values of a table this size takes a second or two
+
+
+def cached_groups(ident, var: Var):
+    """A variable's merged values if they are cached, or cheap to list (a small table);
+    None otherwise, so a caller in a hurry never triggers a full scan."""
+    key = f"vals:{ident.dataset_id}:{var.cid}"
+    if key in _CACHE:
+        return _CACHE[key][0]
+    try:
+        cached = json.loads(_value_cache_file(ident.dataset_id, var.cid).read_text())
+        if cached.get("stamp") == _etl_stamp(ident.dataset_id):
+            return cached["groups"]
+    except (OSError, ValueError, KeyError):
+        pass
+    if _table_rows(ident, var.collection) <= SMALL_TABLES:
+        return _groups(ident, var)[0]
+    return None
+
+
+def _table_rows(ident, collection: str) -> int:
+    key = f"rows:{ident.dataset_id}:{collection}"
+    if key not in _CACHE:
+        try:
+            import sqlalchemy as sa
+            from django.conf import settings
+
+            if "engine" not in _CACHE:
+                _CACHE["engine"] = sa.create_engine(settings.CHIRON_SQL_ALCHEMY_CONNECTION_STRING, pool_size=1)
+            schema = ident.dataset.unique_id.replace("-", "_")
+            with _CACHE["engine"].connect() as conn:
+                row = conn.execute(sa.text(
+                    "select reltuples::bigint from pg_class c join pg_namespace n on n.oid = c.relnamespace "
+                    "where n.nspname = :s and c.relname = :t"), {"s": schema, "t": collection}).fetchone()
+            _CACHE[key] = int(row[0]) if row and row[0] and row[0] > 0 else 10 ** 9
+        except Exception:  # noqa: BLE001
+            _CACHE[key] = 10 ** 9
+    return _CACHE[key]
+
+
+def warm(dataset_id: str) -> list[str]:
+    """List every category variable's values once, so later questions find them cached."""
+    ident = identity.resolve(dataset_id)
+    done = []
+    for v in catalogue(ident):
+        if v.kind in ("category", "text"):
+            try:
+                n = len(_groups(ident, v)[0])
+                done.append(f"{v.cid}: {n} values")
+            except Exception as exc:  # noqa: BLE001
+                done.append(f"{v.cid}: {type(exc).__name__}: {exc}"[:200])
+    return done
+
+
 def _value_cache_file(dataset_id: str, cid: str):
     from pathlib import Path
 
@@ -744,6 +798,19 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
             if v.cid not in [x["concept_id"] for x in columns]:
                 columns.append({"concept_id": v.cid})
         out["rows"] = S.chiron_run_table(ds, cd, columns, 1, int(show.get("limit") or 10))
+    elif show.get("values") is not None:
+        # a variable's recorded values (spellings merged) and roughly how many patients
+        # have each, in the whole dataset: "which labs are recorded", "what units"
+        var = _column_var(ident, show["values"])
+        if var.kind not in ("category", "text"):
+            raise AccessError(f"{var.label()} is a {var.kind} variable; ask for its range instead.")
+        groups, _ = _groups(ident, var)
+        top = sorted(groups, key=lambda g: -g["approx"])[: int(show.get("limit") or 50)]
+        out["values"] = {"variable": var.label(), "count_of_values": len(groups),
+                         "values": [{"value": g["label"], "patients_about": g["approx"],
+                                     "spellings": len(g["values"])} for g in top]}
+        notes.append("patients_about adds the spellings' counts, so a patient recorded under two "
+                     "spellings counts twice; for an exact count of one value, ask chiron_query.")
     elif show.get("stats") is not None or show.get("range") is not None:
         out["range"] = _stats(ident, S, cd, show)
     elif show.get("results") is not None:
@@ -794,7 +861,7 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
         out["query_builder"] = _written(S, ds, r)
     else:
         raise AccessError("show is {'count': true}, {'breakdown': [...]}, {'top': N, 'of': 'condition'}, "
-                          "{'list': [fields], 'limit': N}, {'range': {'lab': 'HbA1c'}}, "
+                          "{'list': [fields], 'limit': N}, {'range': {'lab': 'HbA1c'}}, {'values': 'lab'}, "
                           "{'results': {'columns': [...], 'sort': [...]}}, "
                           "{'report': {'name': ..., 'columns': [...], 'public': false}} or {'query_builder': true}.")
     return out
@@ -973,3 +1040,16 @@ def _stats(ident, S, cd, show: dict) -> dict:
             "min": st.get("min"), "max": st.get("max"), "average": st.get("avg"),
             "results": st.get("count_non_null"), "patients": st.get("unique_patients"),
             "results_without_a_value": raw.get("count_missing_values")}
+
+
+if __name__ == "__main__":
+    import sys
+
+    from chiron_mcp.bootstrap import ensure_django
+
+    ensure_django()
+    if len(sys.argv) == 3 and sys.argv[1] == "--warm":
+        for line in warm(sys.argv[2]):
+            print(line)
+    else:
+        print("python -m chiron_mcp.query --warm <dataset_id>")
