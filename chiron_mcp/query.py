@@ -742,10 +742,149 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
         out["rows"] = S.chiron_run_table(ds, cd, columns, 1, int(show.get("limit") or 10))
     elif show.get("stats") is not None or show.get("range") is not None:
         out["range"] = _stats(ident, S, cd, show)
+    elif show.get("results") is not None:
+        spec = show["results"] if isinstance(show["results"], dict) else {"columns": show["results"]}
+        cd2, cols, sort = plain_columns(ident, cd, spec.get("columns") or [], spec.get("sort"))
+        r = S.chiron_update_results(ds, cd2, cols, sort=sort or None)
+        if r.get("error"):
+            raise AccessError(f"Results not changed: {r['error']}")
+        out["results"] = _written(S, ds, r)
+        notes.append("The Results tab now holds these patients and columns; check `results` for what "
+                     "Chiron shows, and report its row count.")
+    elif show.get("report") is not None:
+        spec = show["report"] if isinstance(show["report"], dict) else {"name": show["report"]}
+        if not spec.get("name"):
+            raise AccessError("A report needs a name: {'report': {'name': ..., 'columns': [...]}}.")
+        cd2, cols, sort = plain_columns(ident, cd, spec.get("columns") or [], spec.get("sort"))
+        r = S.chiron_open_in_ui(ds, cd2, cols or None, spec["name"], "report",
+                                spec.get("description"), sort or None)
+        if r.get("error"):
+            raise AccessError(f"Report not saved: {r['error']}")
+        if spec.get("public") and r.get("report_id"):
+            u = S.chiron_update_report(ds, r["report_id"], public=True)
+            if u.get("error"):
+                notes.append(f"Saved, but not made public: {u['error']}")
+        out["report"] = _written(S, ds, r)
+    elif show.get("query_builder") or show.get("load_query"):
+        r = S.chiron_open_in_ui(ds, cd, None, show.get("name") or "Query from Ask", "workspace")
+        if r.get("error"):
+            raise AccessError(f"Query builder not loaded: {r['error']}")
+        out["query_builder"] = _written(S, ds, r)
     else:
         raise AccessError("show is {'count': true}, {'breakdown': [...]}, {'top': N, 'of': 'condition'}, "
-                          "{'list': [fields], 'limit': N} or {'range': {'lab': 'HbA1c'}}.")
+                          "{'list': [fields], 'limit': N}, {'range': {'lab': 'HbA1c'}}, "
+                          "{'results': {'columns': [...], 'sort': [...]}}, "
+                          "{'report': {'name': ..., 'columns': [...], 'public': false}} or {'query_builder': true}.")
     return out
+
+
+def _written(S, ds: str, r: dict) -> dict:
+    """What Chiron holds after a write, read back from Chiron (plan P4): never what was meant."""
+    keep = {k: r[k] for k in ("url", "report_id", "name", "mode", "public", "columns", "sort", "rows",
+                              "record_count", "patients", "subject_count") if k in r}
+    return keep or r
+
+
+# --- columns in plain terms (plan P4) --------------------------------------------------------------
+_SUMMARIES = {"max": "max", "highest": "max", "min": "min", "lowest": "min", "average": "average",
+              "mean": "average", "median": "median", "sum": "sum", "total": "sum", "latest": "latest",
+              "earliest": "earliest", "first": "earliest", "last": "latest"}
+
+
+def plain_columns(ident, cd: list, columns: list, sort=None) -> tuple[list, list, list]:
+    """Plain columns -> Chiron columns, plus the cohort they need.
+
+      "birthdate", "gender", "city"          one value per patient (rows stay one per patient)
+      {"has": {"medication": "metformin"}}   yes/no: has a matching record
+      {"max": {"lab": "HbA1c"}}              highest value of that lab (also min, average,
+                                             median, sum, latest, earliest)
+      {"count_distinct": "medication"}       how many different medications
+      {"count": {"visit": "emergency"}}      how many matching records
+      {"list": "condition"}                  the different values
+
+    A lab-limited summary needs a group in the cohort that holds that lab's results; it is
+    added with the count rule "at least 0", which Chiron reads as no condition on patients,
+    so the patients stay exactly the cohort's. The patient id comes first when the dataset
+    has one, so every row is one patient.
+    """
+    cd2 = copy.deepcopy(cd)
+    cols: list[dict] = []
+    labels: list[tuple[str, int]] = []
+    pid = _var(ident, "subject", "id")
+    if pid:
+        cols.append({"concept_id": pid.cid})
+    cu = identity.checked_chironuser(ident)
+    for c in columns or []:
+        if isinstance(c, str):
+            var = _column_var(ident, c)
+            if var.cid not in [x["concept_id"] for x in cols]:
+                cols.append({"concept_id": var.cid})
+            labels.append((D.norm(c), len(cols) - 1))
+            continue
+        if not isinstance(c, dict) or len(c) != 1:
+            raise AccessError(f"Not a column: {c!r}. " + plain_columns.__doc__.split("\n\n")[0])
+        kind, target = next(iter(c.items()))
+        k = D.norm(kind).replace(" ", "_")
+        if k == "has":
+            clause = parse_condition(ident, target)
+            var, fields, _ = clause.filters[0]
+            values = fields.get("selected_categories") or fields.get("chiron_text_field_selection", "").split("\n")
+            cols.append({"concept_id": var.cid, "aggregation": "has_value",
+                         "settings": {"values": values, "return_value": "boolean"}})
+        elif k in _SUMMARIES or k in ("count", "count_all"):
+            clause = parse_condition(ident, target if isinstance(target, dict) else {"lab": target})
+            if k in _SUMMARIES:
+                vf = D.VALUE_FIELD.get(clause.collection)
+                var = _var(ident, clause.collection, vf) if vf else None
+                if not var:
+                    raise AccessError(f"{clause.collection} records have no value to summarise.")
+                agg = _SUMMARIES[k]
+            else:
+                var, agg = clause.filters[0][0], "count_all"
+            cd2, group = _column_group(ident, cu, cd2, clause)
+            cols.append({"concept_id": var.cid, "aggregation": agg, "aggregation_criteria_set": group})
+        elif k in ("count_distinct", "list", "list_distinct"):
+            var = _by_var(ident, target)
+            cols.append({"concept_id": var.cid,
+                         "aggregation": "count_distinct" if k == "count_distinct" else "list_distinct"})
+        else:
+            raise AccessError(f"Unknown column kind {kind!r}: use has, max, min, average, median, sum, "
+                              "latest, earliest, count, count_distinct or list.")
+        labels.append((D.norm(json.dumps(c)), len(cols) - 1))
+    out_sort = []
+    for srt in ([sort] if isinstance(sort, dict) else sort or []):
+        col = srt.get("column")
+        if isinstance(col, dict):
+            want = D.norm(json.dumps(col))
+        else:
+            want = D.norm(col)
+        idx = next((i for lab, i in labels if lab == want), None)
+        if idx is None and isinstance(col, str):
+            idx = next((i for lab, i in labels if want in lab), None)
+        if idx is None:
+            raise AccessError(f"Sort column {col!r} is not one of the columns asked for.")
+        out_sort.append({"column": cols[idx]["concept_id"], "direction": srt.get("direction", "asc")})
+    return cd2, cols, out_sort
+
+
+def _column_var(ident, phrase: str) -> Var:
+    coll = TABLE_KEYS.get(D.norm(phrase))
+    if coll and D.NAME_FIELD.get(coll):
+        return _var(ident, coll, D.NAME_FIELD[coll])
+    return resolve_field(ident, phrase)
+
+
+def _column_group(ident, cu, cd: list, clause: Clause) -> tuple[list, str]:
+    """A group holding one kind of record for a column to summarise, which does not
+    change the patients (count rule "at least 0")."""
+    before = {s["entry_id"] for s in _sets(cd, clause.collection)}
+    cd = build(ident, [clause], cd)
+    group = next((s["entry_id"] for s in _sets(cd, clause.collection) if s["entry_id"] not in before), None)
+    if group is None:  # the first group of that table: build put the filters there
+        group = _sets(cd, clause.collection)[0]["entry_id"]
+    cd, _ = _apply(cu, cd, {"type": "add_criteria_set_count_rule", "entry_id": group,
+                            "rule_operator": "at least", "rule_count": 0})
+    return cd, group
 
 
 def _by_var(ident, phrase) -> Var:

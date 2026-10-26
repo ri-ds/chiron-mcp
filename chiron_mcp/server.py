@@ -307,6 +307,9 @@ def _column_transformation(cu, oConcept, col: dict) -> dict:
             allowed = {i["id"] for i in methods[agg].get_inputs(
                 cu, {"concept_id": oConcept.permanent_id})}
             settings = dict(col.get("settings") or {})
+            for key in ("aggregation_criteria_set", "only_records_in"):
+                if key in settings and key not in col:  # passed among the settings
+                    col = {**col, key: settings.pop(key)}
             for key in allowed:  # settings passed at the top level, the older way
                 if key in col and key not in settings:
                     settings[key] = col[key]
@@ -319,6 +322,14 @@ def _column_transformation(cu, oConcept, col: dict) -> dict:
             if isinstance(settings.get("values"), str):
                 settings["values"] = [settings["values"]]
             transformation.update(settings)
+    # Summarise only the records one group of the cohort matches ("highest HbA1c" = max of
+    # the value over the HbA1c group's results), Chiron's aggregation_criteria_set. It is
+    # a column option, not one of the aggregation's own settings.
+    only_in = col.get("aggregation_criteria_set") or col.get("only_records_in")
+    if only_in:
+        if agg in (None, "stack"):
+            raise AccessError("aggregation_criteria_set needs an aggregation such as max, min or has_value.")
+        transformation["aggregation_criteria_set"] = only_in
     if col.get("alias"):
         transformation["entry_alias"] = col["alias"]
     return transformation
@@ -1664,9 +1675,12 @@ def chiron_update_results(
 
     `cohort_def` replaces the filters open in their query builder (and so the patients
     in Results). `columns` replaces all columns; `add_columns` [{concept_id,
-    aggregation?, settings?}], `remove_columns` [column], `set_aggregation` [{column,
-    aggregation, settings?}], `order` [column, ...] and `sort` [{column, direction:
-    asc|desc}] edit the current ones. A column is named by its entry_id, concept_id or
+    aggregation?, settings?, aggregation_criteria_set?}], `remove_columns` [column],
+    `set_aggregation` [{column, aggregation, settings?}], `order` [column, ...] and `sort`
+    [{column, direction: asc|desc}] edit the current ones. aggregation_criteria_set (the
+    entry_id of one group in the cohort) limits a summary to that group's records: the
+    highest HbA1c is max of the lab value over an HbA1c group. chiron_query's
+    show={"results": ...} builds all of this from plain columns. A column is named by its entry_id, concept_id or
     name (chiron_results lists them). Aggregation is "stack" or a method from
     chiron_column_options. Every change is saved as a new step in Chiron's history, so
     the user's undo still works. Requires CHIRON_MCP_ALLOW_SAVE=1.
