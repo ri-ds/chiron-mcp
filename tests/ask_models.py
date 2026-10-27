@@ -35,7 +35,7 @@ def check(name, ok, detail=""):
 check("the list keeps ids with labels, trims, and drops blanks and repeats",
       [(m["id"], m["label"]) for m in W.ASK_MODELS] ==
       [(OPUS, "Opus 5.5"), (SONNET, "Sonnet 5.5"), (HAIKU, HAIKU)], str(W.ASK_MODELS))
-check("ANTHROPIC_MODEL on the list is the default", W.default_model() == HAIKU, W.default_model())
+check("Haiku is the default when it is offered", W.default_model() == HAIKU, W.default_model())
 check("a listed pick is honoured", W.pick_model(SONNET) == SONNET)
 check("a pick off the list falls back to the default", W.pick_model("gpt-5") == HAIKU)
 check("no pick is the default", W.pick_model(None) == HAIKU and W.pick_model("  ") == HAIKU)
@@ -51,6 +51,21 @@ check("every model slot is pinned to the pick",
       all(env.get(s) == SONNET for s in W._MODEL_SLOTS) and env.get("CHIRON_MCP_USERNAME") == "tester",
       str({s: env.get(s) for s in W._MODEL_SLOTS}))
 check("no model keeps the server's environment", W.model_env(None) is None)
+
+# A refused model leaves the menu: Opus becomes the default, and the fallback for a
+# question that asked for the refused one.
+W.DENIED.add(HAIKU)
+check("a refused model is no longer offered", [m["id"] for m in W.offered_models()] == [OPUS, SONNET])
+check("Opus is the default without Haiku", W.default_model() == OPUS and W.pick_model(HAIKU) == OPUS)
+check("the fallback is Opus, else the first other model",
+      W.fallback_model(HAIKU) == OPUS and W.fallback_model(OPUS) == SONNET)
+W.DENIED.clear()
+saved = W.ASK_MODELS
+W.ASK_MODELS = [m for m in saved if m["id"] != HAIKU]
+check("Opus is the default when Haiku is not listed", W.default_model() == OPUS)
+W.ASK_MODELS = [m for m in saved if m["id"] == SONNET]
+check("one model offered: no fallback", W.fallback_model(SONNET) is None and W.default_model() == SONNET)
+W.ASK_MODELS = saved
 
 # Without a list there is nothing to pick from: the CLI's own model answers, as before.
 W.ASK_MODELS = []

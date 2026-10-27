@@ -512,3 +512,7 @@ Running the larger models on only the 49 plus the new questions about halves the
   and only listed models are accepted. The trace names the model that answered. A Bedrock
   refusal of a model gets a plain message. `tests/ask_models.py`. Local stack first, the box
   after its AWS role allows the models it lists.
+  Default rule (user): Haiku when it is listed, else Opus, else the first. A model Bedrock
+  refuses (the role may not call it, or the region lacks it) is dropped from the menu for the
+  server's lifetime and the question is answered again by Opus (else the first other model) as
+  a new conversation, with a trace note ("Model not allowed here").

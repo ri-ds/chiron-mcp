@@ -168,12 +168,13 @@ each a model id Claude Code accepts with a label after `=`:
 ASK_MODELS=us.anthropic.claude-opus-5-5=Opus 5.5,us.anthropic.claude-sonnet-5-5=Sonnet 5.5,us.anthropic.claude-haiku-5-5=Haiku 5.5
 ```
 
-Then `docker compose up -d ask`. The composer shows a small menu; the first model is the
-default unless `ANTHROPIC_MODEL` names one of the others. A question runs with every
+Then `docker compose up -d ask`. The composer shows a small menu. Haiku is the default
+when it is listed, else Opus, else the first. A question runs with every
 Claude Code model slot pinned to the chosen model, so nothing else is called, and the
 trace under the answer names the model that answered. Only listed models can be chosen.
-On Bedrock, the AWS role must be allowed to call each listed model; a model it may not
-call gets a plain error on the page.
+On Bedrock, the AWS role must be allowed to call each listed model. A model Bedrock
+refuses is dropped from the menu for as long as the server runs, and the question is
+answered by the next one (Opus when it is listed); the trace under the answer says so.
 
 ## Undo it all after testing
 

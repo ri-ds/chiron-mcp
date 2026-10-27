@@ -469,6 +469,17 @@ class Trace:
             s["t1"] = s["t0"]
         self._guard(go)
 
+    def rerouted(self, thread: str, refused: str, model: str) -> None:
+        """Bedrock refused the model, so the question was asked again with another one,
+        as a new conversation."""
+        def go():
+            self.data.update(thread=thread, followup=False)
+            s = self.step("note", label="Model not allowed here", status="warn",
+                          summary=f"Bedrock refused {refused}, so it is no longer offered; this "
+                                  f"was asked again with {model}, as a new conversation.")
+            s["t1"] = s["t0"]
+        self._guard(go)
+
     def note(self, label: str, summary: str, status: str = "info", **fields) -> None:
         def go():
             s = self.step("note", label=label, summary=summary, status=status, **fields)

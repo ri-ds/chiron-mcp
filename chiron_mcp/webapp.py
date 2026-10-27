@@ -63,7 +63,7 @@ ASK_TOOLS = (os.environ.get("CHIRON_MCP_ASK_TOOLS") or "short").strip().lower()
 # The models the page may choose from, when the deployment offers a choice:
 #   CHIRON_MCP_ASK_MODELS="us.anthropic.claude-opus-5-5=Opus 5.5,us.anthropic.claude-haiku-5-5=Haiku 5.5"
 # Each entry is a model id Claude Code accepts (its --model flag), with a label after "="
-# for the page. The first is the default unless ANTHROPIC_MODEL names one of them. Unset,
+# for the page. Haiku is the default when it is listed, else Opus, else the first. Unset,
 # Claude Code's own model answers, as before, and the page shows no switcher.
 def _parse_models(spec: str | None) -> list[dict]:
     out: list[dict] = []
@@ -78,20 +78,41 @@ def _parse_models(spec: str | None) -> list[dict]:
 ASK_MODELS = _parse_models(os.environ.get("CHIRON_MCP_ASK_MODELS"))
 
 
+# Models Bedrock refused since this server started (the deployment's role may not call
+# them, or the region lacks them): no longer offered, and a question that asked for one
+# is answered by the next (see fallback_model).
+DENIED: set[str] = set()
+
+
+def offered_models() -> list[dict]:
+    return [m for m in ASK_MODELS if m["id"] not in DENIED]
+
+
+def _first(models: list[dict], family: str) -> str | None:
+    return next((m["id"] for m in models if family in m["id"].lower()), None)
+
+
 def default_model() -> str | None:
-    """The model a question uses when the page names none: ANTHROPIC_MODEL when it is on
-    the list, else the first of the list; None when there is no list."""
-    if not ASK_MODELS:
+    """The model a question uses when the page names none: Haiku when it is offered,
+    else Opus, else the first offered; None when there is no list."""
+    offered = offered_models()
+    if not offered:
         return None
-    env = (os.environ.get("ANTHROPIC_MODEL") or "").strip()
-    return env if any(m["id"] == env for m in ASK_MODELS) else ASK_MODELS[0]["id"]
+    return _first(offered, "haiku") or _first(offered, "opus") or offered[0]["id"]
+
+
+def fallback_model(model: str) -> str | None:
+    """The model that answers instead when `model` is refused: Opus when offered, else
+    the first other offered model; None when there is none."""
+    others = [m for m in offered_models() if m["id"] != model]
+    return (_first(others, "opus") or others[0]["id"]) if others else None
 
 
 def pick_model(requested: str | None) -> str | None:
-    """The model to answer with: the page's choice when it is on the list, else the
-    default. A name not on the list is ignored, so the page cannot run any model."""
+    """The model to answer with: the page's choice when it is offered, else the default.
+    A name not on the list is ignored, so the page cannot run any model."""
     requested = (requested or "").strip()
-    if requested and any(m["id"] == requested for m in ASK_MODELS):
+    if requested and any(m["id"] == requested for m in offered_models()):
         return requested
     return default_model()
 
@@ -1249,7 +1270,8 @@ _NOT_LOGGED_IN = re.compile(
     r"credit balance|x-api-key", re.I)
 # Bedrock refusing a model the deployment's AWS role may not call.
 _MODEL_DENIED = re.compile(
-    r"AccessDenied|not authorized to perform|don.t have access to the model", re.I)
+    r"AccessDenied|not authorized to perform|don.t have access to the model|"
+    r"could not resolve the foundation model|model identifier is invalid", re.I)
 
 
 def explain_claude_error(text: str) -> str:
@@ -1570,6 +1592,19 @@ def ask_stream(
                 break
             if outcome.get("answered"):
                 break
+            if model and _MODEL_DENIED.search(outcome.get("stderr") or "") and fallback_model(model):
+                # Bedrock refused the model (the deployment's role may not call it, or the
+                # region lacks it): stop offering it, and answer with the next one as a new
+                # conversation, since the refused start may have claimed the session id.
+                DENIED.add(model)
+                nxt = fallback_model(model)
+                resume = False
+                tid = str(uuid.uuid4())
+                trace.rerouted(tid, model, nxt)
+                yield from _drain(trace)
+                yield "thread", tid
+                model, env = nxt, model_env(nxt)
+                continue
             if resume:
                 # The transcript is gone (expired, or cleared elsewhere): start this
                 # question as a fresh conversation rather than failing it.
@@ -1760,7 +1795,7 @@ class Handler(BaseHTTPRequestHandler):
         who, allow_su = request_identity(self.headers.get("Cookie"))
         dataset = (parse_qs(urlparse(self.path).query).get("dataset") or [None])[0]
         out: dict = {"identity": who, "datasets": [], "suggestions": [],
-                     "models": ASK_MODELS, "model": default_model()}
+                     "models": offered_models(), "model": default_model()}
         if not who:
             out["error"] = NOT_LOGGED_IN
             return self._json(out)
