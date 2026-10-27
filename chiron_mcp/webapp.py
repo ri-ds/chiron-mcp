@@ -58,6 +58,59 @@ TOOLS_SHORT = [
     "chiron_delete_report",
 ]
 ASK_TOOLS = (os.environ.get("CHIRON_MCP_ASK_TOOLS") or "short").strip().lower()
+
+
+# The models the page may choose from, when the deployment offers a choice:
+#   CHIRON_MCP_ASK_MODELS="us.anthropic.claude-opus-5-5=Opus 5.5,us.anthropic.claude-haiku-5-5=Haiku 5.5"
+# Each entry is a model id Claude Code accepts (its --model flag), with a label after "="
+# for the page. The first is the default unless ANTHROPIC_MODEL names one of them. Unset,
+# Claude Code's own model answers, as before, and the page shows no switcher.
+def _parse_models(spec: str | None) -> list[dict]:
+    out: list[dict] = []
+    for part in (spec or "").split(","):
+        mid, _, label = part.strip().partition("=")
+        mid = mid.strip()
+        if mid and all(m["id"] != mid for m in out):
+            out.append({"id": mid, "label": label.strip() or mid})
+    return out
+
+
+ASK_MODELS = _parse_models(os.environ.get("CHIRON_MCP_ASK_MODELS"))
+
+
+def default_model() -> str | None:
+    """The model a question uses when the page names none: ANTHROPIC_MODEL when it is on
+    the list, else the first of the list; None when there is no list."""
+    if not ASK_MODELS:
+        return None
+    env = (os.environ.get("ANTHROPIC_MODEL") or "").strip()
+    return env if any(m["id"] == env for m in ASK_MODELS) else ASK_MODELS[0]["id"]
+
+
+def pick_model(requested: str | None) -> str | None:
+    """The model to answer with: the page's choice when it is on the list, else the
+    default. A name not on the list is ignored, so the page cannot run any model."""
+    requested = (requested or "").strip()
+    if requested and any(m["id"] == requested for m in ASK_MODELS):
+        return requested
+    return default_model()
+
+
+# Claude Code's model slots. With a model chosen, every slot is pinned to it, so a
+# question calls no other model (a deployment's Bedrock policy may allow only the listed
+# ones).
+_MODEL_SLOTS = ("ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_SMALL_FAST_MODEL")
+
+
+def model_env(model: str | None) -> dict | None:
+    """The environment for Claude Code with `model` in every slot; None keeps the server's."""
+    if not model:
+        return None
+    env = dict(os.environ)
+    for slot in _MODEL_SLOTS:
+        env[slot] = model
+    return env
 TOOLS_FULL = [
     "chiron_query",
     "chiron_datasets",
@@ -1194,10 +1247,16 @@ def _redact(text: str) -> str:
 _NOT_LOGGED_IN = re.compile(
     r"invalid api key|please run /login|not logged in|log ?in to|authenticat|oauth|"
     r"credit balance|x-api-key", re.I)
+# Bedrock refusing a model the deployment's AWS role may not call.
+_MODEL_DENIED = re.compile(
+    r"AccessDenied|not authorized to perform|don.t have access to the model", re.I)
 
 
 def explain_claude_error(text: str) -> str:
     """Turn the CLI's own wording for a missing or expired login into what to do."""
+    if _MODEL_DENIED.search(text or ""):
+        return ("This server's AWS role may not call that model on Bedrock. Pick another "
+                "model, or have the role's Bedrock policy extended to this one.")
     if _NOT_LOGGED_IN.search(text or ""):
         return ("Ask is not connected to a Claude account on this server yet, or its "
                 "login has expired. Whoever runs the server can fix it: docker compose "
@@ -1227,7 +1286,7 @@ def _drain(trace):
 
 def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: dict,
                  inherited: dict | None = None, tid: str = "", trace=tracing.OFF,
-                 known: set | None = None):
+                 known: set | None = None, env: dict | None = None):
     """One headless Claude run, translated into page events.
 
     `inherited` is the cohort behind the conversation's previous Query button. A
@@ -1250,7 +1309,7 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
 
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        stdin=subprocess.DEVNULL, text=True, bufsize=1, cwd=_neutral_dir(),
+        stdin=subprocess.DEVNULL, text=True, bufsize=1, cwd=_neutral_dir(), env=env,
     )
     tracker = _CohortTracker()
     tool_numbers: set[int] = set()
@@ -1423,8 +1482,12 @@ def ask_stream(
     username: str,
     allow_superuser: bool,
     thread: str | None = None,
+    model: str | None = None,
 ):
     """Answer one question as `username`, continuing `thread` when it is theirs.
+
+    `model` is the page's pick among CHIRON_MCP_ASK_MODELS (pick_model decides what it
+    means); a follow-up may switch, since the transcript is resumed by id.
 
     Events: thread (the conversation id to send back with a follow-up), step, link,
     cohort (verified, with its subject count), answer, error. With tracing on, also
@@ -1439,6 +1502,8 @@ def ask_stream(
     if not Path(claude).exists():
         yield "error", "Claude Code CLI not found. Install it, or put `claude` on PATH."
         return
+    model = pick_model(model)
+    env = model_env(model)
 
     THREADS.prune()
     resume = THREADS.valid(thread, username, dataset)
@@ -1483,11 +1548,11 @@ def ask_stream(
 
             inherited = THREADS.cohort(tid) if resume else None
             for _flag in range(2):
-                cmd = _claude_command(claude, prompt, session, cfg)
+                cmd = _claude_command(claude, prompt, session, cfg, model)
                 outcome = {}
                 trace.launched(cmd, prompt, SYSTEM_PROMPT, resume)
                 yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid, trace,
-                                        known=_numbers_in(question) | _group_counts(tid))
+                                        known=_numbers_in(question) | _group_counts(tid), env=env)
                 if outcome.get("answered") or not _thinking_flag_refused(outcome):
                     break
                 # A Claude Code too old for --thinking-display: ask again without it, and
@@ -1531,11 +1596,11 @@ def ask_stream(
                 note = (f"Check before answering: a tool returned the count {outcome['nodigits']:,}, but your "
                         "answer states no figure in digits. Give the whole answer again with the figure "
                         "in digits (20, not \"twenty\").")
-            cmd = _claude_command(claude, note, ["--resume", tid], cfg)
+            cmd = _claude_command(claude, note, ["--resume", tid], cfg, model)
             outcome = {}
             trace.launched(cmd, note, SYSTEM_PROMPT, True)
             yield from _claude_turn(cmd, username, allow_superuser, outcome,
-                                    THREADS.cohort(tid), tid, trace)
+                                    THREADS.cohort(tid), tid, trace, env=env)
         THREADS.touch(tid, username, dataset, outcome.get("cohort"))
         if TRACE:
             trace.finish(outcome.get("rc"), outcome.get("stderr", ""))
@@ -1558,7 +1623,8 @@ def ask_stream(
             pass
 
 
-def _claude_command(claude: str, prompt: str, session: list[str], cfg: Path) -> list[str]:
+def _claude_command(claude: str, prompt: str, session: list[str], cfg: Path,
+                    model: str | None = None) -> list[str]:
     # Isolate the headless session from the operator's own Claude Code setup.
     # Without this it inherits their git identity, project files, memory and
     # every other MCP server they have configured, and repeats them in answers.
@@ -1566,6 +1632,7 @@ def _claude_command(claude: str, prompt: str, session: list[str], cfg: Path) -> 
     # off without an API key (--bare), which is why tidy() also redacts.
     return [
         claude, "-p", prompt, *session,
+        *(["--model", model] if model else []),
         "--mcp-config", str(cfg),
         "--strict-mcp-config",
         "--setting-sources", "",
@@ -1692,7 +1759,8 @@ class Handler(BaseHTTPRequestHandler):
         """Who is asking, what they may use, and starter questions for ?dataset=."""
         who, allow_su = request_identity(self.headers.get("Cookie"))
         dataset = (parse_qs(urlparse(self.path).query).get("dataset") or [None])[0]
-        out: dict = {"identity": who, "datasets": [], "suggestions": []}
+        out: dict = {"identity": who, "datasets": [], "suggestions": [],
+                     "models": ASK_MODELS, "model": default_model()}
         if not who:
             out["error"] = NOT_LOGGED_IN
             return self._json(out)
@@ -1818,7 +1886,8 @@ class Handler(BaseHTTPRequestHandler):
             send("done", "")
             return
         thread = (params.get("thread") or [None])[0]
-        stream = ask_stream(question, dataset, who, allow_su, thread)
+        model = (params.get("model") or [None])[0]
+        stream = ask_stream(question, dataset, who, allow_su, thread, model)
         try:
             for event, payload in stream:
                 send(event, payload)

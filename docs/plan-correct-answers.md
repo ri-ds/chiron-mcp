@@ -505,3 +505,10 @@ Running the larger models on only the 49 plus the new questions about halves the
   `results/reports/chiron-ask-answers.html` and published at
   https://claude.ai/artifact/SnmJtJYbRsNv2Yg6k8sG8c; the results page
   https://claude.ai/artifact/8wZ53To6ZEf6i1n7GuVRyw carries the Haiku 4.5 lane.
+- **Model menu on the page** (27 October, user request): `CHIRON_MCP_ASK_MODELS` lists the
+  models a deployment offers (ids with labels; `ASK_MODELS` in deploy/.env); the composer
+  shows a menu when there is more than one, the choice is kept per browser and sent with
+  each question, `ask_stream` passes `--model` and pins every Claude Code model slot to it,
+  and only listed models are accepted. The trace names the model that answered. A Bedrock
+  refusal of a model gets a plain message. `tests/ask_models.py`. Local stack first, the box
+  after its AWS role allows the models it lists.

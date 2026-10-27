@@ -158,6 +158,23 @@ ProxyPass /.well-known/oauth-authorization-server/chiron http://localhost:8088/.
 In tunnel mode `setup.sh` sets `COMPOSE_PROFILES=tunnel` in `.env`, so all of these include
 the tunnel container.
 
+## Let people pick the model
+
+By default every question goes to the model Claude Code is set to (`ANTHROPIC_MODEL`
+in your override). To offer a choice on the page, list the models in `deploy/.env`,
+each a model id Claude Code accepts with a label after `=`:
+
+```
+ASK_MODELS=us.anthropic.claude-opus-5-5=Opus 5.5,us.anthropic.claude-sonnet-5-5=Sonnet 5.5,us.anthropic.claude-haiku-5-5=Haiku 5.5
+```
+
+Then `docker compose up -d ask`. The composer shows a small menu; the first model is the
+default unless `ANTHROPIC_MODEL` names one of the others. A question runs with every
+Claude Code model slot pinned to the chosen model, so nothing else is called, and the
+trace under the answer names the model that answered. Only listed models can be chosen.
+On Bedrock, the AWS role must be allowed to call each listed model; a model it may not
+call gets a plain error on the page.
+
 ## Undo it all after testing
 
 1. Log Claude out: `docker compose exec -it ask claude`, then `/logout`, then `/exit`.

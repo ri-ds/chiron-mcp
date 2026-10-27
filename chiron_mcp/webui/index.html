@@ -252,6 +252,14 @@
   .send:disabled { background: #cfd6db; cursor: default; }
   .send.stop { background: var(--ink, #1f2a30); }
   .send.stop:hover { background: #000; }
+  /* the model that answers, when the server offers a choice */
+  .model {
+    flex: none; align-self: center; font: inherit; font-size: 12px; color: var(--muted);
+    background: transparent; border: 1px solid var(--line); border-radius: 8px;
+    padding: 5px 6px; max-width: 130px; cursor: pointer;
+  }
+  .model:hover { color: var(--ink); }
+  .model:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 1px; }
 
   .scrim { display: none; }
 
@@ -471,6 +479,7 @@
   <div class="composer-wrap">
     <form class="composer" id="composer">
       <textarea id="q" rows="1" placeholder="Ask about this dataset…" aria-label="Your question"></textarea>
+      <select id="model" class="model" aria-label="The model that answers" title="The model that answers" hidden></select>
       <button class="send" id="send" type="submit" aria-label="Send" disabled>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
       </button>
@@ -876,7 +885,8 @@ function ask(text) {
 
   const src = new EventSource(
     'ask?q=' + encodeURIComponent(q) + '&dataset=' + encodeURIComponent(DATASET) +
-    (chat.thread ? '&thread=' + encodeURIComponent(chat.thread) : ''));
+    (chat.thread ? '&thread=' + encodeURIComponent(chat.thread) : '') +
+    (MODEL ? '&model=' + encodeURIComponent(MODEL) : ''));
   const parse = e => { try { return JSON.parse(e.data); } catch (_) { return null; } };
 
   // The server's id for this conversation, sent back with each follow-up so "how many
@@ -1708,9 +1718,27 @@ $('trace-all').onclick = () => setTraceAll(!TRACE_ALL);
 $('trace-all').setAttribute('aria-pressed', TRACE_ALL ? 'true' : 'false');
 
 // --- start ---------------------------------------------------------------------------
+// The model that answers, when the server lists more than one (CHIRON_MCP_ASK_MODELS).
+// The choice is kept per browser; a follow-up may use a different model than the question
+// before it, and the trace under each answer names the model that actually answered.
+let MODEL = '';
+function setupModels(d) {
+  const sel = $('model'), list = (d && d.models) || [];
+  if (list.length < 2) { sel.hidden = true; MODEL = ''; return; }
+  let saved = '';
+  try { saved = localStorage.getItem('chiron-ask:model') || ''; } catch (_) {}
+  MODEL = list.some(m => m.id === saved) ? saved : (d.model || list[0].id);
+  sel.textContent = '';
+  list.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.label; sel.appendChild(o); });
+  sel.value = MODEL;
+  sel.hidden = false;
+  sel.onchange = () => { MODEL = sel.value; try { localStorage.setItem('chiron-ask:model', MODEL); } catch (_) {} };
+}
+
 // Who is asking decides whose conversations to show, so nothing renders until then.
 function start(d) {
   ME = (d && d.identity) || null;
+  setupModels(d);
   const match = d && (d.datasets || []).find(x => x.id === DATASET);
   DATASET_NAME = (match && match.name) || DATASET || 'this dataset';
   POOL = (d && d.pool) || [];
