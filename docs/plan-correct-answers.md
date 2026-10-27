@@ -498,3 +498,10 @@ Running the larger models on only the 49 plus the new questions about halves the
   `with`; a note when a visit-date condition stands beside a `visit` condition; a hint to start
   `update_report` from the saved report. Audit `results/runs/20261027-033625/AUDIT.md`, PDF
   `results/reports/chiron-ask-benchmark-haiku45.pdf`, both runs in LangSmith.
+- **Answers page** (27 October): every model's answer to all 276 questions, the questions down
+  the left with an "All misses" group on top, and a scores-by-set view with each set's median
+  answer time and billed cost. Built by `chiron-benchmark/scripts/make_answers_page.py --known
+  20261026-165027,20261027-033625 --fresh 20261026-151506,20261027-045329` into
+  `results/reports/chiron-ask-answers.html` and published at
+  https://claude.ai/artifact/SnmJtJYbRsNv2Yg6k8sG8c; the results page
+  https://claude.ai/artifact/8wZ53To6ZEf6i1n7GuVRyw carries the Haiku 4.5 lane.
