@@ -84,6 +84,9 @@ class Clause:
         self.filters: list[tuple[Var, dict, str]] = []  # (variable, Chiron filter fields, what it means)
         self.count_rule: tuple[str, int] | None = None
         self.matched: list[dict] = []
+        # dated against another record: {"before", "after" (days), "from" ("start"/"end" of
+        # that record), "target" (its Clause)}; Chiron's relative-to-other-event rule
+        self.within: dict | None = None
 
 
 # --- what the identity can see -------------------------------------------------------------
@@ -640,7 +643,87 @@ def parse_condition(ident, cond: dict) -> Clause:
         if canon is None or canon[1] < 0:
             raise AccessError(f"Count rule {k!r} {n} is not one Chiron can run.")
         clause.count_rule = canon
+    stray = [k for k in ("days_after", "days_before", "days", "of") if k in cond]
+    if stray and "within" not in cond:
+        raise AccessError(f"{', '.join(stray)} go inside 'within': " + WITHIN_HELP)
+    if "within" in cond:
+        clause.within = _parse_within(ident, cond["within"], clause)
+        clause.matched.extend(clause.within["target"].matched)
     return clause
+
+
+WITHIN_HELP = ("{'medication': 'metformin', 'within': {'days_after': 90, 'of': {'condition': 'type 2 "
+               "diabetes'}}} is a metformin record dated from the same day to 90 days after a type 2 "
+               "diabetes record of the same patient; 'days_before' for the other direction, both for a "
+               "window either side, 'days' for the same number both ways, 'any' instead of a number "
+               "for any time before or after; 'from': 'end' counts from the other record's end date "
+               "(a visit's discharge) instead of its start.")
+# "any time before": Chiron's rule takes a number of days, so this many stands for no limit.
+ANY_DAYS = 36525
+
+
+def _parse_within(ident, spec, clause: Clause) -> dict:
+    """'within 90 days after a type 2 diabetes diagnosis': this record's date relative to
+    another record's. Becomes Chiron's relative-to-other-event rule between the two groups,
+    which needs event dates on both tables (checked when the cohort is built)."""
+    if not isinstance(spec, dict) or not isinstance(spec.get("of"), dict):
+        raise AccessError("'within' is an object with 'of' (the other record) and days: " + WITHIN_HELP)
+    unknown = sorted(set(spec) - {"of", "days", "days_before", "days_after", "from"})
+    if unknown:
+        raise AccessError(f"'within' does not take {', '.join(unknown)}; only of, days_after, days_before, "
+                          "days and from. " + WITHIN_HELP)
+    if clause.collection == "subject":
+        raise AccessError("'within' times one record (a visit, diagnosis, prescription...) against "
+                          "another; a patient's own field has no date to time.")
+    if clause.count_rule:
+        raise AccessError("Chiron cannot put a count rule (at least N, never...) on records timed against "
+                          "another record: ask for the timing without the count, or the count without the "
+                          "timing, and say which you gave.")
+    days: dict[str, int] = {}
+    for key in ("days", "days_before", "days_after"):
+        if key in spec:
+            if isinstance(spec[key], str) and spec[key].strip().lower() in ("any", "any time", "ever"):
+                days[key] = ANY_DAYS
+                continue
+            try:
+                n = int(_num(spec[key]))
+            except (TypeError, ValueError):
+                raise AccessError(f"'{key}' is a whole number of days, or 'any'.") from None
+            if n < 0:
+                raise AccessError(f"'{key}' cannot be negative: use days_before for earlier, days_after for later.")
+            days[key] = n
+    if not days:
+        raise AccessError("'within' needs days_after, days_before or days. " + WITHIN_HELP)
+    ref = str(spec.get("from", "start")).strip().lower()
+    if ref not in ("start", "end"):
+        raise AccessError("'from' is 'start' (the default) or 'end': which date of the other record to count from.")
+    target = parse_condition(ident, spec["of"])
+    if target.within:
+        raise AccessError("Chiron times two records at a time: 'of' cannot carry a 'within' of its own.")
+    if target.collection == "subject":
+        raise AccessError("'of' names a record (a diagnosis, visit, prescription...), not a patient field.")
+    if target.count_rule:
+        raise AccessError("Chiron cannot time records against a group with a count rule (at least N, "
+                          "never...): drop that count or the timing, and say which.")
+    return {"before": days.get("days_before", days.get("days", 0)),
+            "after": days.get("days_after", days.get("days", 0)), "from": ref, "target": target}
+
+
+def _within_words(w: dict) -> str:
+    """The timing in plain words: 'within 90 days after <the other record>'."""
+    target = "; ".join(f.split(" (")[0] for _, _, f in w["target"].filters) or w["target"].collection
+    if w["from"] == "end":
+        target += " (from its end date)"
+    before, after = w["before"], w["after"]
+    span = {ANY_DAYS: "any time"}
+    if before and after:
+        return (f"from {span.get(before, f'{before} days')} before to {span.get(after, f'{after} days')} "
+                f"after {target}")
+    if before:
+        return f"{span.get(before, f'within {before} days')} before (or on the day of) {target}"
+    if after:
+        return f"{span.get(after, f'within {after} days')} after (or on the day of) {target}"
+    return f"on the same day as {target}"
 
 
 def _name_filter(ident, coll: str, name, matched: list) -> tuple[Var, dict, str]:
@@ -694,10 +777,24 @@ def _ids(cd: list) -> set:
 
 def build(ident, clauses: list[Clause], base: list | None = None) -> list:
     """The cohort_def for all clauses ANDed (on top of `base`), each record clause in a
-    group of its own."""
+    group of its own. A timed clause ("within") gets the record it is timed against as a
+    group of its own too, and Chiron's relative-to-other-event rule between the two."""
     cu = identity.checked_chironuser(ident)
     cd = copy.deepcopy(base or [])
     for clause in clauses:
+        if clause.within:
+            cd, target = _add_clause(cu, cd, clause.within["target"])
+            cd, source = _add_clause(cu, cd, clause)
+            cd = _relate(cu, cd, source, target, clause)
+        else:
+            cd, _ = _add_clause(cu, cd, clause)
+    return cd
+
+
+def _add_clause(cu, cd: list, clause: Clause) -> tuple[list, str | None]:
+    """The cohort_def with this clause added as a group of its own, and that group's
+    entry_id (None for the patient's own fields, which have no group)."""
+    if True:
         coll = clause.collection
         own_group = coll != "subject" and bool(_sets(cd, coll))
         target = None
@@ -724,6 +821,52 @@ def build(ident, clauses: list[Clause], base: list | None = None) -> list:
             op, n = clause.count_rule
             cd, _ = _apply(cu, cd, {"type": "add_criteria_set_count_rule", "entry_id": target,
                                     "rule_operator": op, "rule_count": n})
+    return cd, target
+
+
+def _event_type(cu, coll: str) -> str | None:
+    """'point', 'interval' or None: whether the data dictionary gives this table an event
+    date (and an end date), which is what timing between records needs."""
+    from chiron import models
+
+    try:
+        return models.Collection.objects.get(dataset=cu.dataset, permanent_id=coll).get_event_type()
+    except models.Collection.DoesNotExist:
+        return None
+
+
+def _relate(cu, cd: list, source: str | None, target: str | None, clause: Clause) -> list:
+    """Chiron's relative-to-other-event rule: the records of group `source` dated within the
+    window around the records of group `target` (the same patient's). Both groups get an
+    event rule, as Chiron's own query builder does ("any date" on the target)."""
+    w = clause.within
+    for group, c in ((source, clause), (target, w["target"])):
+        if group is None:
+            raise AccessError("Could not find the group of a timed condition; use chiron_edit_cohort.")
+        if _event_type(cu, c.collection) is None:
+            raise AccessError(
+                f"Timing between records needs an event date on {c.collection} records, and this dataset "
+                f"gives them none (its data dictionary sets no event date field for {c.collection}), so "
+                "'within' cannot be asked here. Chiron can count the patients who have both at any time: "
+                "ask without 'within' and say plainly that the timing was not applied.")
+    if w["from"] == "end" and _event_type(cu, w["target"].collection) != "interval":
+        raise AccessError(f"{w['target'].collection} records have one date here, no end date: "
+                          "count from 'start' instead.")
+    for group in (target, source):
+        entry = next((e for e in cd if e.get("entry_id") == group), None)
+        if entry is None:
+            raise AccessError("Could not find the group of a timed condition; use chiron_edit_cohort.")
+        if "event_rule" not in entry:
+            cd, _ = _apply(cu, cd, {"type": "create_event_rule", "entry_id": group})
+    cd, _ = _apply(cu, cd, {
+        "type": "modify_event_rule", "entry_id": source, "option_type": "relative_to_other_event",
+        "target_entry_id": target,
+        f"reference_date_{target}": "start",
+        f"range_start_days_from_target_{target}": -w["before"],
+        f"range_start_target_{target}": w["from"],
+        f"range_end_days_from_target_{target}": w["after"],
+        f"range_end_target_{target}": w["from"],
+    })
     return cd
 
 
@@ -830,6 +973,9 @@ def run(dataset: str, where: list | None = None, match: str = "all", start_from:
     cd = build(ident, clauses, base)
     S._validated_cohort(ident, cd)  # refuses anything Chiron reports as an error
     out["what_was_counted"] = describe(ident, cd)
+    if any(c.within for c in clauses):
+        out["timing"] = [f"{'; '.join(f.split(' (')[0] for _, _, f in c.filters)} {_within_words(c.within)}"
+                         for c in clauses if c.within]
     out["count"] = S._count(ident, cd)
     out["matched"] = matched
     out = _show(ident, S, cd, show or {}, out, notes)
@@ -865,14 +1011,18 @@ def may_repeat(dataset: str, show) -> bool:
 
 
 def _label(clauses, base_text) -> str:
-    parts = [f.split(" (")[0] for c in clauses for _, _, f in c.filters]
+    parts = []
+    for c in clauses:
+        parts.extend(f.split(" (")[0] for _, _, f in c.filters)
+        if c.within:
+            parts.append(_within_words(c.within))
     return "; ".join(parts)[:160] or (base_text or "everyone")
 
 
 def _merge_any(clauses: list[Clause]) -> Clause | None:
     """'asthma or COPD': one filter on one variable takes several values at once."""
     first = clauses[0]
-    if all(len(c.filters) == 1 and not c.count_rule and c.collection == first.collection
+    if all(len(c.filters) == 1 and not c.count_rule and not c.within and c.collection == first.collection
            and c.filters[0][0].cid == first.filters[0][0].cid
            and "selected_categories" in c.filters[0][1] and not c.filters[0][1].get("exclude_selected")
            for c in clauses):

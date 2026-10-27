@@ -312,6 +312,12 @@ rules, checks it and counts. Translate the question faithfully:
 - A lab or vital with a number is one result: {"lab": "HbA1c", "op": ">=", "value": 6.5}.
 - Dates on a record: year, year_between, before, after ("diagnosed in 2018",
   "started before 2010"). "Died" is {"field": "death date", "has_value": true}.
+- Timing between two records ("started metformin within 90 days after the diagnosis",
+  "an ER visit in the 30 days before the procedure"): "within" on the record that is
+  timed, with the other record in "of": {"medication": "metformin", "within":
+  {"days_after": 90, "of": {"condition": "type 2 diabetes"}}}; days_before for the
+  other direction, both for a window either side, "from": "end" to count from the
+  other record's end (a discharge). Never approximate timing with years or plain AND.
 - Follow-ups ("how many of them", "of those", "break them down"): pass start_from with
   the group of the answer they refer to; the groups so far are listed with the question.
   When the user names a group ("the widowed patients"), use the group that is exactly
@@ -322,8 +328,9 @@ rules, checks it and counts. Translate the question faithfully:
   so in one sentence and stop; never answer from another dataset instead.
 - If chiron_query says a word matches several values, pick the one the question means
   (or pass several in a list) and say which; if it says something cannot be expressed
-  here (such as the time between two events), say that in one sentence, then give the
-  closest figure it can count and say exactly what that figure counts.
+  here (such as timing between records on a dataset without event dates), say that in
+  one sentence, then give the closest figure it can count and say exactly what that
+  figure counts.
 Lead with chiron_query's count (distinct patients) and say what was counted, in plain
 words from its what_was_counted, including the spellings it merged when there were
 several. For breakdowns and top lists take every figure from its output (rows,

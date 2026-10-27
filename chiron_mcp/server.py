@@ -876,8 +876,16 @@ def chiron_query(
           {"field": "death date", "year": 2020}        died in 2020
           {"field": "birthdate", "before": "1945-01-01"}
           {"field": "county", "is": "Hamilton"}
+          {"medication": "metformin", "within": {"days_after": 90, "of": {"condition": "type 2 diabetes"}}}
+                                                       started within 90 days after that diagnosis
+          {"visit": "emergency", "within": {"days_before": 30, "of": {"procedure": "colonoscopy"}}}
+                                                       also both, or "days" for either side, and
+                                                       "from": "end" to count from the other
+                                                       record's end date (a discharge)
         Two conditions on the same kind of record are two different records ("asthma" and
-        "COPD"; an HbA1c >= 6.5 and, separately, one < 5.7): just list both.
+        "COPD"; an HbA1c >= 6.5 and, separately, one < 5.7): just list both. Timing between
+        two records ("within") needs event dates on both tables; where the dataset has
+        none, it is refused and says so.
     start_from: a group from an earlier answer ("g1") to narrow down, for follow-ups such
         as "how many of them...". Every reply names its group. Or a saved report:
         "report:<name>" or "report:latest".

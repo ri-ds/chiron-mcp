@@ -855,6 +855,16 @@ The bundled copy under `vendor/` is patched (`additional_args=None`, a fresh dic
 `chiron_edit_cohort` also deep-copies its result, so this server is correct against an unpatched
 Chiron too. The one-line fix belongs upstream.
 
+A second patch, also for upstream: Chiron's relative-date rule between two event collections
+("within 90 days after") read each event date straight off the collection table
+(`LongitudinalCombo.generate_sql_alchemy_clauses_for_event`), which is where a single-value
+concept lives. A dataset loaded with every concept multivalue, as the Synthea bundles are,
+keeps its dates in lookup tables, so the rule failed with `AttributeError: <date concept>`
+for Chiron's own query builder as much as for chiron_query's `within`. The where builder
+now resolves an event date through the subquery's lookup alias (joined like the filters'
+lookups) or, for a table without a subquery of its own, a correlated lookup
+(`WhereBuilder.get_event_date_column`).
+
 ## Troubleshooting
 
 | Symptom | Cause |

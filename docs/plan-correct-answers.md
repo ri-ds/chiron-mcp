@@ -533,3 +533,25 @@ Running the larger models on only the 49 plus the new questions about halves the
   (default 2000; set 0 for a Mac-hosted warehouse). Still open: a follow-up answered as "Of the
   841 ..., 445 are women" leads with 841 by the server's headline rule, so it gets no Query
   button; the grader's "of the N" rule would fix that.
+- **Timing between two records** (27 October, user request, after the PCGC box's synthea-10k
+  was set up as longitudinal): `chiron_query` takes `"within"` on a record condition, with the
+  other record in `"of"` and `days_after`, `days_before`, both, `days` (either side) or `"any"`,
+  plus `"from": "end"` to count from the other record's end date; it becomes two groups with
+  Chiron's relative-to-other-event rule (the other record gets "any date", as Chiron's own
+  builder does), and the answer carries the timing in plain words (`timing`) beside Chiron's
+  description. Refused in words: a count rule or "never" on either side (Chiron cannot combine
+  them), a patient field, chains, and a dataset whose tables have no event dates ("ask without
+  'within' and say the timing was not applied"). Found on the way: Chiron's rule read the event
+  dates off the collection table, which the Synthea loads (every concept multivalue, values in
+  lookup tables) do not have, so it crashed for Chiron's own query builder too; the vendored
+  where builder now resolves an event date through the lookup alias (README, "patched"). The
+  prompt teaches the clause and no longer calls timing impossible. `tests/within_clause.py`
+  (offline), `tests/within_live.py` (Chiron's counts against raw SQL: 179 patients started
+  metformin within 90 days after a type 2 diabetes record in synthea-10k, 1,787 in 100k).
+  Benchmark: set s06's first turn is a count (`t2dm_metformin_90d`, traps: timing ignored,
+  before instead of after, either side) in the base and re-phrased sets; the held-out sets keep
+  their "cannot be done" turns (n15, f16) untouched by their own rule, so a model that now
+  answers them with a count is marked wrong there until the user decides. The benchmark's
+  metadata and this Mac's dev dictionary got event dates on the Synthea tables (start/stop on
+  conditions, encounters and medications; date on observations; start on procedures), the
+  obvious mirror of the box's setup.
