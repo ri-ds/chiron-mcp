@@ -198,7 +198,9 @@ answered by the next one (Opus when it is listed); the trace under the answer sa
   SSO in front of it, say), `ADMIN_BUTTON=1` in `deploy/.env` followed by
   `docker compose up -d --build chiron` puts the admin button back; admin then signs in
   with the demo password the button posts, and gets `ADMIN_PASSWORD` again once the
-  line is removed and the container restarted.
+  line is removed and the container restarted. `admin` is a Django superuser: Chiron's
+  admin views open for any staff account, but the Django admin at `/admin/`, where the
+  data dictionary is edited (a collection's event date, say), needs it.
 - **Ask answers only people logged into Chiron** (`CHIRON_MCP_REQUIRE_SESSION=1`), and
   refuses requests another site's page makes a visitor's browser send.
 - **A question can only call Chiron.** Each answer runs Claude with every built-in tool

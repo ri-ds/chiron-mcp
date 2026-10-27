@@ -138,11 +138,16 @@ def main() -> int:
     from django.contrib.auth import get_user_model
 
     User = get_user_model()
-    for username, level, is_staff in DEMO_USERS:
+    for username, level, is_admin in DEMO_USERS:
         user, created = User.objects.get_or_create(
-            username=username, defaults={"is_staff": is_staff}
+            username=username, defaults={"is_staff": is_admin, "is_superuser": is_admin}
         )
-        user.is_staff = is_staff
+        # Chiron's admin views open for any staff account, but the Django admin, where the
+        # data dictionary is edited (a collection's event date, which allows longitudinal
+        # queries, say), needs model permissions: admin is a superuser, as in Chiron's own
+        # test fixture. Set on every start, so an older demo gets it too.
+        user.is_staff = is_admin
+        user.is_superuser = is_admin
         password = ADMIN_PASSWORD if username == "admin" else DEMO_PASSWORD
         # Set only when it differs: a new password hash would sign the user out
         # everywhere (sessions and MCP tokens), and this runs on every start.
