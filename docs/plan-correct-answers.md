@@ -481,3 +481,20 @@ Running the larger models on only the 49 plus the new questions about halves the
   so only the two generic starters survived; the full-tools brief had hidden this. `starter_pool`
   now takes the ids from the query catalogue when the brief has none: 148 starters on Synthea 300
   in 2 s, every feature covered. `tests/starter_pool.py`.
+- **Haiku 4.5 (Bedrock) on the same questions** (runs `20261027-033625`, the 236 known, 03:36–04:53
+  UTC, and `20261027-045329`, the fresh 40, 04:53–05:05 UTC; Chiron MCP at main 1c8e527, so with the
+  identifying-columns guard, which no known question touches): **228/236 and 39/40**, $2.80 + $0.52
+  (its Bedrock rate is far above Haiku 5.5's: the same questions cost Haiku 5.5 $0.18), median
+  9.7 / 9.5 s. Its eight known misses have three causes: the report follow-up in all four wordings
+  (it rebuilt the cohort for `update_report` by hand, with spellings it guessed, and lost two
+  patients; the other lanes added the filter to the saved report in one `query`); "an encounter
+  costing more than $4,500" and its two follow-ups (payer names in the `visit` slot instead of
+  "any", then figures it added up itself, the only such answers across the five lanes); and "split
+  the widowed patients by gender" read as the deceased widowed just counted. The fresh miss: the
+  visit class and the month as separate conditions, so any visit in March 2020 counted. Reading
+  its answers fixed two grader rules ("1876 of those patients" is not a year; "BMI ≥ 40" is a
+  threshold, not the lead figure); two of its answers became right, no earlier grade changed.
+  Tool improvements the misses suggest, not made: an error for an object in `visit` that points to
+  `with`; a note when a visit-date condition stands beside a `visit` condition; a hint to start
+  `update_report` from the saved report. Audit `results/runs/20261027-033625/AUDIT.md`, PDF
+  `results/reports/chiron-ask-benchmark-haiku45.pdf`, both runs in LangSmith.
