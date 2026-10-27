@@ -516,3 +516,12 @@ Running the larger models on only the 49 plus the new questions about halves the
   refuses (the role may not call it, or the region lacks it) is dropped from the menu for the
   server's lifetime and the question is answered again by Opus (else the first other model) as
   a new conversation, with a trace note ("Model not allowed here").
+- **"What happened" in every trace** (27 October, user request): the trace now states in words
+  what the answer rested on: how many calls to which model and where (Bedrock or Anthropic),
+  each Chiron call with what it handed back (one count, group counts, an aggregate, or N patient
+  rows with their columns when a list was asked for), which group a follow-up's query built on
+  (`start_from` resolved to its count and what was counted, plus what the query added), a
+  follow-up answered with no new call, and a reminder that the model has no database access.
+  The checks carry the same statements ("Only counts and aggregates came back from Chiron; no
+  patient rows", "Builds on g1 (10,000 patients, all patients) · adds field gender is female").
+  `tests/trace_calls.py`.

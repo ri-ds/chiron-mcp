@@ -187,6 +187,8 @@ def _facts(name: str, args: dict, data) -> tuple[str, list[list[str]], str | Non
             facts.append([f"“{m.get('you asked')}”", f"{m.get('matched')} ({len(m.get('spellings') or [])} spellings)"])
         if data.get("group"):
             facts.append(["Group", str(data["group"])])
+        if data.get("started_from"):
+            facts.append(["Started from", str(data["started_from"])[:300]])
     elif tool == "chiron_edit_cohort":
         if data.get("successful"):
             summary = "Filter added" if (args.get("transformation") or {}).get("type") == "add_entry" \
@@ -351,9 +353,13 @@ class Trace:
 
     def __init__(self, *, question: str, dataset: str | None, user: str, thread: str,
                  followup: bool, prior: list[dict] | None = None, inherited: dict | None = None,
-                 redact=None):
+                 redact=None, groups: dict | None = None):
         prior = prior or []
         self.id = uuid.uuid4().hex
+        # The conversation's groups so far (g1, g2: what was counted and how many), so a
+        # query that starts from one can say in words what it built on. Grows as this
+        # answer's own queries make groups.
+        self._groups: dict[str, dict] = {str(k): dict(v) for k, v in (groups or {}).items() if isinstance(v, dict)}
         self._t0 = time.monotonic()
         self._lock = threading.RLock()
         self._redact = redact or (lambda s: s)
@@ -659,10 +665,15 @@ class Trace:
                 m["chose"].append(tool)
                 args = block.get("input") or {}
                 ds = self.data.get("dataset")
+                # A query that starts from an earlier group: say which, and what it adds.
+                base = args.get("start_from") if tool == "query" and isinstance(args.get("start_from"), str) else None
+                known = self._groups.get(base) or {} if base else {}
                 s = self.step(
                     "tool", label=TOOL_LABELS.get(tool, tool.replace("_", " ").capitalize()),
                     tool=raw, short=tool, call_id=block.get("id"), parent=m["id"],
                     input=args, chiron=raw.startswith("mcp__chiron__"),
+                    builds_on={"group": base, "count": known.get("count"), "what": known.get("what")} if base else None,
+                    adds=(_spec_words(args) or None) if base else None,
                     cohort=cohort_lines(args.get("cohort_def")) if isinstance(args.get("cohort_def"), list) else None,
                     cohort_hash=_hash(args["cohort_def"]) if isinstance(args.get("cohort_def"), list) and args["cohort_def"] else None,
                     off_dataset=bool(ds and args.get("dataset_id") and args["dataset_id"] != ds),
@@ -692,6 +703,9 @@ class Trace:
             except (TypeError, ValueError):
                 data = None
             summary, facts, describe = _facts(s["tool"], s["input"], data if data is not None else body)
+            returned, nrows, cols = _returned(s["tool"], data if data is not None else body)
+            if s.get("short") == "query" and isinstance(data, dict) and data.get("group"):
+                self._groups[str(data["group"])] = {"count": data.get("count"), "what": data.get("what_was_counted")}
             failed = bool(block.get("is_error")) or (isinstance(data, dict) and (
                 bool(data.get("error")) or data.get("successful") is False))
             if block.get("is_error") and data is None:
@@ -701,6 +715,7 @@ class Trace:
                 self._made.append(h)
             pretty = json.dumps(data, indent=2) if data is not None else body
             self._end(s, "error" if failed else "ok", summary=summary, facts=facts, describe=describe,
+                      returned=returned, rows=nrows, columns=cols[:40],
                       output=data if data is not None and len(body) <= MAX_OUTPUT else None,
                       output_text=None if data is not None and len(body) <= MAX_OUTPUT else _clip(body, MAX_OUTPUT),
                       output_preview=_clip(pretty, MAX_PREVIEW), output_size=len(body),
@@ -773,7 +788,8 @@ class Trace:
             self.data["numbers"] = _carried_numbers(self)
             self.data["stats"] = _stats(self)
             self.data["figures"] = _figure_sources(self)
-            self.data["checks"] = _checks(self)
+            self.data["calls"] = _calls(self)
+            self.data["checks"] = _checks(self) + _data_checks(self)
         self._guard(go)
         with _LIVE_GUARD:
             LIVE.pop(self.id, None)
@@ -816,7 +832,7 @@ class Trace:
     def tail(self) -> dict:
         """What the page needs once the answer is done: checks, totals, decisions."""
         keys = ("id", "done", "ended", "model", "claude_version", "stats", "checks", "figures",
-                "thread", "error")
+                "calls", "thread", "error")
         with self._lock:
             return self._clean({k: self.data.get(k) for k in keys})
 
@@ -1011,6 +1027,141 @@ def _nearest(tools: list[dict], value: float) -> dict | None:
 
 
 # --- checks -----------------------------------------------------------------------------
+
+
+def _spec_words(args: dict) -> str:
+    """A chiron_query spec in a few words: what the call asks for on top of its start."""
+    parts: list[str] = []
+    for w in args.get("where") or []:
+        if isinstance(w, dict):
+            parts.append(" ".join(f"{k} {v if isinstance(v, str) else json.dumps(v)}" for k, v in w.items()))
+        else:
+            parts.append(str(w))
+    if args.get("match"):
+        parts.append(f"match {args['match']}")
+    show = args.get("show")
+    if isinstance(show, dict):
+        parts.extend(f"show {k} {v if isinstance(v, str) else json.dumps(v)}" for k, v in show.items())
+    elif show:
+        parts.append(f"show {show}")
+    return "; ".join(parts)[:300]
+
+
+def _patient_rows(data) -> tuple[list | None, list[str]]:
+    """The patient rows a tool result carries, if any, and their column names."""
+    if not isinstance(data, dict):
+        return None, []
+    for key in ("rows", "records", "data"):
+        v = data.get(key)
+        if isinstance(v, dict):
+            inner, cols = _patient_rows(v)
+            if inner is not None:
+                return inner, cols
+        elif isinstance(v, list) and (not v or isinstance(v[0], (dict, list))):
+            cols = data.get("header") or data.get("columns") or []
+            if not cols and v and isinstance(v[0], dict):
+                cols = list(v[0].keys())
+            return v, [str(c.get("label") or c.get("name") or c) if isinstance(c, dict) else str(c)
+                       for c in cols if c is not None]
+    return None, []
+
+
+def _returned(tool: str, data) -> tuple[str, int, list[str]]:
+    """What a tool result handed the model: a phrase, how many patient rows, their columns."""
+    t = tool.replace("mcp__chiron__", "")
+    if not isinstance(data, dict):
+        return "text", 0, []
+    if data.get("error"):
+        return "an error, no data", 0, []
+    rows, cols = _patient_rows(data)
+    if rows is not None:
+        n = len(rows)
+        return (f"{n:,} patient row{'s' if n != 1 else ''}"
+                + (f", {len(cols)} column{'s' if len(cols) != 1 else ''}" if cols else ""), n, cols)
+    if t == "chiron_query":
+        for key, phrase in (("breakdown", "group counts (a breakdown)"), ("top", "group counts (a ranking)"),
+                            ("range", "one aggregate (a range or average)"),
+                            ("values", "a variable's values with rough counts"),
+                            ("results", "the Results tab's columns and count"),
+                            ("report", "a saved report's state")):
+            if data.get(key) is not None:
+                return phrase, 0, []
+        return ("one count", 0, []) if data.get("count") is not None else ("a result", 0, [])
+    if t == "chiron_count_cohort":
+        return "one count", 0, []
+    if t in ("chiron_breakdown", "chiron_crosstab"):
+        return "group counts", 0, []
+    if t == "chiron_concept_values":
+        return "a variable's values with counts", 0, []
+    if t in ("chiron_find_concepts", "chiron_describe_concept", "chiron_datasets", "chiron_saved_reports"):
+        return "metadata, no patient data", 0, []
+    if t in ("chiron_open_in_ui", "chiron_update_report", "chiron_update_results", "chiron_delete_report",
+             "chiron_edit_cohort"):
+        return "a confirmation, no patient data", 0, []
+    return "a result", 0, []
+
+
+def _calls(tr: Trace) -> dict:
+    """The answer's footing in plain terms: the model called and how often, each Chiron
+    call and what it handed back, whether any patient rows left Chiron, and where the
+    answer's figures came from. The model has no other way to the data: it is started
+    with no built-in tools, only Chiron's."""
+    d, steps = tr.data, tr._order
+    model = d.get("model") or ""
+    via = "Bedrock" if re.match(r"^(us|eu|apac|global|jp|au)\.", model) or "anthropic." in model else "Anthropic"
+    tools = [s for s in steps if s["kind"] == "tool"]
+    figs = d.get("figures") or []
+    by = {k: sum(1 for f in figs if f.get("status") == k) for k in ("tool", "question", "earlier", "derived", "missing")}
+    return {
+        "model": model, "via": via,
+        "model_calls": sum(1 for s in steps if s["kind"] == "model"),
+        "retries": sum(1 for s in steps if s["kind"] == "retry"),
+        "tools": [{"id": s["id"], "name": s.get("short"), "label": s.get("label"), "status": s.get("status"),
+                   "summary": s.get("summary"), "returned": s.get("returned"), "rows": s.get("rows") or 0,
+                   "columns": s.get("columns") or [], "builds_on": s.get("builds_on"), "adds": s.get("adds")}
+                  for s in tools],
+        "rows": sum(s.get("rows") or 0 for s in tools),
+        "figures": {"total": len(figs), **by},
+        "followup": bool(d.get("followup")),
+        "inherited": bool(d.get("inherited")),
+    }
+
+
+def _data_checks(tr: Trace) -> list[dict]:
+    """Plain statements of what the answer rested on, for the Checks list: what each
+    query built on, whether patient rows left Chiron, and where the figures came from."""
+    d = tr.data
+    c = d.get("calls") or {}
+    tools = c.get("tools") or []
+    out: list[dict] = []
+    for t in tools:
+        b = t.get("builds_on")
+        if not b:
+            continue
+        what = ", ".join(x for x in (f"{b['count']:,} patients" if isinstance(b.get("count"), int) else "",
+                                     str(b.get("what") or "")) if x)
+        out.append(_check("info", f"Builds on {b['group']}" + (f" ({what})" if what else ""),
+                          f"Adds: {t['adds']}" if t.get("adds") else "Counted again as it was.", t["id"]))
+    if d.get("followup") and not tools:
+        out.append(_check("info", "No new query: answered from the earlier results",
+                          "The model reused what this conversation had already counted."
+                          + (" The Query button carries the previous answer's cohort." if d.get("inherited") else "")))
+    if tools:
+        rows = c.get("rows") or 0
+        if rows:
+            cols = sorted({col for t in tools for col in t.get("columns") or []})
+            out.append(_check("info", f"{rows:,} patient row{'s' if rows != 1 else ''} came back from Chiron, "
+                              "because a list was asked for",
+                              "Only the columns asked for, within this account's access level"
+                              + (f": {', '.join(cols[:12])}" if cols else "") + "."))
+        else:
+            out.append(_check("pass", "Only counts and aggregates came back from Chiron; no patient rows",
+                              "The model cannot reach the database itself: it is started with no built-in "
+                              "tools and can only call Chiron's, and every call here returned a count, "
+                              "group counts or an aggregate."))
+    # Where the figures came from is already a check of its own (_checks); the
+    # "What happened" block repeats the split from `calls`.
+    return out
 
 
 def _check(level: str, title: str, detail: str = "", step: str | None = None) -> dict:

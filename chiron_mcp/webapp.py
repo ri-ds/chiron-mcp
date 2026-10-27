@@ -1073,6 +1073,16 @@ def _groups_note(tid: str) -> str:
             f"{items[-1][0]}):\n" + "\n".join(lines))
 
 
+def _groups_dict(tid: str) -> dict:
+    """A conversation's groups as the trace names them: name -> what was counted, how many."""
+    try:
+        groups = json.loads(_groups_file(tid).read_text())
+    except (OSError, ValueError):
+        return {}
+    return {str(name): {"count": g.get("count"), "what": g.get("label") or g.get("what")}
+            for name, g in groups.items() if isinstance(g, dict)}
+
+
 def _groups_file(tid: str) -> Path:
     """Where chiron_query keeps a conversation's groups (cohort definitions, no patients)."""
     return _state_dir() / "groups" / f"{tid}.json"
@@ -1549,7 +1559,8 @@ def ask_stream(
             trace = tracing.Trace(
                 question=question, dataset=dataset, user=username, thread=tid, followup=resume,
                 prior=tracing.prior(_trace_root(), tid, username) if resume else [],
-                inherited=THREADS.cohort(tid) if resume else None, redact=_redact)
+                inherited=THREADS.cohort(tid) if resume else None, redact=_redact,
+                groups=_groups_dict(tid) if resume else None)
             yield "trace_start", trace.head()
         for _attempt in range(2):
             if resume:

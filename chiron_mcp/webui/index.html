@@ -338,6 +338,14 @@
   .check.info .ic { color: var(--info); } .check.pass .ic { color: var(--pass); }
   .check .t { color: var(--ink); word-break: break-word; }
   .check .d { color: var(--ink-2); font-size: 12px; opacity: .85; }
+  /* "What happened": the calls behind an answer, in words */
+  .what-list { display: flex; flex-direction: column; gap: 6px; }
+  .what-call { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; line-height: 1.4; }
+  .what-call b { font-weight: 600; }
+  .what-call.err b { color: var(--danger); }
+  .what-call .builds { flex-basis: 100%; }
+  .builds { color: var(--k-post); font-size: 12px; }
+  small.builds { display: block; }
   .link-btn {
     border: 0; background: none; color: var(--accent-strong); cursor: pointer; font-size: 12px;
     padding: 0; white-space: nowrap; text-decoration: underline; text-underline-offset: 2px;
@@ -1284,6 +1292,7 @@ function tracePanel(turn, ui) {
     return box;
   }
   const lvl = TRACE_LEVEL;
+  if (data.calls) box.appendChild(whatSection(turn, data));
   if (data.stats && data.stats.total_ms != null) box.appendChild(statsSection(data));
   if (data.checks) box.appendChild(checksSection(turn, data));
   if (lvl !== 'summary' && data.figures && data.figures.length) box.appendChild(figuresSection(turn, data));
@@ -1294,6 +1303,66 @@ function tracePanel(turn, ui) {
     box.appendChild(el('div', 'tr-sec tr-msg', 'Fetching the full record (tool outputs, raw stream)…'));
   }
   return box;
+}
+
+// The model id as a name: "us.anthropic.claude-haiku-5-5" -> "Haiku 5.5".
+function modelName(id) {
+  const m = /claude-(opus|sonnet|haiku|fable)-(\d+)-(\d+)/.exec(id || '');
+  return m ? m[1][0].toUpperCase() + m[1].slice(1) + ' ' + m[2] + '.' + m[3] : (id || 'the model');
+}
+function buildsText(b, adds) {
+  const what = [b.count != null ? num(b.count) + ' patients' : '', b.what || ''].filter(Boolean).join(': ');
+  return `builds on ${b.group}` + (what ? ` (${what})` : '') + (adds ? ` · adds ${adds}` : '');
+}
+
+// What the answer rested on, in words: the model calls, each Chiron call and what it
+// handed back, whether any patient rows left Chiron, and where the figures came from.
+function whatSection(turn, data) {
+  const c = data.calls, sec = el('div', 'tr-sec');
+  sec.appendChild(el('h4', null, 'What happened'));
+  const rows = [];
+  const calls = c.model_calls || 0;
+  rows.push(['Model', `${calls} call${calls === 1 ? '' : 's'} to ${modelName(c.model)} on ${c.via}` +
+    (c.retries ? `, ${c.retries} retr${c.retries === 1 ? 'y' : 'ies'} while the API was busy` : '') +
+    (c.followup ? '; the conversation so far was in its context' : '')]);
+  const tools = c.tools || [];
+  if (!tools.length) {
+    rows.push(['Chiron', c.followup
+      ? 'no new query: answered from the earlier results' + (c.inherited ? '; the Query button carries the previous cohort' : '')
+      : 'no tool was called']);
+  } else {
+    const list = el('div', 'what-list');
+    tools.forEach((t, i) => {
+      const line = el('div', 'what-call' + (t.status === 'error' ? ' err' : ''));
+      line.appendChild(el('b', null, `${i + 1}. ${t.label || t.name}`));
+      line.appendChild(el('span', null, t.status === 'error'
+        ? `rejected: ${t.summary || ''}`
+        : (t.summary || '') + (t.returned ? ` · returned ${t.returned}` : '')));
+      const go = el('button', 'link-btn', 'Show step'); go.type = 'button';
+      go.onclick = () => jumpTo(turn, t.id);
+      line.appendChild(go);
+      if (t.builds_on) line.appendChild(el('span', 'builds', buildsText(t.builds_on, t.adds)));
+      list.appendChild(line);
+    });
+    rows.push(['Chiron', list]);
+    rows.push(['Data', c.rows
+      ? `${num(c.rows)} patient row${c.rows === 1 ? '' : 's'} came back because a list was asked for: only the requested columns, within this account's access level`
+      : 'only counts and aggregates came back; no patient rows left Chiron']);
+  }
+  const f = c.figures || {};
+  if (f.total) {
+    const bits = [];
+    if (f.tool) bits.push(`${f.tool} from tool results`);
+    if (f.question) bits.push(`${f.question} repeat${f.question === 1 ? 's' : ''} the question`);
+    if (f.earlier) bits.push(`${f.earlier} from earlier answers`);
+    if (f.derived) bits.push(`${f.derived} derived`);
+    if (f.missing) bits.push(`${f.missing} from no tool`);
+    rows.push(['Figures', f.tool === f.total ? `all ${f.total} come from tool results` : `${f.total}: ${bits.join(', ')}`,
+      f.missing ? 'warn' : null]);
+  }
+  rows.push(['Access', 'the model has no database access: it is started with no built-in tools and can only call Chiron']);
+  sec.appendChild(kv(rows));
+  return sec;
 }
 
 function traceHead(turn, data) {
@@ -1529,6 +1598,7 @@ function stepCard(turn, data, s, ui, lvl) {
   const dot = el('span', 'kdot'); dot.style.background = kindColor(s.status === 'error' ? 'error' : s.kind);
   const lab = el('div', 'st-l', (s.kind === 'tool' ? '↳ ' : '') + s.label);
   if (s.summary) lab.appendChild(el('small', null, s.summary));
+  if (s.builds_on) lab.appendChild(el('small', 'builds', buildsText(s.builds_on, s.adds)));
   const dur = s.t1 == null ? 'running…' : s.t1 > s.t0 ? fmtMs(s.t1 - s.t0) : '';
   h.append(el('span', 'st-t', fmtAt(s.t0)), dot, lab, el('span', 'st-d', dur));
   h.onclick = () => { ui.sel = ui.sel === s.id ? null : s.id; repaintTrace(turn); };
