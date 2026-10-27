@@ -445,6 +445,28 @@ def plain_brief(dataset_id: str, username: str, allow_superuser: bool) -> str:
     return "\n".join(lines)
 
 
+def usable_concept_ids(dataset_id: str, username: str, allow_superuser: bool) -> list[str]:
+    """Every variable this identity may filter on, as Chiron concept ids: what the full
+    brief lists, taken from the query catalogue when the short tool list is in use."""
+    from chiron_mcp import identity
+    from chiron_mcp import query as Q
+
+    ident = identity.resolve(dataset_id, username=username, allow_superuser=allow_superuser)
+    return [v.cid for v in Q.catalogue(ident)]
+
+
+def starter_pool(dataset_id: str, username: str, allow_superuser: bool) -> list[dict]:
+    """The starter questions for a dataset, whichever tool list is in use.
+
+    The pool is built from the dataset's variables. The full brief lists them with their
+    ids; the short tool list's brief (the default) names them in plain words and carries
+    no ids, which left the page with the two generic starters only."""
+    _, ids = dataset_brief(dataset_id, username, allow_superuser)
+    if not ids:
+        ids = usable_concept_ids(dataset_id, username, allow_superuser)
+    return suggestion_pool(dataset_id, username, allow_superuser, ids)
+
+
 # --- starter questions ---------------------------------------------------------------
 #
 # A pool of questions built from this dataset's real values, each tagged with the Ask
@@ -1694,8 +1716,7 @@ class Handler(BaseHTTPRequestHandler):
                 match = next((d for d in out["datasets"] if d["id"] == dataset), None)
                 out["access_level"] = match["access_level"] if match else None
                 if match and match["access_level"] in ("phi", "deid"):
-                    _, ids = dataset_brief(dataset, who, allow_su)
-                    out["pool"] = suggestion_pool(dataset, who, allow_su, ids)
+                    out["pool"] = starter_pool(dataset, who, allow_su)
                     out["features"] = FEATURES
         except Exception as exc:  # noqa: BLE001
             out["error"] = str(exc)

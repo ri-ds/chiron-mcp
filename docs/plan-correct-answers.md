@@ -475,3 +475,9 @@ Running the larger models on only the 49 plus the new questions about halves the
   model, notes). All three runs are in LangSmith (one dataset, one experiment per model per run; the
   links are in each run's `langsmith.json`); the exporter now trusts the public CAs through certifi and
   rounds its price score to the four decimals LangSmith accepts.
+- **Starter questions with the short tool list** (found on the PCGC box after the deploy: a new
+  chat offered two generic starters). The pool is built from the dataset's variables, and the
+  short list's brief, the default since P8, names them in plain words and carries no concept ids,
+  so only the two generic starters survived; the full-tools brief had hidden this. `starter_pool`
+  now takes the ids from the query catalogue when the brief has none: 148 starters on Synthea 300
+  in 2 s, every feature covered. `tests/starter_pool.py`.
