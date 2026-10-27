@@ -525,3 +525,11 @@ Running the larger models on only the 49 plus the new questions about halves the
   The checks carry the same statements ("Only counts and aggregates came back from Chiron; no
   patient rows", "Builds on g1 (10,000 patients, all patients) · adds field gender is female").
   `tests/trace_calls.py`.
+  Seen live on the dev site (27 October): "2 calls to Opus 5.5 on Anthropic; the conversation
+  so far was in its context · 1. Asking Chiron 445 patients · returned one count · builds on g1
+  (841 patients: description is Asthma) · adds field gender is female · Data: only counts and
+  aggregates came back; no patient rows left Chiron". Also found there: a Postgres on macOS
+  refuses `client_connection_check_interval`, so it is now `CHIRON_MCP_PG_CHECK_INTERVAL`
+  (default 2000; set 0 for a Mac-hosted warehouse). Still open: a follow-up answered as "Of the
+  841 ..., 445 are women" leads with 841 by the server's headline rule, so it gets no Query
+  button; the grader's "of the N" rule would fix that.

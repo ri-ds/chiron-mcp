@@ -1353,7 +1353,7 @@ function whatSection(turn, data) {
   if (f.total) {
     const bits = [];
     if (f.tool) bits.push(`${f.tool} from tool results`);
-    if (f.question) bits.push(`${f.question} repeat${f.question === 1 ? 's' : ''} the question`);
+    if (f.question) bits.push(`${f.question} from the question or the conversation's groups`);
     if (f.earlier) bits.push(`${f.earlier} from earlier answers`);
     if (f.derived) bits.push(`${f.derived} derived`);
     if (f.missing) bits.push(`${f.missing} from no tool`);
