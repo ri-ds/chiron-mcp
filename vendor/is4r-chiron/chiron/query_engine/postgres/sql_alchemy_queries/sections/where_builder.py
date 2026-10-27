@@ -586,9 +586,36 @@ class WhereStatementBuilder(AbstractSqlAlchemyPartBuilder):
                 combo.get_criteria_set(1), subquery_type, subquery_id1
             )
             clauses += clauses2
-        date_clauses = combo.generate_sql_alchemy_clauses_for_event(table0, table1)
+        subquery_ids = (subquery_id0, subquery_id1)
+
+        def column_for(index, table, oConcept):
+            return self.get_event_date_column(oConcept, table, subquery_type, subquery_ids[index])
+
+        date_clauses = combo.generate_sql_alchemy_clauses_for_event(table0, table1, column_for)
         clauses += date_clauses
         return clauses
+
+    def get_event_date_column(self, oConcept, table, subquery_type, subquery_id):
+        """The column holding an event date concept for `table` (a collection table or alias).
+
+        A single-value concept is a column of the collection table. A multivalue concept
+        lives in its lookup table: inside a subquery that is the lookup alias registered for
+        the subquery, which the caller joins like the aliases of the filters (get_aliases
+        "lookup"); for a table with no subquery of its own (the outer table of a one-sided
+        combo), a correlated lookup of that record's value.
+        """
+        if not oConcept.multivalue:
+            return getattr(table.c, oConcept.permanent_id)
+        if subquery_id is not None:
+            alias = self.alias_manager.get_concept_alias(subquery_type, subquery_id, oConcept)
+            return getattr(alias.c, oConcept.permanent_id)
+        lookup = self.query_info.get_sql_alchemy_table_for_concept(oConcept).alias()
+        return (
+            select(getattr(lookup.c, oConcept.permanent_id))
+            .where(lookup.c._collection_id == table.c._id)
+            .limit(1)
+            .scalar_subquery()
+        )
 
     def get_clauses_related_to_collection(self, oCollection, entry_id, aggregation_criteria_set):
         """This one is for select statement.

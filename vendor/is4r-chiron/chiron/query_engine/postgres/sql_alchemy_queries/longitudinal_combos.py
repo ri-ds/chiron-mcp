@@ -88,11 +88,16 @@ class LongitudinalCombo:
             self.combo[0]["entry_id"] + self.combo[1]["entry_id"] + str(outer_table) + str(index)
         )
 
-    def generate_sql_alchemy_clauses_for_event(self, table0, table1):
+    def generate_sql_alchemy_clauses_for_event(self, table0, table1, column_for=None):
         """
 
         :param table0: the sqlalchemy table or alias for the first related collection
         :param table1: the sqlalchemy table or alias for the second related collection
+        :param column_for: optional, column_for(index, table, oConcept) returning the column
+          holding that event date concept for the table of combo index 0 or 1. The default
+          reads it off the collection table, which is where a single-value concept lives; a
+          multivalue date concept lives in a lookup table, and the where builder passes a
+          resolver that joins it (chiron-mcp: event dates on datasets loaded as multivalue).
         :return:
         """
         clauses = []
@@ -101,20 +106,25 @@ class LongitudinalCombo:
         reference_date = self.combo[0]["event_rule"]["reference_date"]
         range_start_target = self.combo[0]["event_rule"]["range_start_target"]
         range_end_target = self.combo[0]["event_rule"]["range_end_target"]
-        date_concept0 = self.combo[0]["collection"].event_date_field.permanent_id
+        collection0 = self.combo[0]["collection"]
+        collection1 = self.combo[1]["collection"]
+        date_concept0 = collection0.event_date_field
         if reference_date == "end":
-            date_concept0 = self.combo[0]["collection"].event_end_date_field.permanent_id
-        date_concept1_range_start = self.combo[1]["collection"].event_date_field.permanent_id
-        date_concept1_range_end = self.combo[1]["collection"].event_date_field.permanent_id
+            date_concept0 = collection0.event_end_date_field
+        date_concept1_range_start = collection1.event_date_field
+        date_concept1_range_end = collection1.event_date_field
         if range_start_target == "end":
-            date_concept1_range_start = self.combo[1][
-                "collection"
-            ].event_end_date_field.permanent_id
+            date_concept1_range_start = collection1.event_end_date_field
         if range_end_target == "end":
-            date_concept1_range_end = self.combo[1]["collection"].event_end_date_field.permanent_id
-        date_column0 = getattr(table0.c, date_concept0)
-        date_column1_range_start = getattr(table1.c, date_concept1_range_start)
-        date_column1_range_end = getattr(table1.c, date_concept1_range_end)
+            date_concept1_range_end = collection1.event_end_date_field
+        if column_for is None:
+
+            def column_for(index, table, oConcept):
+                return getattr(table.c, oConcept.permanent_id)
+
+        date_column0 = column_for(0, table0, date_concept0)
+        date_column1_range_start = column_for(1, table1, date_concept1_range_start)
+        date_column1_range_end = column_for(1, table1, date_concept1_range_end)
         clause = date_column0 - date_column1_range_start >= range_start_days_from_target
         clauses.append(clause)
         clause = date_column0 - date_column1_range_end <= range_end_days_from_target
