@@ -68,6 +68,13 @@ def _statement_timeout_ms() -> int:
     return int(float(os.environ.get("CHIRON_MCP_STATEMENT_TIMEOUT", "240")) * 1000)
 
 
+def _check_interval_ms() -> int:
+    """How often Postgres checks that the client is still there, in ms. A Postgres on
+    macOS refuses any value but 0 ("platforms that lack POLLRDHUP"), so a warehouse on a
+    Mac needs CHIRON_MCP_PG_CHECK_INTERVAL=0; the Linux stacks keep the default."""
+    return int(float(os.environ.get("CHIRON_MCP_PG_CHECK_INTERVAL", "2000")))
+
+
 def _with_pg_options(url: str) -> str:
     from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
@@ -77,7 +84,8 @@ def _with_pg_options(url: str) -> str:
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     if "options" in query:
         return url
-    query["options"] = f"-c client_connection_check_interval=2000 -c statement_timeout={_statement_timeout_ms()}"
+    query["options"] = (f"-c client_connection_check_interval={_check_interval_ms()} "
+                        f"-c statement_timeout={_statement_timeout_ms()}")
     return urlunsplit(parts._replace(query=urlencode(query, quote_via=quote)))
 
 
@@ -93,7 +101,7 @@ if CONFIG.warehouse_url:
 # ETL) keeps Chiron's default, because an ETL step may legitimately take longer.
 CHIRON_PG_CONN_OPTIONS_SITE = {
     "statement_timeout": _statement_timeout_ms(),
-    "client_connection_check_interval": 2000,
+    "client_connection_check_interval": _check_interval_ms(),
 }
 
 # Never leak tracebacks through tool output.
