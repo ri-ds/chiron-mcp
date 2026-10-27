@@ -5,6 +5,8 @@ The Docker deployment's login page (deploy/settings_custom.py puts deploy/templa
 first). Chiron's bundled page has one-click buttons for all three demo accounts,
 admin included, with the published demo password. Here only the two limited demo
 accounts keep a button; admin, and any other account, signs in with a real password.
+With ADMIN_BUTTON=1 in deploy/.env (CHIRON_ADMIN_BUTTON here) the admin button is
+back, for a site something else already guards, and admin's password is the demo one.
 {% endcomment %}
 
 {% block title %}Login{% endblock %}
@@ -20,6 +22,18 @@ accounts keep a button; admin, and any other account, signs in with a real passw
 
 		<p class="text-muted">Synthetic demo data. Try it with one of the demo accounts:</p>
 
+		{% if CHIRON_ADMIN_BUTTON %}
+		<form method="post">
+			{% csrf_token %}
+			<input type="hidden" name="username" value="admin" />
+			<input type="hidden" name="password" value="demo1234" />
+			{% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+			<button class="btn btn-primary">
+				Login as Administrator with full access
+			</button>
+		</form>
+		<br>
+		{% endif %}
 		<form method="post">
 			{% csrf_token %}
 			<input type="hidden" name="username" value="demouser" />

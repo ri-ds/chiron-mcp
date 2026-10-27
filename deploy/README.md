@@ -194,7 +194,11 @@ answered by the next one (Opus when it is listed); the trace under the answer sa
 - **No one-click admin.** The deployment's login page keeps buttons only for the two
   limited demo accounts. `admin` (full access) signs in with its own password,
   `ADMIN_PASSWORD` in `deploy/.env`, which setup.sh generates; read it with
-  `grep ADMIN_PASSWORD deploy/.env`.
+  `grep ADMIN_PASSWORD deploy/.env`. When something else already guards the site (an
+  SSO in front of it, say), `ADMIN_BUTTON=1` in `deploy/.env` followed by
+  `docker compose up -d --build chiron` puts the admin button back; admin then signs in
+  with the demo password the button posts, and gets `ADMIN_PASSWORD` again once the
+  line is removed and the container restarted.
 - **Ask answers only people logged into Chiron** (`CHIRON_MCP_REQUIRE_SESSION=1`), and
   refuses requests another site's page makes a visitor's browser send.
 - **A question can only call Chiron.** Each answer runs Claude with every built-in tool

@@ -161,7 +161,7 @@ if [ "$gate" = 1 ]; then
   echo "Site login:  $(sed -n 's/^user: //p' .gate-password) / $(sed -n 's/^password: //p' .gate-password)   (saved in deploy/.gate-password)"
 fi
 echo "Then click a demo login button on Chiron's login page. admin signs in with its own"
-echo "password, ADMIN_PASSWORD in $(pwd)/.env."
+echo "password, ADMIN_PASSWORD in $(pwd)/.env (or gets a button too: ADMIN_BUTTON=1 there)."
 echo
 echo "One step left for the Ask tab: log the server in to Claude, yourself:"
 echo "  cd $(pwd) && docker compose exec -it ask claude"

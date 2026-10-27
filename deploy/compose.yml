@@ -51,6 +51,9 @@ services:
       # admin's own password; the demo accounts keep the published one (setup.sh
       # makes it). Only this container sets passwords, so only it gets this.
       CHIRON_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run ./setup.sh first}
+      # ADMIN_BUTTON=1 in .env: the login page gets its one-click admin button back and
+      # admin uses the demo password. Only for a site something else already guards.
+      CHIRON_ADMIN_BUTTON: ${ADMIN_BUTTON:-}
     volumes:
       - static:/app/static
     depends_on:

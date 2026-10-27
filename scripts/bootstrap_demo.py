@@ -40,8 +40,13 @@ DEMO_PASSWORD = "demo1234"
 # The Docker deployment gives admin a password of its own (ADMIN_PASSWORD in
 # deploy/.env, made by setup.sh) and its login page has no admin button, so a site
 # that others can reach does not hand out full access with the public demo password.
-# Unset, as in local development, admin keeps the demo password and its button.
-ADMIN_PASSWORD = os.environ.get("CHIRON_ADMIN_PASSWORD") or DEMO_PASSWORD
+# Unset, as in local development, admin keeps the demo password and its button. The
+# deployment can ask for the button back (ADMIN_BUTTON=1 in deploy/.env, for a site
+# something else already guards): the button posts the demo password, so admin gets
+# that password while the flag is on, and its own one again once the flag is off.
+ADMIN_BUTTON = os.environ.get("CHIRON_ADMIN_BUTTON", "").lower() in ("1", "true", "yes")
+ADMIN_PASSWORD = (DEMO_PASSWORD if ADMIN_BUTTON
+                  else os.environ.get("CHIRON_ADMIN_PASSWORD") or DEMO_PASSWORD)
 DEMO_USERS = [
     ("demouser", "deid", False),   # "standard user with deidentified data access"
     ("agguser", "agg", False),     # "standard user with aggregated data access"
