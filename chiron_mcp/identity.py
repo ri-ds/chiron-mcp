@@ -86,24 +86,36 @@ def session_username(cookie_header: str | None) -> str | None:
         jar.load(cookie_header)
     except Exception:  # noqa: BLE001
         return None
-    if "sessionid" not in jar:
-        return None
     try:
         from chiron_mcp.bootstrap import ensure_django
 
         ensure_django()
-        from django.contrib.auth import get_user_model
-        from django.contrib.sessions.models import Session
-        from django.utils import timezone
+        from importlib import import_module
 
-        sess = Session.objects.filter(
-            session_key=jar["sessionid"].value, expire_date__gt=timezone.now()
-        ).first()
-        if not sess:
+        from django.conf import settings
+        from django.contrib.auth import HASH_SESSION_KEY, SESSION_KEY, get_user_model
+        from django.utils.crypto import constant_time_compare
+
+        # The deployment's own cookie name and session backend (a Chiron may rename the
+        # cookie, or keep sessions in a cache instead of the database).
+        name = getattr(settings, "SESSION_COOKIE_NAME", "sessionid")
+        if name not in jar:
             return None
-        uid = sess.get_decoded().get("_auth_user_id")
+        store = import_module(settings.SESSION_ENGINE).SessionStore(session_key=jar[name].value)
+        data = store.load()  # {} for an unknown or expired session; never creates one
+        uid = data.get(SESSION_KEY)
+        if not uid:
+            return None
         user = get_user_model().objects.filter(pk=uid, is_active=True).first()
-        return user.username if user else None
+        if user is None:
+            return None
+        # As Django's own get_user(): a session made before a password change is void.
+        given = data.get(HASH_SESSION_KEY, "")
+        if given and not constant_time_compare(given, user.get_session_auth_hash()):
+            fallbacks = getattr(user, "get_session_auth_fallback_hash", lambda: ())()
+            if not any(constant_time_compare(given, h) for h in fallbacks):
+                return None
+        return user.username
     except Exception:  # noqa: BLE001
         return None
 

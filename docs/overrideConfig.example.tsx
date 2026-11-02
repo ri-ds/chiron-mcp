@@ -10,11 +10,12 @@ import {
 } from "@mui/icons-material";
 import { useParams } from "react-router-dom";
 
-// Where the "Ask Chiron" server is running (python -m chiron_mcp.webapp). Local
-// development talks to it directly; the Docker deployment builds with
-// VITE_ASK_URL=/ask so it is served from the same origin as Chiron, which is what lets
-// it read the Chiron login.
-const ASK_URL = (import.meta.env.VITE_ASK_URL || "http://localhost:8900").replace(/\/$/, "");
+// Where the "Ask Chiron" server (chiron-mcp) is served from, set when the UI is built:
+//   VITE_ASK_URL=/ask                    a web server serves it on this same address,
+//                                        which is what lets it read the Chiron login
+//   VITE_ASK_URL=http://localhost:8900   local development, straight at the server
+// Unset, there is no Ask tab and nothing else changes.
+const ASK_URL = (import.meta.env.VITE_ASK_URL || "").replace(/\/$/, "");
 
 /**
  * Natural-language question box for the current dataset.
@@ -48,16 +49,20 @@ function AskRoute() {
 export const overrideConfig = {
   // apiBaseUrl: "http://localhost:8000",
   routes: {
-    datasetMore: [{ path: "ask", element: <AskRoute /> }],
+    datasetMore: ASK_URL ? [{ path: "ask", element: <AskRoute /> }] : [],
   },
   header: {
+    // Chiron's default is "/login/", which Django does not serve; the real form is
+    // at /accounts/login/. Without this, the LOGIN button goes nowhere and every API
+    // call 403s, which the UI reports as "Could not load the page".
+    loginLink: "/accounts/login/",
     nav: [
       { label: "Dataset Home", link: "/dataset", icon: <HomeIcon /> },
       { label: "Query", link: "/query", icon: <SearchIcon /> },
       { label: "Results", link: "/results", icon: <TableChartIcon /> },
       { label: "Reports", link: "/reports", icon: <FileCopyIcon /> },
       { label: "Aggregate", link: "/aggregate", icon: <AddChartIcon /> },
-      { label: "Ask", link: "/ask", icon: <AskIcon /> },
+      ...(ASK_URL ? [{ label: "Ask", link: "/ask", icon: <AskIcon /> }] : []),
     ],
   },
 };

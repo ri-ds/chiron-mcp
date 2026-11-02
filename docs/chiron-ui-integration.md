@@ -51,9 +51,11 @@ Two gotchas worth knowing:
 - `deepMerge` replaces arrays wholesale (`isObject` in `lib/utils.ts` excludes arrays),
   so the nav must be **restated in full**, not appended to. Drop an item and it
   disappears from the header.
-- The iframe points at `ASK_URL`, hardcoded to `http://localhost:8900` in the example.
-  Change it for a deployment, and make sure that host is reachable from the browser,
-  not just from the server.
+- The iframe points at `VITE_ASK_URL`, read when the UI is built: `/ask` for a deployment
+  whose web server serves Ask on Chiron's address (`deploy/`, `askpatch/`), or
+  `http://localhost:8900` for local development (`scripts/run_all.sh` sets it). Unset,
+  the tab and its route are not added at all. A checkout without the switch gets it with
+  `askpatch/ui-ask-tab.patch`.
 
 ## What it can do
 

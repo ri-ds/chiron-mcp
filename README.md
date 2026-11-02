@@ -120,6 +120,12 @@ with Chiron's metadata in Postgres: `cd deploy && ./setup.sh --domain chiron.exa
 See [deploy/README.md](deploy/README.md), which also has a prompt to paste into Claude to
 do the whole setup, and how to bring the 10,000-patient dataset along.
 
+### Ask for a Chiron you already run
+
+`askpatch/` adds Ask to an existing Chiron deployment without changing it: one container
+built from that deployment's own Chiron, one route in its web server, one switch in its
+UI, removable the same way. See [askpatch/README.md](askpatch/README.md).
+
 ### The demo data
 
 Four datasets, the useful one being **300 synthetic patients** (Synthea) with conditions,
@@ -865,6 +871,12 @@ now resolves an event date through the subquery's lookup alias (joined like the 
 lookups) or, for a table without a subquery of its own, a correlated lookup
 (`WhereBuilder.get_event_date_column`).
 
+Against a Chiron that has neither fix (any deployment's own checkout, through `askpatch/`
+or `CHIRON_MCP_CHIRON_SRC`), `chiron_mcp/chiron_patches.py` applies both in this server's
+process right after Django starts, and says so on stderr. Chiron's files are not touched,
+and Chiron's own web app, in its own process, keeps its behaviour until upstream merges
+them. `askpatch/chiron-fixes.patch` is the same change as a patch for a Chiron checkout.
+
 ## Troubleshooting
 
 | Symptom | Cause |
@@ -890,12 +902,14 @@ chiron_mcp/
   filters.py          cohort filter input schemas, transcribed from validate_form()
   server.py           the 23 tools
   webapp.py           the Ask chat server embedded in the Chiron UI
+  chiron_patches.py   the two Chiron fixes, applied at run time when the host lacks them
   webui/index.html    the chat page (markdown, tables, charts, buttons)
 scripts/
   harness.py          deployment check with no MCP involved
   grant_access.py     grant, update, revoke or list ChironUser rows
   export_dataset.py   pack one dataset (dictionary + warehouse) into a file
 deploy/               the whole stack in Docker: compose.yml, setup.sh, check.py
+askpatch/             Ask as an add-on for an existing Chiron: compose.yml, proxy snippets, UI patch, check.py
 tests/
   safety.py           permission and whole-dataset invariants
   smoke.py            end-to-end tool exercise
@@ -903,6 +917,7 @@ tests/
   protocol_http.py    the same over the HTTP endpoint, plus its loopback-only checks
   protocol_oauth.py   the HTTP endpoint's OAuth login, as two users with different access
   ask_e2e.py          the Ask tab end to end, checked against raw SQL and Chiron's API
+  chiron_patches.py   the run-time fixes land on an unfixed Chiron and leave a fixed one alone
 ```
 
 Built against Chiron 6.5.4.

@@ -1,0 +1,18 @@
+{% comment %}
+An "Ask" link in Chiron's own (Django) navbar, for a deployment that uses the built-in
+web UI rather than the React one. Two lines in the deployment's settings:
+
+    TEMPLATES[0]["DIRS"].append("/path/to/chiron-mcp/askpatch/templates")
+    CHIRON_EXTRA_NAVBAR_ITEMS = "askpatch/ask_navbar.html"
+
+The link opens the Ask page, served at /ask on this same address (proxy/), for the
+dataset being viewed. SCRIPT_NAME carries the path prefix when Chiron has one.
+{% endcomment %}
+{% if active_dataset and request.chironuser.user.is_authenticated %}
+<li class="nav-item">
+	<a class="nav-link" href="{{ request.META.SCRIPT_NAME }}/ask/?dataset={{ active_dataset.unique_id|urlencode }}">
+		<i class="fa fa-comments" aria-hidden="true"></i>
+		Ask
+	</a>
+</li>
+{% endif %}

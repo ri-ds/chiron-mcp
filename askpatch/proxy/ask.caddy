@@ -1,0 +1,20 @@
+# Caddy: serve the Ask server at /ask on Chiron's own address. Import this inside the
+# site block that serves Chiron, before its catch-all:
+#
+#   chiron.example.org {
+#       import /etc/caddy/ask.caddy
+#       ...the routes Chiron already has...
+#   }
+#
+# Under a path prefix (Chiron at /chiron), put it inside the handle_path block that
+# strips the prefix, as deploy/Caddyfile.subpath does, or write /chiron/ask here.
+# The Ask server is at 127.0.0.1:8900 unless ASK_BIND in askpatch/.env says otherwise;
+# from inside another compose project it is the container's address instead.
+
+redir /ask {http.request.orig_uri.path}/ 308
+handle_path /ask/* {
+	reverse_proxy 127.0.0.1:8900 {
+		# answers stream as server-sent events; pass each one on at once
+		flush_interval -1
+	}
+}

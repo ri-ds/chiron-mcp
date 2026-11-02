@@ -10,11 +10,14 @@ import {
 } from "@mui/icons-material";
 import { useParams } from "react-router-dom";
 
-// Where the "Ask Chiron" server is running (python -m chiron_mcp.webapp). Local
-// development talks to it directly; the Docker deployment builds with
-// VITE_ASK_URL=/ask so it is served from the same origin as Chiron, which is what lets
-// it read the Chiron login.
-const ASK_URL = (import.meta.env.VITE_ASK_URL || "http://localhost:8900").replace(/\/$/, "");
+// Where the "Ask Chiron" server (chiron-mcp) is served from, set when the UI is built:
+//   VITE_ASK_URL=/ask                    a web server serves it on this same address,
+//                                        which is what lets it read the Chiron login
+//                                        (deploy/Dockerfile.web, askpatch/)
+//   VITE_ASK_URL=http://localhost:8900   local development, straight at the server
+//                                        (scripts/run_all.sh sets it)
+// Unset, there is no Ask tab and nothing else changes.
+const ASK_URL = (import.meta.env.VITE_ASK_URL || "").replace(/\/$/, "");
 
 // The path prefix the site is served under ("" at the root, "/chiron" under /chiron),
 // from vite.config.ts `base`. Chiron's own pages and API live under it too.
@@ -54,7 +57,7 @@ export const overrideConfig = {
   // Otherwise the API is on this origin, under the same path prefix as the UI.
   apiBaseUrl: BASE,
   routes: {
-    datasetMore: [{ path: "ask", element: <AskRoute /> }],
+    datasetMore: ASK_URL ? [{ path: "ask", element: <AskRoute /> }] : [],
   },
   header: {
     // Chiron's default is "/login/", which Django does not serve; the real form is
@@ -68,7 +71,7 @@ export const overrideConfig = {
       { label: "Results", link: "/results", icon: <TableChartIcon /> },
       { label: "Reports", link: "/reports", icon: <FileCopyIcon /> },
       { label: "Aggregate", link: "/aggregate", icon: <AddChartIcon /> },
-      { label: "Ask", link: "/ask", icon: <AskIcon /> },
+      ...(ASK_URL ? [{ label: "Ask", link: "/ask", icon: <AskIcon /> }] : []),
     ],
   },
 };

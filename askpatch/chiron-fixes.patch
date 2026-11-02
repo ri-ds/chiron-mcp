@@ -1,0 +1,143 @@
+Two fixes for Chiron (is4r-chiron 6.5.4), as chiron-mcp carries them; apply to a checkout
+with `git apply chiron-fixes.patch` (or `patch -p1 <`). chiron-mcp applies the same two
+at run time in its own process when the Chiron it runs against lacks them
+(chiron_mcp/chiron_patches.py); this patch is for Chiron itself, so that its own query
+builder gets them too, and for the upstream pull request.
+
+1. CohortDefProcessor._generate_cd_entry_template: a mutable default argument
+   (additional_args={}) was returned after being written into, so every filter entry
+   built without arguments in one process was the same dict, and building a second
+   filter silently rewrote the first (its values, its exclude flag, its entry_id).
+   Now a fresh dict per call.
+
+2. The relative-date rule between two event collections ("within 90 days after") read
+   each event date straight off the collection table, where a single-value concept
+   lives. A dataset loaded with every concept multivalue keeps its dates in lookup
+   tables, and the rule failed with AttributeError: <date concept>. The where builder
+   now resolves an event date through the subquery's lookup alias (joined like the
+   filters' lookups) or, for a table with no subquery of its own, a correlated lookup
+   of that record's value (WhereStatementBuilder.get_event_date_column);
+   LongitudinalCombo.generate_sql_alchemy_clauses_for_event takes the resolver.
+
+--- a/chiron/processors/abstract/cohort_def_processor.py
++++ b/chiron/processors/abstract/cohort_def_processor.py
+@@ -298,7 +298,7 @@
+     #         data["unique_patient_count"] = value_list[0]["unique_patient_count"]
+     #     return data
+ 
+-    def _generate_cd_entry_template(self, additional_args={}):
++    def _generate_cd_entry_template(self, additional_args=None):
+         """
+         Generates a universal base that can be used by self.generate_cohort_def_entry()
+ 
+@@ -307,7 +307,11 @@
+         :return: a cd_entry with concept_id and entry_id set
+         :rtype: dict
+         """
+-        response = additional_args
++        # A fresh dict every call. This used to be a mutable default argument
++        # (additional_args={}), so every cd_entry built without arguments in the same
++        # process was the *same* dict: building a second filter silently rewrote the
++        # first, including its exclude flag and its entry_id.
++        response = dict(additional_args or {})
+         response["entry_id"] = helpers.generate_entry_id()
+         response["concept_id"] = self.concept.permanent_id
+         if self.prefilter_value:
+--- a/chiron/query_engine/postgres/sql_alchemy_queries/longitudinal_combos.py
++++ b/chiron/query_engine/postgres/sql_alchemy_queries/longitudinal_combos.py
+@@ -88,11 +88,16 @@
+             self.combo[0]["entry_id"] + self.combo[1]["entry_id"] + str(outer_table) + str(index)
+         )
+ 
+-    def generate_sql_alchemy_clauses_for_event(self, table0, table1):
++    def generate_sql_alchemy_clauses_for_event(self, table0, table1, column_for=None):
+         """
+ 
+         :param table0: the sqlalchemy table or alias for the first related collection
+         :param table1: the sqlalchemy table or alias for the second related collection
++        :param column_for: optional, column_for(index, table, oConcept) returning the column
++          holding that event date concept for the table of combo index 0 or 1. The default
++          reads it off the collection table, which is where a single-value concept lives; a
++          multivalue date concept lives in a lookup table, and the where builder passes a
++          resolver that joins it (chiron-mcp: event dates on datasets loaded as multivalue).
+         :return:
+         """
+         clauses = []
+@@ -101,20 +106,25 @@
+         reference_date = self.combo[0]["event_rule"]["reference_date"]
+         range_start_target = self.combo[0]["event_rule"]["range_start_target"]
+         range_end_target = self.combo[0]["event_rule"]["range_end_target"]
+-        date_concept0 = self.combo[0]["collection"].event_date_field.permanent_id
++        collection0 = self.combo[0]["collection"]
++        collection1 = self.combo[1]["collection"]
++        date_concept0 = collection0.event_date_field
+         if reference_date == "end":
+-            date_concept0 = self.combo[0]["collection"].event_end_date_field.permanent_id
+-        date_concept1_range_start = self.combo[1]["collection"].event_date_field.permanent_id
+-        date_concept1_range_end = self.combo[1]["collection"].event_date_field.permanent_id
++            date_concept0 = collection0.event_end_date_field
++        date_concept1_range_start = collection1.event_date_field
++        date_concept1_range_end = collection1.event_date_field
+         if range_start_target == "end":
+-            date_concept1_range_start = self.combo[1][
+-                "collection"
+-            ].event_end_date_field.permanent_id
++            date_concept1_range_start = collection1.event_end_date_field
+         if range_end_target == "end":
+-            date_concept1_range_end = self.combo[1]["collection"].event_end_date_field.permanent_id
+-        date_column0 = getattr(table0.c, date_concept0)
+-        date_column1_range_start = getattr(table1.c, date_concept1_range_start)
+-        date_column1_range_end = getattr(table1.c, date_concept1_range_end)
++            date_concept1_range_end = collection1.event_end_date_field
++        if column_for is None:
++
++            def column_for(index, table, oConcept):
++                return getattr(table.c, oConcept.permanent_id)
++
++        date_column0 = column_for(0, table0, date_concept0)
++        date_column1_range_start = column_for(1, table1, date_concept1_range_start)
++        date_column1_range_end = column_for(1, table1, date_concept1_range_end)
+         clause = date_column0 - date_column1_range_start >= range_start_days_from_target
+         clauses.append(clause)
+         clause = date_column0 - date_column1_range_end <= range_end_days_from_target
+--- a/chiron/query_engine/postgres/sql_alchemy_queries/sections/where_builder.py
++++ b/chiron/query_engine/postgres/sql_alchemy_queries/sections/where_builder.py
+@@ -586,10 +586,37 @@
+                 combo.get_criteria_set(1), subquery_type, subquery_id1
+             )
+             clauses += clauses2
+-        date_clauses = combo.generate_sql_alchemy_clauses_for_event(table0, table1)
++        subquery_ids = (subquery_id0, subquery_id1)
++
++        def column_for(index, table, oConcept):
++            return self.get_event_date_column(oConcept, table, subquery_type, subquery_ids[index])
++
++        date_clauses = combo.generate_sql_alchemy_clauses_for_event(table0, table1, column_for)
+         clauses += date_clauses
+         return clauses
+ 
++    def get_event_date_column(self, oConcept, table, subquery_type, subquery_id):
++        """The column holding an event date concept for `table` (a collection table or alias).
++
++        A single-value concept is a column of the collection table. A multivalue concept
++        lives in its lookup table: inside a subquery that is the lookup alias registered for
++        the subquery, which the caller joins like the aliases of the filters (get_aliases
++        "lookup"); for a table with no subquery of its own (the outer table of a one-sided
++        combo), a correlated lookup of that record's value.
++        """
++        if not oConcept.multivalue:
++            return getattr(table.c, oConcept.permanent_id)
++        if subquery_id is not None:
++            alias = self.alias_manager.get_concept_alias(subquery_type, subquery_id, oConcept)
++            return getattr(alias.c, oConcept.permanent_id)
++        lookup = self.query_info.get_sql_alchemy_table_for_concept(oConcept).alias()
++        return (
++            select(getattr(lookup.c, oConcept.permanent_id))
++            .where(lookup.c._collection_id == table.c._id)
++            .limit(1)
++            .scalar_subquery()
++        )
++
+     def get_clauses_related_to_collection(self, oCollection, entry_id, aggregation_criteria_set):
+         """This one is for select statement.
+ 

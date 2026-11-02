@@ -55,6 +55,8 @@ if [ ! -d "$UI/node_modules" ]; then
     || { echo "npm install failed, see /tmp/chiron-ui-install.log"; exit 1; }
 fi
 echo "[4/4] Chiron UI         http://localhost:5173   <- open this one"
+# The Ask tab appears only when the UI knows where the Ask server is (unset: no tab).
+export VITE_ASK_URL="${VITE_ASK_URL:-http://localhost:8900}"
 (cd "$UI" && npm run dev > /tmp/chiron-ui.log 2>&1) &
 pids+=($!)
 

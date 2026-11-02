@@ -1,0 +1,65 @@
+# Ask as an add-on for an existing Chiron deployment: one container, built from that
+# deployment's own Chiron source, reachable only from this machine on the port a web
+# server forwards /ask to. Chiron itself is not changed. See README.md.
+#
+#   cd askpatch
+#   cp env.example .env       # then fill it in
+#   docker compose up -d --build
+#   python3 check.py
+name: chiron-askpatch
+
+services:
+  ask:
+    build:
+      context: ..
+      dockerfile: askpatch/Dockerfile
+      additional_contexts:
+        # the deployment's Chiron checkout (the directory holding chiron/ and requirements/)
+        chiron: ${CHIRON_SRC:?set CHIRON_SRC in askpatch/.env}
+      args:
+        CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-2.1.283}
+        USE_CONSTRAINTS: ${USE_CONSTRAINTS:-1}
+    image: chiron-askpatch:latest
+    command: ["python", "-m", "chiron_mcp.webapp"]
+    # Everything in .env reaches the container, so the deployment's settings module can
+    # read whatever it reads, and the model settings (ASK/ANTHROPIC/AWS/CLAUDE_CODE_*)
+    # need no restating here.
+    env_file: .env
+    environment:
+      CHIRON_MCP_CHIRON_SRC: /srv/chiron
+      CHIRON_MCP_PROJECT_DIR: /srv/project
+      CHIRON_MCP_BASE_SETTINGS: ${CHIRON_SETTINGS:-project.settings}
+      CHIRON_MCP_METADATA_DB: ${CHIRON_MCP_METADATA_DB:?set CHIRON_MCP_METADATA_DB in askpatch/.env (a postgresql:// URL the container can reach)}
+      CHIRON_MCP_WAREHOUSE_URL: ${CHIRON_MCP_WAREHOUSE_URL:?set CHIRON_MCP_WAREHOUSE_URL in askpatch/.env}
+      # where people open Chiron; the Query and Report buttons link there
+      CHIRON_MCP_UI_URL: ${PUBLIC_URL:?set PUBLIC_URL in askpatch/.env}
+      # every question comes from someone logged into Chiron; there is no fallback account
+      CHIRON_MCP_REQUIRE_SESSION: "1"
+      # the Query button loads the answer's cohort into Chiron, and reports can be saved
+      CHIRON_MCP_ALLOW_SAVE: "1"
+      CHIRON_MCP_MAX_ACCESS_LEVEL: ${CHIRON_MCP_MAX_ACCESS_LEVEL:-deid}
+      CHIRON_MCP_ASK_MODELS: ${CHIRON_MCP_ASK_MODELS:-}
+      CHIRON_MCP_THREAD_TTL_HOURS: ${CHIRON_MCP_THREAD_TTL_HOURS:-12}
+      CHIRON_MCP_TURN_SECONDS: ${CHIRON_MCP_TURN_SECONDS:-240}
+      CHIRON_MCP_PG_CHECK_INTERVAL: ${CHIRON_MCP_PG_CHECK_INTERVAL:-2000}
+    ports:
+      # this machine only, unless ASK_BIND says otherwise; the web server forwards /ask here
+      - "${ASK_BIND:-127.0.0.1:8900}:8900"
+    volumes:
+      # the deployment's Django project: its settings module and custom processors
+      - ${CHIRON_PROJECT_DIR:?set CHIRON_PROJECT_DIR in askpatch/.env}:/srv/project:ro
+      # the Claude login (made once with: docker compose exec -it ask claude) and the Ask
+      # server's conversation state
+      - ask-home:/home/app
+    extra_hosts:
+      # so host.docker.internal names this machine on Linux too (Docker Desktop has it)
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8900/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  ask-home:

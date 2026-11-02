@@ -1,0 +1,12 @@
+# Bedrock with credentials from an AWS profile on this machine (SSO or keys in ~/.aws):
+#
+#   docker compose -f compose.yml -f compose.aws.yml up -d
+#
+# with CLAUDE_CODE_USE_BEDROCK=1, AWS_PROFILE and AWS_REGION set in .env. A machine with
+# an instance role (EC2) needs none of this: set CLAUDE_CODE_USE_BEDROCK=1 and AWS_REGION
+# in .env and the role is used (its instance metadata hop limit must be 2 for a container
+# to reach it). AWS_DIR in .env names another credentials directory.
+services:
+  ask:
+    volumes:
+      - ${AWS_DIR:-~/.aws}:/home/app/.aws:ro

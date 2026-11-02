@@ -1760,7 +1760,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path in ("/", "/index.html"):
             return self._file(WEBUI / "index.html", "text/html; charset=utf-8")
         if url.path == "/health":
-            return self._json({"ok": True, "identity": CONFIG.username})
+            return self._json({"ok": True, "identity": CONFIG.username or None,
+                               "require_session": REQUIRE_SESSION})
         if url.path == "/datasets":
             if not self._same_site():
                 return self.send_error(403, "cross-site request refused")
@@ -1952,8 +1953,12 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
-    if not CONFIG.username:
-        print("CHIRON_MCP_USERNAME is required.", file=sys.stderr)
+    if not CONFIG.username and not REQUIRE_SESSION:
+        # With CHIRON_MCP_REQUIRE_SESSION=1 every question is someone logged into Chiron,
+        # so there is no account to fall back to and none is needed (the add-on and the
+        # Docker bundle run that way).
+        print("CHIRON_MCP_USERNAME is required, unless CHIRON_MCP_REQUIRE_SESSION=1 "
+              "(answer only people logged into Chiron).", file=sys.stderr)
         return 1
     WEBUI.mkdir(exist_ok=True)
     # Boot Django once, up front: several handlers use the ORM directly, and a request
@@ -1967,8 +1972,11 @@ def main() -> int:
         THINKING_DISPLAY = "summarized"
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"Chiron Ask running at http://localhost:{PORT}")
-    print("  identity : the user logged into Chiron; with no session, "
-          f"{CONFIG.username} (ceiling {CONFIG.max_access_level})")
+    if REQUIRE_SESSION:
+        print(f"  identity : the user logged into Chiron, nobody else (ceiling {CONFIG.max_access_level})")
+    else:
+        print("  identity : the user logged into Chiron; with no session, "
+              f"{CONFIG.username} (ceiling {CONFIG.max_access_level})")
     print(f"  chiron ui: {CONFIG.ui_url}")
     print(f"  traces   : {'on' if TRACE else 'off'}"
           + (f", reasoning {THINKING_DISPLAY}" if TRACE and THINKING_DISPLAY else ""))

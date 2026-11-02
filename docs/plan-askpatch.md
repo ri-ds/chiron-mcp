@@ -4,6 +4,12 @@ Written 2 November 2026, from the team call: point the Ask feature at any Chiron
 deployment, apply it, and get the Ask window without touching Chiron's core code; the
 models it uses are configuration; nothing else about the deployment changes.
 
+**Built the same day:** `askpatch/` (compose, Dockerfile, env contract, proxy snippets,
+UI patch, navbar template, check.py, README) and `chiron_mcp/chiron_patches.py`. The
+decisions below were taken as recommended: the sidecar container first, the UI switch as
+an upstream change carried as a patch file until merged, the two fixes applied at run
+time, and the proof on this Mac's stock Chiron 6.5.4 checkout (see "Proof" at the end).
+
 ## What the add-on has to touch, and what it already does without touching
 
 | Piece | The Docker bundle today | The add-on |
@@ -88,3 +94,31 @@ About four to five days of work.
    (recommended), or require a patched Chiron?
 4. Where to prove it after this Mac's stock stack: the PCGC box runs the bundle, so a real
    target would be another group's Chiron, when there is one.
+
+## Proof (2 November 2026, this Mac)
+
+The target: a pristine copy of the stock Chiron 6.5.4 checkout (`is4r-chiron-develop`,
+none of the two fixes), with a `settings_custom.py` of its own pointing at Postgres (the
+local bundle's `chiron_meta` and warehouse through the proxy on 55439), run with
+`manage.py runserver` on 8012; the stock Chiron UI with `askpatch/ui-ask-tab.patch`
+applied and built with `VITE_ASK_URL=/ask`; Caddy in a container on `localhost:8089` as
+the front door, with `askpatch/proxy/ask.caddy` imported as written (the Ask address
+changed to the container's host port); the add-on from `askpatch/` with its `.env`,
+`docker compose up -d --build` (the image built from that stock checkout, the project
+mounted read-only), on `127.0.0.1:8901`.
+
+| Check | Result |
+| --- | --- |
+| The container starts on the stock settings module; both run-time fixes reported on stderr | yes |
+| `askpatch/check.py`: container, login page, `/ask` route, session, identity, dataset, Chiron's count | 8 of 9 pass; the ninth (a real question) waits for the one-time model login |
+| `tests/within_live.py` inside the container (the timing clause needs the run-time fix) | 9 of 10 pass; the tenth wants a Synthea dataset without event dates, which this metadata has none of (that case passed on the host run below) |
+| `tests/safety.py`, `tests/smoke.py`, `scripts/harness.py` inside the container | pass; six datasets reachable as demouser |
+| The same patches on the host (`CHIRON_MCP_CHIRON_SRC` at the stock checkout, the dev SQLite metadata): `tests/within_live.py` | all 10 pass, after the two fixes were reported applied |
+| The eleven in-process suites on the vendored (fixed) Chiron, plus `tests/chiron_patches.py` | all pass; nothing is applied where the source has the fixes |
+| `ui-ask-tab.patch` on a copy of the stock UI, with `git apply` and with `patch -p1` | applies; `tsc` reports the same eight pre-existing errors as the unpatched copy, none in the patched file |
+| `chiron-fixes.patch` on a copy of the stock Chiron, both ways | applies; the three files equal the vendored ones |
+| In the browser, through the front door | the Ask tab in the stock UI's header, the Ask page knowing the logged-in user |
+
+Left for the deployment's operator, by design: logging the container in to a model
+(`docker compose exec -it ask claude`, or the Bedrock lines in `.env`).
+

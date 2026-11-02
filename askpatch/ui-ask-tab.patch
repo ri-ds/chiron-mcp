@@ -1,0 +1,47 @@
+The Ask tab as a build-time switch for the Chiron UI (is4r-chiron-ui, src/overrideConfig.tsx).
+
+VITE_ASK_URL names where the Ask server (chiron-mcp) is served from: "/ask" when a web
+server serves it on the UI's own address, or http://localhost:8900 in development.
+Unset, the tab and its route are not added and the UI is as it was. Until this is merged
+upstream, apply it to a checkout with:
+
+    cd is4r-chiron-ui && git apply /path/to/chiron-mcp/askpatch/ui-ask-tab.patch
+    (or: patch -p1 < .../ui-ask-tab.patch)
+
+then build with VITE_ASK_URL=/ask (npm run build), or export it before npm run dev.
+
+--- a/src/overrideConfig.tsx
++++ b/src/overrideConfig.tsx
+@@ -10,8 +10,12 @@
+ } from "@mui/icons-material";
+ import { useParams } from "react-router-dom";
+ 
+-// Where the "Ask Chiron" server is running (python -m chiron_mcp.webapp).
+-const ASK_URL = "http://localhost:8900";
++// Where the "Ask Chiron" server (chiron-mcp) is served from, set when the UI is built:
++//   VITE_ASK_URL=/ask                    a web server serves it on this same address,
++//                                        which is what lets it read the Chiron login
++//   VITE_ASK_URL=http://localhost:8900   local development, straight at the server
++// Unset, there is no Ask tab and nothing else changes.
++const ASK_URL = (import.meta.env.VITE_ASK_URL || "").replace(/\/$/, "");
+ 
+ /**
+  * Natural-language question box for the current dataset.
+@@ -45,7 +49,7 @@
+ export const overrideConfig = {
+   // apiBaseUrl: "http://localhost:8000",
+   routes: {
+-    datasetMore: [{ path: "ask", element: <AskRoute /> }],
++    datasetMore: ASK_URL ? [{ path: "ask", element: <AskRoute /> }] : [],
+   },
+   header: {
+     // Chiron's default is "/login/", which Django does not serve; the real form is
+@@ -58,7 +62,7 @@
+       { label: "Results", link: "/results", icon: <TableChartIcon /> },
+       { label: "Reports", link: "/reports", icon: <FileCopyIcon /> },
+       { label: "Aggregate", link: "/aggregate", icon: <AddChartIcon /> },
+-      { label: "Ask", link: "/ask", icon: <AskIcon /> },
++      ...(ASK_URL ? [{ label: "Ask", link: "/ask", icon: <AskIcon /> }] : []),
+     ],
+   },
+ };

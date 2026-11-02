@@ -13,6 +13,7 @@ demo/
 .env
 **/.env
 deploy/gate.caddy
+askpatch/.env
 deploy/.gate-password
 deploy/data/
 **/*.dump

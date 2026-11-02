@@ -15,6 +15,9 @@ thing you do by hand is log the server in to Claude.
 Chiron's metadata lives in Postgres here, not in a SQLite file, so the containers never
 share a file lock (the problem that corrupts reads when they do).
 
+Already running a Chiron of your own? Add Ask to it instead, without changing it:
+[../askpatch/README.md](../askpatch/README.md).
+
 ## Before you start
 
 - Docker Desktop, running, with at least 6 GB of memory (Settings, Resources).

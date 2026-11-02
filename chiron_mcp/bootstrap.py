@@ -33,5 +33,10 @@ def ensure_django() -> None:
     # prints; keep all of it off the protocol channel.
     with contextlib.redirect_stdout(sys.stderr):
         django.setup()
+        # The host Chiron may lack two fixes Ask needs (chiron_mcp.chiron_patches); put
+        # them in place in this process before anything builds a query.
+        from chiron_mcp import chiron_patches
+
+        chiron_patches.apply()
 
     _READY = True
