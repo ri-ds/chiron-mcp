@@ -22,6 +22,61 @@ builder gets them only when they are merged upstream, or when a deployment appli
 [chiron-fixes.patch](chiron-fixes.patch) to its checkout itself (three files, the content
 of the upstream pull request).
 
+## In five steps
+
+1. Get it and describe your Chiron:
+
+   ```bash
+   git clone https://github.com/ri-ds/chiron-mcp.git
+   cd chiron-mcp/askpatch
+   cp env.example .env && chmod 600 .env
+   # fill in .env: CHIRON_SRC, CHIRON_PROJECT_DIR, CHIRON_MCP_METADATA_DB, CHIRON_MCP_WAREHOUSE_URL, PUBLIC_URL
+   ```
+
+2. Start the Ask container:
+
+   ```bash
+   docker compose up -d --build
+   docker compose ps          # "healthy"
+   ```
+
+3. Route `/ask` in the web server already in front of Chiron: paste the snippet for it from
+   [proxy/](proxy/) (`ask.caddy`, `ask-nginx.conf` or `ask-apache.conf`) into Chiron's site
+   block, then reload:
+
+   ```bash
+   sudo nginx -t && sudo nginx -s reload        # nginx
+   sudo apachectl graceful                      # Apache
+   caddy reload --config /etc/caddy/Caddyfile   # Caddy
+   ```
+
+4. Turn the tab on in the Chiron UI and rebuild it:
+
+   ```bash
+   cd /path/to/is4r-chiron-ui
+   git apply /path/to/chiron-mcp/askpatch/ui-ask-tab.patch   # once, if src/overrideConfig.tsx has no VITE_ASK_URL yet
+   VITE_ASK_URL=/ask npm run build                            # deploy the build as you normally do
+   ```
+
+5. Connect a model and check:
+
+   ```bash
+   docker compose exec -it ask claude   # choose the subscription login, approve in the browser, /exit
+                                        # or Bedrock: CLAUDE_CODE_USE_BEDROCK=1, AWS_REGION, ANTHROPIC_MODEL in .env
+   python3 check.py                     # every line PASS
+   ```
+
+**Remove it** in three:
+
+```bash
+cd chiron-mcp/askpatch && docker compose down -v                              # container, login, conversations
+# delete the /ask snippet from the web server and reload it (same reload command as step 3)
+cd /path/to/is4r-chiron-ui && git apply -R /path/to/chiron-mcp/askpatch/ui-ask-tab.patch && npm run build
+```
+
+Chiron's code, settings and databases are never touched, so there is nothing else to undo.
+The rest of this page explains each step.
+
 ## What the deployment needs
 
 - **Chiron 6.5.x on Postgres**, its metadata in Postgres too (SQLite file locks do not
