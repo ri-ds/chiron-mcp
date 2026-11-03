@@ -1315,7 +1315,15 @@ def chiron_breakdown(
 
         dims = []
         for concept_id in by:
-            oConcept = _concept(ident, concept_id)
+            try:
+                oConcept = _concept(ident, concept_id)
+            except AccessError:
+                # A name rather than an id ("encounter type"): the dictionary's resolver,
+                # which chiron_query uses, finds it by its words or display name.
+                from chiron_mcp import query as Q
+
+                var = Q.resolve_field(ident, str(concept_id))
+                concept_id, oConcept = var.cid, var.concept
             can_use, reason = oConcept.user_can_use_concept_in_cohort_def(cu)
             if not can_use:
                 raise AccessError(f"Not permitted to use {concept_id!r}: {reason}")

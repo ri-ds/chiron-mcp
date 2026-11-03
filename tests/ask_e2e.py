@@ -508,7 +508,10 @@ def check(r: Result, case: Case, ev: dict, cookie: str, truth: dict, dataset: st
             except Exception as exc:  # noqa: BLE001
                 r.fail(f"chart JSON invalid: {exc}")
 
-    if case.kind in ("table", "breakdown") and not re.search(r"^\s*\|.*\|\s*$", answer, re.M):
+    # The instructions ask for a table beyond two rows of figures; a two-group breakdown
+    # may be a sentence, and its figures are checked below either way.
+    if (case.kind in ("table", "breakdown") and len(case.cells) > 2
+            and not re.search(r"^\s*\|.*\|\s*$", answer, re.M)):
         r.fail("no markdown table")
     missing = [n for n in case.cells if n not in found]
     if missing:
@@ -774,10 +777,12 @@ def _open_stream(q: str, cookie: str, dataset: str, thread: str) -> "socket.sock
     """Start a question the way the page does, without reading the answer."""
     import socket
 
-    host, port = urllib.parse.urlparse(ASK).hostname, urllib.parse.urlparse(ASK).port or 80
+    u = urllib.parse.urlparse(ASK)
+    host, port = u.hostname, u.port or 80
+    # ASK may sit under a path (/ask on Chiron's address, behind a web server).
     query = urllib.parse.urlencode({"q": q, "dataset": dataset, "thread": thread})
     s = socket.create_connection((host, port))
-    s.sendall(f"GET /ask?{query} HTTP/1.1\r\nHost: {host}\r\n"
+    s.sendall(f"GET {u.path.rstrip('/')}/ask?{query} HTTP/1.1\r\nHost: {host}:{port}\r\n"
               f"Cookie: sessionid={cookie}\r\n\r\n".encode())
     return s
 

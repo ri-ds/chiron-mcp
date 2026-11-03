@@ -1578,7 +1578,11 @@ def ask_stream(
             yield "error", "Still answering your previous question in this conversation."
             return
 
-    cfg = _mcp_config(username, allow_superuser, thread=tid, extra_tools=_tools_for(dataset, username, allow_superuser))
+    # The tools this person gets: the list, plus the aggregate-safe breakdown for an
+    # aggregate-only account. Both the MCP server and the CLI's allow-list must agree,
+    # or the CLI refuses the call ("requested permissions ... not granted").
+    offered = TOOLS + [t for t in _tools_for(dataset, username, allow_superuser) if t not in TOOLS]
+    cfg = _mcp_config(username, allow_superuser, thread=tid, extra_tools=offered)
     trace = tracing.OFF
     outcome: dict = {}
     try:
@@ -1609,7 +1613,7 @@ def ask_stream(
 
             inherited = THREADS.cohort(tid) if resume else None
             for _flag in range(2):
-                cmd = _claude_command(claude, prompt, session, cfg, model)
+                cmd = _claude_command(claude, prompt, session, cfg, model, tools=offered)
                 outcome = {}
                 trace.launched(cmd, prompt, SYSTEM_PROMPT, resume)
                 yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid, trace,
@@ -1670,7 +1674,7 @@ def ask_stream(
                 note = (f"Check before answering: a tool returned the count {outcome['nodigits']:,}, but your "
                         "answer states no figure in digits. Give the whole answer again with the figure "
                         "in digits (20, not \"twenty\").")
-            cmd = _claude_command(claude, note, ["--resume", tid], cfg, model)
+            cmd = _claude_command(claude, note, ["--resume", tid], cfg, model, tools=offered)
             outcome = {}
             trace.launched(cmd, note, SYSTEM_PROMPT, True)
             yield from _claude_turn(cmd, username, allow_superuser, outcome,
@@ -1698,7 +1702,7 @@ def ask_stream(
 
 
 def _claude_command(claude: str, prompt: str, session: list[str], cfg: Path,
-                    model: str | None = None) -> list[str]:
+                    model: str | None = None, tools: list[str] | None = None) -> list[str]:
     # Isolate the headless session from the operator's own Claude Code setup.
     # Without this it inherits their git identity, project files, memory and
     # every other MCP server they have configured, and repeats them in answers.
@@ -1714,7 +1718,7 @@ def _claude_command(claude: str, prompt: str, session: list[str], cfg: Path,
         # a question can make Claude do is call Chiron. Without this, a visitor
         # could ask it to read files on the server, the Claude login among them.
         "--tools", "",
-        "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in TOOLS),
+        "--allowed-tools", ",".join(f"mcp__chiron__{t}" for t in (tools or TOOLS)),
         "--system-prompt", SYSTEM_PROMPT,
         *(["--thinking-display", THINKING_DISPLAY] if THINKING_DISPLAY else []),
         "--output-format", "stream-json",

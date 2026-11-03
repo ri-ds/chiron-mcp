@@ -89,6 +89,15 @@ cfg.unlink()
 check("an aggregate account's config adds chiron_breakdown after the short list",
       env.get("CHIRON_MCP_TOOLS") == ",".join(webapp.TOOLS + ["chiron_breakdown"]), env.get("CHIRON_MCP_TOOLS"))
 check("no dataset, no extra tool", webapp._tools_for(None, "tester", False) == [])
+from pathlib import Path as _P  # noqa: E402
+
+cmd = webapp._claude_command("claude", "q", [], _P("cfg.json"), None, tools=webapp.TOOLS + ["chiron_breakdown"])
+allowed = cmd[cmd.index("--allowed-tools") + 1]
+check("the CLI's allow-list follows the per-question tools", "mcp__chiron__chiron_breakdown" in allowed
+      and "mcp__chiron__chiron_query" in allowed, allowed[-80:])
+cmd = webapp._claude_command("claude", "q", [], _P("cfg.json"), None)
+check("without extras the allow-list is the short list",
+      cmd[cmd.index("--allowed-tools") + 1] == ",".join(f"mcp__chiron__{t}" for t in webapp.TOOLS))
 check("an unknown dataset adds no tool", webapp._tools_for("no-such-dataset", "tester", False) == [])
 
 print()
