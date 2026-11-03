@@ -10,6 +10,10 @@ the three away and Chiron is as it was. The models Ask answers with are configur
 | The `/ask` route | One snippet in the web server that already serves Chiron ([proxy/](proxy/)) | Nothing. Ask is served on Chiron's address, which is how it knows who is logged in |
 | The Ask tab | A build-time switch in the Chiron UI, `VITE_ASK_URL` ([ui-ask-tab.patch](ui-ask-tab.patch)); for the built-in Django UI, a navbar include ([templates/](templates/askpatch/ask_navbar.html)) | Unset, there is no tab and nothing else changes |
 
+[Ask-add-on-guide.pdf](Ask-add-on-guide.pdf) is this, written out for the person who looks
+after a Chiron deployment: how it works, the steps, day to day, removal, troubleshooting
+(`guide/make_guide.py` rebuilds it).
+
 Two fixes Chiron needs for this (a mutable default in `CohortDefProcessor`, and event
 dates kept in lookup tables for the relative-date rule) travel inside chiron-mcp and are
 applied in Ask's own process when the host Chiron lacks them
