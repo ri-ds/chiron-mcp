@@ -2,6 +2,7 @@
 
     python3 check.py                      # from the askpatch/ directory, after compose up
     python3 check.py --user alice --dataset synthea-10k
+    python3 check.py --url https://other.example.org   # through another front door than PUBLIC_URL
 
 Standard library only. Reads askpatch/.env for PUBLIC_URL and ASK_BIND, makes a real
 Chiron login session inside the ask container (no password is typed or sent), and then
@@ -50,16 +51,18 @@ def get(url, headers=None, timeout=30):
     req = urllib.request.Request(url, headers=dict(headers or {}))
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            chunks, first = [], None
+            # Line by line: a read of a fixed size would wait for that many bytes, and a
+            # short answer's events would all seem to arrive together at the end.
+            lines, first = [], None
             while True:
-                chunk = r.read(4096)
-                if not chunk:
+                line = r.readline()
+                if not line:
                     break
                 if first is None:
                     first = time.monotonic()
-                chunks.append(chunk)
+                lines.append(line)
             spread = (time.monotonic() - first) if first else 0.0
-            return r.status, b"".join(chunks).decode("utf-8", "replace"), spread
+            return r.status, b"".join(lines).decode("utf-8", "replace"), spread
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8", "replace"), 0.0
     except (urllib.error.URLError, OSError) as e:
@@ -84,7 +87,7 @@ def check(name, ok, detail=""):
 
 def main():
     e = env()
-    base = e.get("PUBLIC_URL", "").rstrip("/")
+    base = (arg("--url") or e.get("PUBLIC_URL", "")).rstrip("/")
     if not base:
         sys.exit("PUBLIC_URL is not set in askpatch/.env")
     bind = e.get("ASK_BIND", "127.0.0.1:8900")

@@ -88,6 +88,18 @@ answers, runs = run("zero")
 check("a count of 0 answered in words is shown as it is", answers == ["No patients have asthma."] and runs == ["first"],
       f"{answers} {runs}")
 
+# The lead figure stands on its own: digits that run into a letter are a name or a unit
+# ("Synthea 10k", "5mg"), not a count, so a refusal that names the dataset is not held back.
+from chiron_mcp.webapp import headline_figure  # noqa: E402
+
+for text, want in {
+    "This account cannot see patient-level data in Synthea 10k, so no count.": None,
+    "841 patients in Synthea 10k have asthma.": 841,
+    "**1,916** patients started lisinopril within 30 days.": 1916,
+    "Of the 2,431 patients, 5mg doses were given to 12.": 2431,
+}.items():
+    check(f"lead figure of {text[:40]!r} is {want}", headline_figure(text) == want, str(headline_figure(text)))
+
 print()
 print("all passed" if not fails else f"{len(fails)} failed: {fails}")
 sys.exit(1 if fails else 0)

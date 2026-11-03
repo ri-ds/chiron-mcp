@@ -41,9 +41,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ.setdefault("CHIRON_MCP_USERNAME", "demouser")
 os.environ.setdefault("CHIRON_MCP_ALLOW_SAVE", "1")
 
-ASK = os.environ.get("ASK_URL", "http://localhost:8900")
+ASK = os.environ.get("ASK_URL", "http://localhost:8900").rstrip("/")
+# What a browser sends as Origin: scheme and host, never the path (ASK may be /ask on
+# Chiron's address when a web server serves it there).
+ORIGIN = "{0.scheme}://{0.netloc}".format(urllib.parse.urlsplit(ASK))
 API = os.environ.get("CHIRON_API", "http://localhost:8000")
 DS = os.environ.get("TEST_DATASET", "synthea-10k")
+# A dataset this user may not see (dataset2_stored in the demo); a deployment where the
+# user sees everything names one that does not exist, which is refused the same way.
+NO_ACCESS_DS = os.environ.get("TEST_NO_ACCESS_DATASET", "dataset2_stored")
 SCHEMA = DS.replace("-", "_")
 P = DS + "__"
 WAREHOUSE = os.environ.get(
@@ -261,7 +267,7 @@ def post_json(url: str, body: dict, cookie: str) -> dict:
         headers={
             "Content-Type": "application/json",
             "Cookie": f"sessionid={cookie}",
-            "Origin": ASK,
+            "Origin": ORIGIN,
         },
         method="POST",
     )
@@ -966,7 +972,7 @@ CASES = [
     Case("abandon", "", "abandon"),
     # --- identity and permissions
     Case("hijack", "", "hijack"),
-    Case("no_access", "How many patients are in dataset2_stored?", "refuse"),
+    Case("no_access", f"How many patients are in {NO_ACCESS_DS}?", "refuse"),
     Case("agg_user", "How many subjects are there?", "agg", user="agguser",
          dataset="dataset1_stored"),
     Case("admin_user", "How many patients have asthma?", "count", "asthma", user="admin"),

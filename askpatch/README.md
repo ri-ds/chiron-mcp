@@ -124,8 +124,18 @@ VITE_ASK_URL=/ask npm run build
 ```
 
 (one file, `src/overrideConfig.tsx`; the same change is proposed upstream). For the
-built-in Django UI, two settings lines put an Ask link in the navbar: see the comment at
-the top of [templates/askpatch/ask_navbar.html](templates/askpatch/ask_navbar.html).
+built-in Django UI, two settings lines put an Ask link in the navbar, in `settings.py`
+after `TEMPLATES` is defined:
+
+```python
+TEMPLATES[0]["DIRS"].append("/path/to/chiron-mcp/askpatch/templates")
+CHIRON_EXTRA_NAVBAR_ITEMS = "askpatch/ask_navbar.html"
+```
+
+In a `settings_custom.py`, which `settings.py` star-imports at its end, `TEMPLATES` is not
+in scope; the comment at the top of
+[templates/askpatch/ask_navbar.html](templates/askpatch/ask_navbar.html) has the form that
+reaches it through the settings module.
 
 **The model.** For a Claude account, log the container in once, yourself, in a real
 terminal: `docker compose exec -it ask claude`, choose the subscription login, open the

@@ -1,8 +1,17 @@
 {% comment %}
 An "Ask" link in Chiron's own (Django) navbar, for a deployment that uses the built-in
-web UI rather than the React one. Two lines in the deployment's settings:
+web UI rather than the React one. Two lines in the deployment's settings.py, after
+TEMPLATES is defined:
 
     TEMPLATES[0]["DIRS"].append("/path/to/chiron-mcp/askpatch/templates")
+    CHIRON_EXTRA_NAVBAR_ITEMS = "askpatch/ask_navbar.html"
+
+In a settings_custom.py (the file settings.py star-imports at its end) TEMPLATES is not
+in scope, so reach it through the settings module instead:
+
+    import sys as _sys
+    _sys.modules[__name__.rpartition(".")[0] + ".settings"].TEMPLATES[0]["DIRS"].append(
+        "/path/to/chiron-mcp/askpatch/templates")
     CHIRON_EXTRA_NAVBAR_ITEMS = "askpatch/ask_navbar.html"
 
 The link opens the Ask page, served at /ask on this same address (proxy/), for the

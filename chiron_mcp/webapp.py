@@ -939,7 +939,9 @@ def split_followups(text: str) -> tuple[str, list[str]]:
     return _FOLLOWUPS.sub("", text or "").rstrip(), found
 
 
-_NUMBER = re.compile(r"(?<![\w.,])\d{1,3}(?:,\d{3})+(?![\d])|(?<![\w.,])\d+(?![\d,])")
+# A figure stands on its own: not the 10 in "Synthea 10k" or the 5 in "5mg" (digits run
+# into a letter), which the agg user's refusal "cannot see Synthea 10k" used to trip on.
+_NUMBER = re.compile(r"(?<![\w.,])\d{1,3}(?:,\d{3})+(?![\w])|(?<![\w.,])\d+(?![\w,])")
 
 
 def _numbers_in(content) -> set[int]:

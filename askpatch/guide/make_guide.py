@@ -392,8 +392,9 @@ cd is4r-chiron-ui
 git apply /path/to/chiron-mcp/askpatch/ui-ask-tab.patch     # or: patch -p1 < ...
 VITE_ASK_URL=/ask npm run build                              # then deploy the build as usual
 """)
-s.append(P("<b>The built-in Django pages.</b> Two lines in the deployment's settings put an Ask link in "
-           "Chiron's own navigation bar:"))
+s.append(P("<b>The built-in Django pages.</b> Two lines in the deployment's settings.py, after TEMPLATES "
+           "is defined, put an Ask link in Chiron's own navigation bar (a settings_custom.py cannot see "
+           "TEMPLATES directly; the template file's comment has the form for it):"))
 s += code("""
 TEMPLATES[0]["DIRS"].append("/path/to/chiron-mcp/askpatch/templates")
 CHIRON_EXTRA_NAVBAR_ITEMS = "askpatch/ask_navbar.html"
