@@ -138,7 +138,7 @@ Then every path a deployment can take:
 | The aggregate-only account: patient list refused in one sentence, counts refused, breakdown masked | yes, after the fixes below |
 | `tests/ask_e2e.py`, 34 cases through the front door, as demouser, agguser and admin | 28 of 34 on the first full pass, 33 of 34 after the fixes below (the last is a model habit, see below) |
 | The upgrade path: `git pull` and `docker compose up -d --build`, four times | the container came back healthy each time |
-| Removal: `docker compose down -v`, the snippet gone, the UI patch reversed | see the README |
+| Removal: `docker compose down -v`, the route's line deleted and Caddy reloaded, the UI built without the switch; then the three steps again | the container and its volume gone; `/ask/` falls through to the UI as any unknown path; the header has no Ask tab and the query builder works as before; reinstalled, `check.py` 10 of 10 again |
 
 What it found, all fixed and merged:
 
