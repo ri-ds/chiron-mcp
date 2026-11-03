@@ -12,7 +12,9 @@ the three away and Chiron is as it was. The models Ask answers with are configur
 
 [Ask-add-on-guide.pdf](Ask-add-on-guide.pdf) is this, written out for the person who looks
 after a Chiron deployment: how it works, the steps, day to day, removal, troubleshooting
-(`guide/make_guide.py` rebuilds it).
+(`guide/make_guide.py` rebuilds it). [Chiron-upstream-changes.pdf](Chiron-upstream-changes.pdf)
+is the write-up of the two changes above for the Chiron developers, with the diffs
+(`guide/make_upstream.py` rebuilds it from the patch files).
 
 Two fixes Chiron needs for this (a mutable default in `CohortDefProcessor`, and event
 dates kept in lookup tables for the relative-date rule) travel inside chiron-mcp and are
