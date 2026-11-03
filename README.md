@@ -109,6 +109,9 @@ What the Ask tab does:
   - a field Chiron silently ignored;
   - a count rule Chiron does not read;
   - a spelling variant left out.
+- **A call log** in the server's output: one line per model call and per Chiron call,
+  with the user, dataset, model, tokens, cost, tool, status and time, so a conversation
+  can be followed end to end with grep. See [The call log](#the-call-log).
 
 Questions take roughly 10 to 40 seconds, because the model makes several Chiron tool
 calls. Each one shows as a chip while it works.
@@ -163,6 +166,7 @@ at your own Chiron. See [Configuration](#configuration).
 - [How a query actually gets built](#how-a-query-actually-gets-built)
 - [Access model and safety](#access-model-and-safety)
 - [Known limits](#known-limits)
+- [The call log](#the-call-log)
 - [Troubleshooting](#troubleshooting)
 - [Project layout](#project-layout)
 
@@ -552,7 +556,8 @@ The Ask server (`python -m chiron_mcp.webapp`) adds:
 | `CHIRON_MCP_THREAD_TTL_HOURS` | `12` | How long a conversation can be continued. After that its transcript is deleted |
 | `CHIRON_MCP_TURN_SECONDS` | `240` | How long one answer may take before it is stopped and the page says to ask again |
 | `CHIRON_MCP_STATE_DIR` | `~/.cache/chiron-ask` | Conversation index, answer traces (`traces/`) and the neutral working directory Claude runs in |
-| `CHIRON_MCP_TRACE` | on | `0` stops recording answer traces (the **Trace** under each answer) |
+| `CHIRON_MCP_TRACE` | on | `0` stops recording answer traces (the **Trace** under each answer), and with them the call log |
+| `CHIRON_MCP_CALL_LOG` | `stderr` | Where the call log goes (one line per model call and per Chiron call, see [The call log](#the-call-log)): the server's own output, a file path to append to, or `off` |
 | `CHIRON_MCP_THINKING_DISPLAY` | `summarized` | Passed to Claude Code as `--thinking-display`, so traces show the model's reasoning. Empty leaves the flag off. Code that imports `ask_stream` rather than running the server leaves it off unless set |
 
 See `.env.example`. A superuser is refused in analyst mode; point it at a dedicated service user.
@@ -876,6 +881,46 @@ or `CHIRON_MCP_CHIRON_SRC`), `chiron_mcp/chiron_patches.py` applies both in this
 process right after Django starts, and says so on stderr. Chiron's files are not touched,
 and Chiron's own web app, in its own process, keeps its behaviour until upstream merges
 them. `askpatch/chiron-fixes.patch` is the same change as a patch for a Chiron checkout.
+
+## The call log
+
+The Ask server writes one line to its own output (stderr, which Docker collects) for
+every call an answer makes, so a conversation, a user or a day can be followed through
+the log with grep: the trace under an answer holds the detail for one answer, and this
+is the operational copy for all of them.
+
+```
+2026-11-03T15:40:12.345Z ask request answer=2f1a… thread=6c3e… user=demouser dataset=synthea-10k turn=1 followup=0
+2026-11-03T15:40:14.010Z ask model answer=2f1a… thread=6c3e… user=demouser dataset=synthea-10k call=1 model=us.anthropic.claude-haiku-5-5 in=4210 cache_read=3900 cache_write=0 out=88 stop=tool_use tools=query ms=1830
+2026-11-03T15:40:14.420Z ask chiron answer=2f1a… thread=6c3e… user=demouser dataset=synthea-10k call=1 tool=query status=ok count=179 group=g1 rows=0 size=612 ms=410
+2026-11-03T15:40:17.902Z ask model answer=2f1a… thread=6c3e… user=demouser dataset=synthea-10k call=2 model=us.anthropic.claude-haiku-5-5 in=8390 cache_read=7800 cache_write=0 out=152 stop=end_turn ms=3480
+2026-11-03T15:40:20.114Z ask answer answer=2f1a… thread=6c3e… user=demouser dataset=synthea-10k turn=1 followup=0 status=ok model=us.anthropic.claude-haiku-5-5 model_calls=2 chiron_calls=1 chiron_errors=0 retries=0 in=12600 cache_read=11700 cache_write=0 out=240 cost_usd=0.00421 cost_total=0.00421 ms=7770 model_ms=5310 chiron_ms=410 rc=0
+```
+
+Every line is a UTC timestamp, the word `ask`, the kind, then `key=value` pairs. The kinds
+are `request` (the question arrived), `model` (one model call: the tokens it used, why it
+stopped, the tools it chose), `chiron` (one Chiron tool call: how it ended, the count or
+the number of patient rows it returned, the size of the result), `retry` (the API was
+busy), `reroute` (Bedrock refused the model and another answered, as a new conversation),
+`restart` (the conversation had expired and the question was asked as a new one) and
+`answer` (the whole answer: status, calls, tokens, this answer's cost and the
+conversation's running total, time split between the model and Chiron). Each line of an
+answer carries the same `answer`, `thread`, `user` and `dataset`, so:
+
+```
+docker compose logs --no-log-prefix ask | grep ' ask '                   # everything
+docker compose logs --no-log-prefix ask | grep 'thread=6c3e'             # one conversation, end to end
+docker compose logs --no-log-prefix ask | grep ' ask answer ' | grep 'user=demouser'   # one person's answers
+docker compose logs --no-log-prefix ask | grep ' ask chiron ' | grep -c 'status=error' # failed Chiron calls
+docker compose logs --no-log-prefix ask | grep ' ask answer ' | grep -o 'cost_usd=[0-9.]*' | cut -d= -f2 | paste -sd+ | bc   # spend
+```
+
+No question text, tool argument, filter value or result is written: a filter value can
+be a patient's name, and the server log is read by people a trace is not shown to. An
+error line carries a status, not the message; the trace has the message. The lines come
+from the trace, so `CHIRON_MCP_TRACE=0` silences them too; `CHIRON_MCP_CALL_LOG` names a
+file to append to instead of stderr, or `off`. In the deploy bundle and the add-on the
+lines are in `docker compose logs ask`.
 
 ## Troubleshooting
 

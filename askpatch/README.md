@@ -157,6 +157,17 @@ confirms Ask sees that login through the route, asks a question, and compares th
 in the answer with Chiron's own count; the last line checks that answers stream through
 the web server rather than arriving all at once. Every line should say PASS.
 
+**Follow the calls.** The container's log has one line per model call and per Chiron
+call (user, dataset, model, tokens, cost, tool, status, time), and one per answer:
+
+```bash
+docker compose logs -f --no-log-prefix ask | grep ' ask '
+```
+
+`grep thread=<id>` follows one conversation end to end. No question text, filter value or
+result is in these lines; the trace under an answer has those. See "The call log" in the
+main README.
+
 ## What people get
 
 The **Ask** tab beside Aggregate: a question in plain words, an answer with Chiron's

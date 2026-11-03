@@ -153,6 +153,8 @@ ProxyPass /.well-known/oauth-authorization-server/chiron http://localhost:8088/.
 | --- | --- |
 | See what is running | `docker compose ps` |
 | Read a service's log | `docker compose logs --tail 100 chiron` (or ask, web, db, tunnel) |
+| Follow every model call and Chiron call | `docker compose logs -f --no-log-prefix ask \| grep ' ask '` (one line each, with user, dataset, model, tokens, cost, tool, status and time; see "The call log" in the main README) |
+| One conversation, end to end | `docker compose logs --no-log-prefix ask \| grep thread=<id>` (the id is in the page's address and in every line of the conversation) |
 | Stop, keeping everything | `docker compose stop` |
 | Start again | `docker compose up -d` |
 | Update to the latest code | `git pull && ./setup.sh` with the same options as before |

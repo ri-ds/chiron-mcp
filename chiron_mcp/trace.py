@@ -39,6 +39,8 @@ import time
 import uuid
 from pathlib import Path
 
+from chiron_mcp import calllog
+
 VERSION = 1
 
 # What each Chiron tool call means to someone reading the timeline. The page uses the
@@ -385,6 +387,8 @@ class Trace:
         # Claude Code reports cost summed over the whole resumed conversation; the last
         # traced answer's total is what to subtract to get this answer's share.
         self._prior_cost = prior[-1].get("cost") if prior else None
+        # Steps already written to the call log (chiron_mcp.calllog): one line each.
+        self._logged: set[str] = set()
         self.data: dict = {
             "id": self.id, "version": VERSION, "started": time.time(),
             "question": question, "dataset": dataset, "user": user, "thread": thread,
@@ -403,6 +407,7 @@ class Trace:
         self.step("request", label="Question received", t1=0.0, status="ok",
                   summary=("Follow-up " if followup else "New question ") + f"#{self.data['turn']}"
                   + (f" in this conversation ({len(prior)} earlier)" if followup else ""))
+        calllog.write("request", **self._tag(), turn=self.data["turn"], followup=followup)
         with _LIVE_GUARD:
             LIVE[self.id] = self
 
@@ -432,6 +437,38 @@ class Trace:
     def _touch(self, s: dict) -> None:
         if s["id"] not in self._dirty:
             self._dirty.append(s["id"])
+
+    # -- the call log: one line per model call and per Chiron call ----------------------
+
+    def _tag(self) -> dict:
+        """What every line of this answer carries, so one grep follows a conversation."""
+        d = self.data
+        return {"answer": self.id, "thread": d.get("thread"), "user": d.get("user"), "dataset": d.get("dataset")}
+
+    def _log_model(self, m: dict | None) -> None:
+        """The line for one model call, written the first time the call closes (a call
+        reopened by a late parallel tool block keeps its first line)."""
+        if not m or m["t1"] is None or m["id"] in self._logged:
+            return
+        self._logged.add(m["id"])
+        u = m.get("usage") or {}
+        details = u.get("output_tokens_details") if isinstance(u.get("output_tokens_details"), dict) else {}
+        calllog.write("model", **self._tag(), call=m.get("call"), model=self.data.get("model"),
+                      **{"in": u.get("input_tokens")}, cache_read=u.get("cache_read_input_tokens"),
+                      cache_write=u.get("cache_creation_input_tokens"), out=u.get("output_tokens"),
+                      thinking=details.get("thinking_tokens"), stop=m.get("stop_reason"),
+                      tools=list(dict.fromkeys(m.get("chose") or [])), ms=calllog.ms(m["t0"], m["t1"]))
+
+    def _log_tool(self, s: dict, count=None, group=None) -> None:
+        """The line for one Chiron call: the tool, how it ended, what came back in size,
+        never its input or output (a filter value can name a patient)."""
+        if s["t1"] is None or s["id"] in self._logged:
+            return
+        self._logged.add(s["id"])
+        parent = self._steps.get(s.get("parent") or "")
+        calllog.write("chiron", **self._tag(), call=parent.get("call") if parent else None,
+                      tool=s.get("short"), status=s.get("status"), count=count, group=group,
+                      rows=s.get("rows") or 0, size=s.get("output_size"), ms=calllog.ms(s["t0"], s["t1"]))
 
     def _guard(self, fn, *args, **kwargs):
         with self._lock:
@@ -468,22 +505,26 @@ class Trace:
     def restarted(self, thread: str) -> None:
         """The conversation had expired, so the question was asked as a new one."""
         def go():
+            was = self.data.get("thread")
             self.data.update(thread=thread, followup=False, followup_lost=True)
             s = self.step("note", label="Conversation expired", status="warn",
                           summary="The saved conversation was gone, so this was asked as a new one, "
                                   "without the earlier questions or their cohorts.")
             s["t1"] = s["t0"]
+            calllog.write("restart", **self._tag(), was=was)
         self._guard(go)
 
     def rerouted(self, thread: str, refused: str, model: str) -> None:
         """Bedrock refused the model, so the question was asked again with another one,
         as a new conversation."""
         def go():
+            was = self.data.get("thread")
             self.data.update(thread=thread, followup=False)
             s = self.step("note", label="Model not allowed here", status="warn",
                           summary=f"Bedrock refused {refused}, so it is no longer offered; this "
                                   f"was asked again with {model}, as a new conversation.")
             s["t1"] = s["t0"]
+            calllog.write("reroute", **self._tag(), was=was, refused=refused, model=model)
         self._guard(go)
 
     def note(self, label: str, summary: str, status: str = "info", **fields) -> None:
@@ -593,6 +634,8 @@ class Trace:
                       status="warn", summary=f"{err}; waiting {delay / 1000:.1f} s", detail=ev)
         s["t1"] = round(s["t0"] + delay, 1)
         self._touch(s)
+        calllog.write("retry", **self._tag(), attempt=ev.get("attempt"), max=ev.get("max_retries"),
+                      delay_ms=delay, error=str(err)[:80])
 
     def _open_model(self, requested: bool = False) -> dict:
         if self._model and self._model["t1"] is None:
@@ -627,6 +670,7 @@ class Trace:
             bits.append(f"wrote {sum(len(t) for t in m['text']):,} characters")
         m["summary"] = ", ".join(bits) or "no output"
         self._end(m, "ok", t1=m.get("t_last", self.now()))
+        self._log_model(m)
 
     def _on_assistant(self, ev: dict) -> None:
         msg = ev.get("message") or {}
@@ -720,6 +764,9 @@ class Trace:
                       output_text=None if data is not None and len(body) <= MAX_OUTPUT else _clip(body, MAX_OUTPUT),
                       output_preview=_clip(pretty, MAX_PREVIEW), output_size=len(body),
                       output_numbers=sorted(_numbers_in(body), key=lambda x: float(x))[:5000])
+            self._log_tool(
+                s, count=data.get("count") if isinstance(data, dict) and type(data.get("count")) is int else None,
+                group=str(data["group"]) if isinstance(data, dict) and data.get("group") else None)
         if not self._tools:
             self._idle_since = self.now()
 
@@ -727,6 +774,7 @@ class Trace:
         self._close_model()
         for s in list(self._tools.values()):
             self._end(s, "error", summary="No result came back before the run ended")
+            self._log_tool(s)
         self._tools.clear()
         usage = ev.get("usage") or {}
         self.data["result"] = {
@@ -783,6 +831,8 @@ class Trace:
                 if s["t1"] is None:
                     self._end(s, "error" if s["kind"] == "tool" else "ok",
                               summary=s.get("summary") or "Did not finish")
+                if s["kind"] == "tool":
+                    self._log_tool(s)
             self.data.update(done=True, ended=self.now(), rc=rc, stderr=_clip(stderr or "", 20_000))
             self.data["cohorts"] = sorted(set(self._made))
             self.data["numbers"] = _carried_numbers(self)
@@ -790,6 +840,21 @@ class Trace:
             self.data["figures"] = _figure_sources(self)
             self.data["calls"] = _calls(self)
             self.data["checks"] = _checks(self) + _data_checks(self)
+            st, res = self.data["stats"], self.data.get("result") or {}
+            u = res.get("usage") or {}
+            calllog.write(
+                "answer", **self._tag(), turn=self.data.get("turn"), followup=self.data.get("followup"),
+                status="error" if self.data.get("error") or res.get("is_error") else
+                ("ok" if self.data.get("answer") else "incomplete"),
+                model=self.data.get("model"), model_calls=st.get("model_calls"),
+                chiron_calls=st.get("tool_calls"), chiron_errors=st.get("tool_errors"),
+                retries=sum(1 for s in self._order if s["kind"] == "retry"),
+                **{"in": u.get("input_tokens")}, cache_read=u.get("cache_read_input_tokens"),
+                cache_write=u.get("cache_creation_input_tokens"), out=u.get("output_tokens"),
+                thinking=st.get("thinking_tokens"), cost_usd=st.get("cost_usd"),
+                cost_total=st.get("cost_usd_cumulative"),
+                ms=int(round(self.data["ended"])), model_ms=int(round(st.get("model_ms") or 0)),
+                chiron_ms=int(round(st.get("chiron_ms") or 0)), rc=rc)
         self._guard(go)
         with _LIVE_GUARD:
             LIVE.pop(self.id, None)
