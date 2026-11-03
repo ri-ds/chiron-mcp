@@ -18,8 +18,12 @@ Run against the synthea-10k deployment:
     .venv/bin/python tests/ask_e2e.py --suggestions   # every starter question in the pool
     .venv/bin/python tests/ask_e2e.py --suggestions results columns   # only those features
 
-Needs the Ask server on :8900 (CHIRON_MCP_ALLOW_SAVE=1) and Chiron's API on :8000.
-Exit code 0 means every case passed.
+Needs the Ask server on :8900 (CHIRON_MCP_ALLOW_SAVE=1) and Chiron's API on :8000, or
+ASK_URL and CHIRON_API naming them: ASK_URL may be a path on Chiron's address
+(http://chiron.example.org/ask) when a web server serves it there, as the add-on does.
+TEST_NO_ACCESS_DATASET names a dataset the user may not see (dataset2_stored in the
+demo; one that does not exist is refused the same way). Exit code 0 means every case
+passed.
 """
 
 from __future__ import annotations

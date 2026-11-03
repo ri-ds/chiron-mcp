@@ -194,10 +194,13 @@ Reports people saved through Ask stay, as any saved report would.
 
 - This repository's own stack: the Docker bundle in `deploy/` is the same server wired
   the same way, and `tests/` run against it.
-- A stock Chiron 6.5.4 checkout (unpatched) with its own settings, on a Mac: the image
-  built from it, Ask on its Postgres databases, the stock UI built with the switch, Caddy
-  in front with the snippet, `check.py` and the `within` timing tests (which need the
-  run-time fixes) passing inside the container. Details in
+- A stock Chiron 6.5.4 checkout (unpatched) with its own settings, on a Mac: a fresh
+  clone installed by the five steps above with Bedrock as the model; `check.py` 10 of 10
+  through Caddy, nginx and Apache, each with its shipped snippet; the Ask link in the
+  built-in UI's navbar; the model menu; the aggregate-only account refused and masked as
+  Chiron does; `tests/ask_e2e.py` (34 cases as three users) through the front door; the
+  `within` timing tests, which need the run-time fixes, inside the container; four
+  `git pull` and rebuild upgrades; removal and reinstall. Details and what it found in
   [docs/plan-askpatch.md](../docs/plan-askpatch.md).
 
 ## Setup guide for an AI agent

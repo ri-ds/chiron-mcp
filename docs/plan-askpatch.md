@@ -122,3 +122,44 @@ mounted read-only), on `127.0.0.1:8901`.
 Left for the deployment's operator, by design: logging the container in to a model
 (`docker compose exec -it ask claude`, or the Bedrock lines in `.env`).
 
+## Tested end to end (3 November 2026, this Mac)
+
+The add-on installed the way a deployment would: a fresh `git clone` of main, the five
+steps of its README, Bedrock as the model through `compose.aws.yml` (the machine's AWS
+profile, read-only), on the stock Chiron 6.5.4 copy of the proof above and its Postgres.
+Then every path a deployment can take:
+
+| What | Result |
+| --- | --- |
+| `check.py` through Caddy, nginx and Apache, each with the shipped snippet | 10 of 10 on all three, including a real answer and the streaming test |
+| Four questions at once through the front door; eight parallel calls on each server | all answered, no errors |
+| The built-in Django UI's navbar include on the stock Chiron's own pages | the Ask link renders once a dataset is chosen |
+| The model menu: a listed model answers as asked, an unlisted one falls back to the default | yes |
+| The aggregate-only account: patient list refused in one sentence, counts refused, breakdown masked | yes, after the fixes below |
+| `tests/ask_e2e.py`, 34 cases through the front door, as demouser, agguser and admin | 28 of 34 on the first full pass, 33 of 34 after the fixes below (the last is a model habit, see below) |
+| The upgrade path: `git pull` and `docker compose up -d --build`, four times | the container came back healthy each time |
+| Removal: `docker compose down -v`, the snippet gone, the UI patch reversed | see the README |
+
+What it found, all fixed and merged:
+
+- The harness's streaming test read a fixed block, which waited for the whole answer;
+  it reads lines now, and `--url` lets it test another front door than `PUBLIC_URL`.
+- The two navbar lines do not work inside a `settings_custom.py`, where `TEMPLATES` is
+  not in scope; the template, README and guide now give the form that reaches it.
+- Ask's lead-figure check took the 10 in "Synthea 10k" for a figure, so an aggregate
+  account's refusal that named the dataset was held back and re-asked.
+- An aggregate-only account had no tool for the breakdown the instructions send it to:
+  the short list did not offer `chiron_breakdown`, and the CLI's allow-list would have
+  refused it anyway. Such an account now gets that tool beside the list, the refusal
+  names it, and it accepts a variable's name as well as its id, whatever the access level.
+- A report renamed or re-filtered through `chiron_query` lost its Report button; the
+  result now carries the link.
+- `tests/ask_e2e.py` assumed the Ask server at the root of its host: the Query button's
+  Origin and the raw-socket abandon case now follow the URL's path, the no-access dataset
+  is configurable, and a two-group breakdown may be a sentence, as the instructions allow.
+
+Not fixed, noted: Haiku 5.5 saves "my Results as a report" with the sort direction
+reset to ascending (a model habit; a from-Results save path would remove the chance),
+and ten answers of the first full pass failed with an instant HTTP 400 that no later
+run, probe or log reproduced.
+
