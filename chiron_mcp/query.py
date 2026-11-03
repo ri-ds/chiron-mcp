@@ -578,9 +578,53 @@ def _record_value_keys(cond: dict) -> bool:
     return any(k in cond for k in ("op", "value", "between", "has_value"))
 
 
+# Every key a condition may carry. Anything else is refused rather than ignored: a model
+# that writes {'lab': 'HbA1c', 'min': 6.5} would otherwise get every HbA1c patient, with
+# no sign that its number was dropped.
+_VALUE_KEYS = ("op", "value", "between", "has_value", "is", "is_any", "is_not")
+_DATE_KEYS = ("year", "year_between", "date_between", "before", "after")
+_CLAUSE_KEYS = frozenset(("field", "with", "never", "count", "within", "days", "days_before",
+                          "days_after", "of") + _VALUE_KEYS + _DATE_KEYS) | frozenset(_COUNT_KEYS)
+_EXTRA_KEYS = frozenset(("field",) + _VALUE_KEYS + _DATE_KEYS)
+_KEY_HINTS = {
+    **{k: "'op': '>=' with 'value'" for k in ("min", "minimum", "gte", "ge", "at_least_value", "from_value")},
+    **{k: "'op': '<=' with 'value'" for k in ("max", "maximum", "lte", "le", "to_value")},
+    "gt": "'op': '>' with 'value'", "lt": "'op': '<' with 'value'",
+    **{k: "'op': '=' with 'value'" for k in ("eq", "equals", "equal")},
+    **{k: "'at_least', 'at_most' or 'exactly' with a number" for k in
+       ("times", "occurrences", "n", "number", "min_count", "max_count", "count_min", "count_max")},
+    **{k: "'is' with a value or a list" for k in ("values", "in", "any_of", "one_of", "equals_any")},
+    **{k: "'never': true for no such record, or 'is_not' for other values" for k in
+       ("not", "exclude", "without", "excluding", "none")},
+    **{k: "'before', 'after', 'year', 'year_between' or 'date_between'" for k in
+       ("date", "on", "since", "until", "from", "to", "start", "end", "during")},
+    "unit": "nothing: units are not filtered on", "units": "nothing: units are not filtered on",
+}
+
+
+def _check_keys(cond: dict, allowed: frozenset = _CLAUSE_KEYS, where: str = "a condition") -> None:
+    """Refuse keys chiron_query does not read, naming what to write instead."""
+    unknown = [k for k in cond if k not in allowed and D.norm(k) not in TABLE_KEYS]
+    if not unknown:
+        return
+    hints = [f"for {k!r} write {_KEY_HINTS[k.lower()]}" for k in unknown if k.lower() in _KEY_HINTS]
+    raise AccessError(
+        f"chiron_query does not read {', '.join(repr(k) for k in unknown)} in {where} "
+        f"({json.dumps(cond)[:160]}), and will not guess: " + ("; ".join(hints) + ". " if hints else "")
+        + SPEC_HELP)
+
+
 def parse_condition(ident, cond: dict) -> Clause:
     if not isinstance(cond, dict) or not cond:
         raise AccessError("Each condition is an object. " + SPEC_HELP)
+    _check_keys(cond)
+    for extra in cond.get("with") or []:
+        if not isinstance(extra, dict):
+            raise AccessError("'with' is a list of conditions on the same record, each an object with 'field'. " + SPEC_HELP)
+        _check_keys(extra, _EXTRA_KEYS, "a 'with' item")
+    if "count" in cond and not isinstance(cond["count"], dict):
+        raise AccessError("'count' is an object, {'op': '>=', 'value': 3}; or write 'at_least', "
+                          "'at_most' or 'exactly' with the number.")
     table_key = next((k for k in cond if D.norm(k) in TABLE_KEYS), None)
     if table_key is not None:
         coll = TABLE_KEYS[D.norm(table_key)]

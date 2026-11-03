@@ -145,5 +145,28 @@ check("a year-only date takes years", (f.get("cd_numeric_min"), f.get("cd_numeri
 check("value_words rewrites inside a phrase", "chronic obstructive pulmonary disease patients" in D.value_words("copd patients"))
 
 print()
+
+# --- unknown keys are refused, not ignored --------------------------------------------
+def refused(cond, allowed=None, where="a condition"):
+    try:
+        Q._check_keys(cond, allowed, where) if allowed else Q._check_keys(cond)
+        return ""
+    except AccessError as exc:
+        return str(exc)
+
+
+check("known keys pass", refused({"lab": "HbA1c", "op": ">=", "value": 6.5, "at_least": 2,
+                                  "year_between": [2010, 2015], "within": {}, "with": []}) == "")
+check("a table word in any spelling is a key", refused({"Visit": "emergency"}) == "")
+m = refused({"lab": "HbA1c", "min": 6.5})
+check("'min' is refused with the right shape", "'min'" in m and "'op': '>='" in m, m[:120])
+m = refused({"visit": "emergency", "times": ">= 3"})
+check("'times' is refused, pointing at at_least", "at_least" in m, m[:120])
+m = refused({"condition": "asthma", "bogus": 1})
+check("an unknown key is refused even without a hint", "'bogus'" in m and "will not guess" in m, m[:120])
+m = refused({"field": "cost", "op": ">", "value": 1000, "unit": "USD"}, Q._EXTRA_KEYS, "a 'with' item")
+check("a 'with' item is checked too", "'unit'" in m and "with" in m, m[:120])
+check("a 'with' item may not carry a count rule", "at_least" in refused({"field": "cost", "at_least": 2}, Q._EXTRA_KEYS))
+
 print("all passed" if not fails else f"{len(fails)} failed: {fails}")
 sys.exit(1 if fails else 0)
