@@ -1174,7 +1174,10 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
         if r.get("error"):
             raise AccessError(f"Report not changed: {r['error']}")
         after = find_report(S, ds, str(rep["report_id"]))
+        # The link too, so the answer gets its Report button (the page takes it from
+        # the result's report.url, as it does for a report just saved).
         out["report"] = {"report_id": rep["report_id"], "name": after.get("name"),
+                         "url": r.get("url"), "mode": "report",
                          "public": after.get("public"), "patients_now": out["count"],
                          "filters_now": describe(ident, after.get("cohort_def") or [])}
         _say_columns(out["report"], words, notes)
