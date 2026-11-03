@@ -63,6 +63,34 @@ def _again_without_parallel_workers(call, may_repeat=lambda: True) -> dict:
     return out
 
 
+def _concept_by_name(ident, text: str):
+    """A published concept of the dataset whose id, short id or name is `text` (case and
+    punctuation aside), or whose name is a close spelling of it."""
+    import difflib
+
+    from chiron import models
+    from chiron_mcp import dictionary as D
+
+    want = D.norm(text)
+    pool = list(models.Concept.objects.filter(collection__dataset=ident.dataset, published=True)
+                .select_related("collection"))
+    names = {}
+    for c in pool:
+        for key in (c.permanent_id, c.permanent_id.split("__")[-1], c.name or ""):
+            if key:
+                names.setdefault(D.norm(key), c)
+    hit = names.get(want)
+    if hit is None:
+        close = difflib.get_close_matches(want, list(names), n=1, cutoff=0.86)
+        hit = names[close[0]] if close else None
+    if hit is None:
+        raise AccessError(
+            f"No published concept {text!r} in dataset {ident.dataset_id!r}; give a concept_id "
+            "(or a variable's exact name)."
+        )
+    return hit
+
+
 def _concept(ident, concept_id: str):
     from chiron import models
 
@@ -1318,12 +1346,10 @@ def chiron_breakdown(
             try:
                 oConcept = _concept(ident, concept_id)
             except AccessError:
-                # A name rather than an id ("encounter type"): the dictionary's resolver,
-                # which chiron_query uses, finds it by its words or display name.
-                from chiron_mcp import query as Q
-
-                var = Q.resolve_field(ident, str(concept_id))
-                concept_id, oConcept = var.cid, var.concept
+                # A name rather than an id ("encounter type"): find it among the dataset's
+                # published concepts by name, whatever the account's access level.
+                oConcept = _concept_by_name(ident, str(concept_id))
+                concept_id = oConcept.permanent_id
             can_use, reason = oConcept.user_can_use_concept_in_cohort_def(cu)
             if not can_use:
                 raise AccessError(f"Not permitted to use {concept_id!r}: {reason}")
