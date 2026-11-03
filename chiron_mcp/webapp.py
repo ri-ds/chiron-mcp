@@ -749,12 +749,15 @@ REQUIRE_SESSION = os.environ.get("CHIRON_MCP_REQUIRE_SESSION") == "1"
 NOT_LOGGED_IN = "Log in to Chiron first; Ask answers as the person logged in."
 
 
-def _mcp_config(username: str, allow_superuser: bool, thread: str | None = None) -> Path:
+def _mcp_config(username: str, allow_superuser: bool, thread: str | None = None,
+                extra_tools: list[str] | None = None) -> Path:
     """A per-request MCP config, so two people asking at once never swap identities.
 
     `thread` gives chiron_query a file for the conversation's groups (g1, g2, ...), so a
     follow-up can start from an earlier answer's patients; each question runs a fresh
-    Chiron MCP process, so the groups cannot live in memory."""
+    Chiron MCP process, so the groups cannot live in memory. `extra_tools` are offered
+    beside the usual list: chiron_breakdown for an aggregate-only account, the one path
+    the instructions name for it (chiron_query refuses such an account)."""
     import tempfile
 
     env = {
@@ -774,7 +777,8 @@ def _mcp_config(username: str, allow_superuser: bool, thread: str | None = None)
     if thread:
         env["CHIRON_MCP_GROUPS_FILE"] = str(_groups_file(thread))
     if ASK_TOOLS != "full":
-        env["CHIRON_MCP_TOOLS"] = ",".join(TOOLS)  # the short list is all the model sees
+        offered = TOOLS + [t for t in (extra_tools or []) if t not in TOOLS]
+        env["CHIRON_MCP_TOOLS"] = ",".join(offered)  # the short list is all the model sees
 
     console = Path(sys.executable).parent / "chiron-mcp"
     cfg = {"mcpServers": {"chiron": {"command": str(console), "env": env}}}
@@ -1517,6 +1521,21 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
             proc.kill()
 
 
+def _tools_for(dataset: str | None, username: str, allow_superuser: bool) -> list[str]:
+    """Tools offered beside the usual list for this person on this dataset: the
+    aggregate-safe breakdown for an aggregate-only account, which the instructions send
+    there and which chiron_query cannot serve. Anyone else keeps the plain list."""
+    if not dataset:
+        return []
+    try:
+        from chiron_mcp import identity
+
+        ident = identity.resolve(dataset, username=username, allow_superuser=allow_superuser)
+    except Exception:  # noqa: BLE001  (no access, no such dataset: the tools will say so)
+        return []
+    return ["chiron_breakdown"] if ident.access_level == "agg" else []
+
+
 def ask_stream(
     question: str,
     dataset: str | None,
@@ -1559,7 +1578,7 @@ def ask_stream(
             yield "error", "Still answering your previous question in this conversation."
             return
 
-    cfg = _mcp_config(username, allow_superuser, thread=tid)
+    cfg = _mcp_config(username, allow_superuser, thread=tid, extra_tools=_tools_for(dataset, username, allow_superuser))
     trace = tracing.OFF
     outcome: dict = {}
     try:

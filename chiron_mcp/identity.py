@@ -239,7 +239,8 @@ def require_subject_level(ident: Identity) -> None:
         raise AccessError(
             f"Access level '{ident.access_level}' cannot see subject-level data. "
             "Chiron's own API returns 403 for this identity on this kind of request. "
-            "Use chiron_crosstab, which is the aggregate-safe path."
+            "Use chiron_breakdown, the aggregate-safe path (small counts masked), for a "
+            "breakdown; a count or a list of patients is not available to this account."
         )
 
 

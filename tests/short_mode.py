@@ -81,6 +81,16 @@ env = json.loads(cfg.read_text())["mcpServers"]["chiron"]["env"]
 cfg.unlink()
 check("Ask's config names the short list", env.get("CHIRON_MCP_TOOLS") == ",".join(webapp.TOOLS), env.get("CHIRON_MCP_TOOLS"))
 
+# An aggregate-only account is offered chiron_breakdown beside the list, the one path the
+# instructions name for it; nobody else is, and a dataset that cannot be resolved adds nothing.
+cfg = webapp._mcp_config("tester", False, thread="t-3", extra_tools=["chiron_breakdown"])
+env = json.loads(cfg.read_text())["mcpServers"]["chiron"]["env"]
+cfg.unlink()
+check("an aggregate account's config adds chiron_breakdown after the short list",
+      env.get("CHIRON_MCP_TOOLS") == ",".join(webapp.TOOLS + ["chiron_breakdown"]), env.get("CHIRON_MCP_TOOLS"))
+check("no dataset, no extra tool", webapp._tools_for(None, "tester", False) == [])
+check("an unknown dataset adds no tool", webapp._tools_for("no-such-dataset", "tester", False) == [])
+
 print()
 print("all passed" if not fails else f"{len(fails)} failed: {fails}")
 sys.exit(1 if fails else 0)
