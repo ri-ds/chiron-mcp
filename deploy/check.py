@@ -56,7 +56,10 @@ def get(url, headers=None, timeout=30):
     ctx = ssl.create_default_context()
     try:
         with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
-            return r.status, r.read().decode("utf-8", "replace"), dict(r.headers)
+            headers = dict(r.headers)
+            # A login sets several cookies; dict() would keep only the last Set-Cookie.
+            headers["Set-Cookie"] = "; ".join(r.headers.get_all("Set-Cookie") or [])
+            return r.status, r.read().decode("utf-8", "replace"), headers
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", "replace")
         if e.code == 403 and "error code: 10" in body:
@@ -182,6 +185,9 @@ def main():
             signed = None
         check("sign-on by header logs the person into Chiron", status == 200 and signed == probe,
               f"HTTP {status}, user {signed!r}")
+        status, body, _ = get(base + "/accounts/login/", auth)
+        check("the login page shows no demo buttons while sign-on is on",
+              status == 200 and "demo1234" not in body, f"HTTP {status}")
         m = re.search(r"sessionid=([^;]+)", resp.get("Set-Cookie", "") or "")
         status, body, _ = get(f"{base}/ask/whoami", dict(auth, Cookie=f"sessionid={m.group(1)}") if m else auth)
         try:
