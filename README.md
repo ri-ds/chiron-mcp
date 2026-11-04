@@ -797,7 +797,9 @@ CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusal
 .venv/bin/python -m tests.protocol_http                            # HTTP endpoint, loopback only
 .venv/bin/python -m tests.protocol_oauth                           # HTTP endpoint, OAuth login per user
 .venv/bin/python tests/ask_e2e.py                                  # the Ask tab, end to end
+.venv/bin/python tests/permissions.py                              # what each kind of account cannot get
 .venv/bin/python -m tests.protocol                                 # real MCP stdio handshake
+.venv/bin/python tests/usage.py; .venv/bin/python tests/header_login.py   # offline: the ledger, the header sign-on
 ```
 
 `tests/ask_e2e.py` asks real questions through the Ask server exactly as the page does, and
@@ -810,6 +812,19 @@ The page's starter questions come from a pool of about 130 built from the datase
 and tagged by feature; `tests/ask_e2e.py --suggestions` asks every one of them and fails any that
 errors, is refused, shows no figure, or lacks the button its feature promises, so a starter cannot
 ship broken.
+
+`tests/permissions.py` is the permission suite: one question set (a count, a list with names,
+a breakdown, the Results tab, a report with names, another dataset) asked through `/ask` as six
+identities it makes for the run, a de-identified account with and without subject details, an
+aggregate-only one, a full-access row under the ceiling, a login with no row on the dataset,
+and `admin`. From each answer, its events and its trace (every tool result) it asserts what that
+account must not get: no button, no patient-level tool and no unmasked small count for
+aggregate; no identifying column in any tool result, the Results tab or a saved report for
+de-identified without details; nothing at all for the login without a row; and for everyone
+that another person's conversation cannot be continued, their trace cannot be read, request
+headers show to staff only and the usage page shows one's own rows. It warns when a dataset's
+auto-create rule would hand a newcomer more than aggregate access, and fails on it once header
+sign-on is on.
 
 It also runs whole conversations: three follow-ups that each narrow the last cohort (841, 445,
 370, each checked in Chiron); "now show their medications", which must give the asthma
@@ -1000,11 +1015,17 @@ chiron_mcp/
   filters.py          cohort filter input schemas, transcribed from validate_form()
   server.py           the 23 tools
   webapp.py           the Ask chat server embedded in the Chiron UI
+  trace.py            the trace under each answer, and the hooks that feed the call log and the ledger
+  calllog.py          the call log: one line per model call and per Chiron call
+  usage.py            the usage ledger: one row per answer, kept for good, summarised for /usage
+  header_login.py     sign-on by request header, for a Chiron behind a gateway (deploy bundle)
   chiron_patches.py   the two Chiron fixes, applied at run time when the host lacks them
   webui/index.html    the chat page (markdown, tables, charts, buttons)
+  webui/usage.html    the usage page: spend, time, errors per person, model, dataset and day
 scripts/
   harness.py          deployment check with no MCP involved
   grant_access.py     grant, update, revoke or list ChironUser rows
+  usage_backfill.py   fill the usage ledger from call-log lines
   export_dataset.py   pack one dataset (dictionary + warehouse) into a file
 deploy/               the whole stack in Docker: compose.yml, setup.sh, check.py
 askpatch/             Ask as an add-on for an existing Chiron: compose.yml, proxy snippets, UI patch, check.py
@@ -1015,6 +1036,9 @@ tests/
   protocol_http.py    the same over the HTTP endpoint, plus its loopback-only checks
   protocol_oauth.py   the HTTP endpoint's OAuth login, as two users with different access
   ask_e2e.py          the Ask tab end to end, checked against raw SQL and Chiron's API
+  permissions.py      what each kind of account cannot get out of Ask, as six identities
+  usage.py            the usage ledger, its summaries and the backfill from the call log (offline)
+  header_login.py     sign-on by request header: created on first sight, kept in step (offline)
   chiron_patches.py   the run-time fixes land on an unfixed Chiron and leave a fixed one alone
 ```
 

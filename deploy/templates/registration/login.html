@@ -20,9 +20,15 @@ back, for a site something else already guards, and admin's password is the demo
 		<div class="alert alert-danger" role="alert">That username and password did not match.</div>
 		{% endif %}
 
+		{% if CHIRON_SSO_ON %}
+		<p class="text-muted">This site signs you in through its sign-on gateway: open the
+		site's address and you arrive signed in. The form below is for the administrator
+		and for test accounts.</p>
+		{% else %}
 		<p class="text-muted">Synthetic demo data. Try it with one of the demo accounts:</p>
+		{% endif %}
 
-		{% if CHIRON_ADMIN_BUTTON %}
+		{% if CHIRON_ADMIN_BUTTON and not CHIRON_SSO_ON %}
 		<form method="post">
 			{% csrf_token %}
 			<input type="hidden" name="username" value="admin" />
@@ -34,6 +40,7 @@ back, for a site something else already guards, and admin's password is the demo
 		</form>
 		<br>
 		{% endif %}
+		{% if not CHIRON_SSO_ON %}
 		<form method="post">
 			{% csrf_token %}
 			<input type="hidden" name="username" value="demouser" />
@@ -55,6 +62,7 @@ back, for a site something else already guards, and admin's password is the demo
 		</form>
 
 		<hr class="my-4">
+		{% endif %}
 
 		<h5>Other accounts</h5>
 		<form method="post">

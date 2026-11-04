@@ -2033,6 +2033,9 @@ class Handler(BaseHTTPRequestHandler):
             out["user"] = info
             if info and (info["staff"] or info["superuser"]):
                 out["headers"] = identity_headers(self.headers)
+                sso = os.environ.get("CHIRON_SSO_USER_HEADER", "").strip()
+                out["sso"] = {"on": bool(sso), "header": sso or None,
+                              "default_access": os.environ.get("CHIRON_SSO_DEFAULT_ACCESS", "agg") if sso else None}
         except Exception as exc:  # noqa: BLE001
             out["error"] = str(exc)
         return self._json(out)

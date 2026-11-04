@@ -18,6 +18,19 @@ x-app-env: &app-env
   # Optional path prefix the whole site is served under, e.g. /chiron. Empty: the root.
   CHIRON_BASE_PATH: ${BASE_PATH:-}
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?run ./setup.sh first}
+  # Sign-on by request header, for a site behind a gateway that authenticates people
+  # (see "Who is asking" in README.md). SSO_USER_HEADER in .env turns it on; unset,
+  # Chiron's own login page is the way in. Shared with the ask container so its checks
+  # know whether sign-on is on.
+  CHIRON_SSO_USER_HEADER: ${SSO_USER_HEADER:-}
+  CHIRON_SSO_FIRST_NAME_HEADER: ${SSO_FIRST_NAME_HEADER:-}
+  CHIRON_SSO_LAST_NAME_HEADER: ${SSO_LAST_NAME_HEADER:-}
+  CHIRON_SSO_DISPLAY_NAME_HEADER: ${SSO_DISPLAY_NAME_HEADER:-}
+  CHIRON_SSO_EMAIL_HEADER: ${SSO_EMAIL_HEADER:-}
+  CHIRON_SSO_STRIP_DOMAIN: ${SSO_STRIP_DOMAIN:-}
+  CHIRON_SSO_DEFAULT_ACCESS: ${SSO_DEFAULT_ACCESS:-agg}
+  CHIRON_SSO_DEFAULT_DATASETS: ${SSO_DEFAULT_DATASETS:-}
+  CHIRON_SSO_LOGOUT_URL: ${SSO_LOGOUT_URL:-}
 
 services:
   db:

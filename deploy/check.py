@@ -167,6 +167,32 @@ def main():
           me.get("username") == "demouser" and bool(me.get("name")) and level == "deid",
           f"{me.get('name')!r} ({me.get('username')}), {level} on {dataset}")
 
+    # Sign-on by request header, when the deployment has it on (SSO_USER_HEADER in .env):
+    # a request that names a person in that header must land in Chiron logged in as
+    # them, and Ask must see that login through the same session cookie.
+    sso_header = env().get("SSO_USER_HEADER", "").strip()
+    if sso_header:
+        probe = "check.signon"
+        hdr = dict(auth, **{sso_header: probe, env().get("SSO_FIRST_NAME_HEADER", "X-Check-First"): "Check",
+                            env().get("SSO_LAST_NAME_HEADER", "X-Check-Last"): "Sign-on"})
+        status, body, resp = get(base + "/api/v2/auth/", hdr)
+        try:
+            signed = (json.loads(body).get("user") or {}).get("username")
+        except ValueError:
+            signed = None
+        check("sign-on by header logs the person into Chiron", status == 200 and signed == probe,
+              f"HTTP {status}, user {signed!r}")
+        m = re.search(r"sessionid=([^;]+)", resp.get("Set-Cookie", "") or "")
+        status, body, _ = get(f"{base}/ask/whoami", dict(auth, Cookie=f"sessionid={m.group(1)}") if m else auth)
+        try:
+            me = json.loads(body).get("user") or {}
+        except ValueError:
+            me = {}
+        level = next((d.get("access_level") for d in me.get("datasets") or [] if d.get("id") == dataset), None)
+        check("Ask sees the signed-on person and their default access",
+              me.get("username") == probe and level == (env().get("SSO_DEFAULT_ACCESS") or "agg"),
+              f"{me.get('username')!r} ({me.get('name')!r}), {level} on {dataset}")
+
     q = urllib.parse.quote("How many patients are in this dataset?")
     status, body, _ = get(f"{base}/ask/ask?q={q}&dataset={dataset}", cookie, timeout=240)
     events = dict(re.findall(r"event: (\w+)\ndata: (.*)", body))

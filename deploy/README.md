@@ -158,6 +158,7 @@ ProxyPass /.well-known/oauth-authorization-server/chiron http://localhost:8088/.
 | See who Ask takes you for, and what a sign-on gateway in front sends | open `<PUBLIC_URL>/ask/whoami` in the browser, signed in: name, email and access level per dataset; a staff account also sees the request headers that arrived, with the values of those that may carry a sign-on identity |
 | See what Ask is used for and what it costs, per person, model, dataset and day | open `<PUBLIC_URL>/ask/usage` signed in as `admin` (everyone's; anyone else sees their own, and so do the members of the Django group `ASK_USAGE_GROUP` in `.env` names); "Who has what" lists every account's access per dataset. The ledger behind it lives in the `ask-home` volume, one row per answer, no question text (see "The usage page" in the main README) |
 | Add the answers given before the ledger existed | `docker compose logs --no-log-prefix ask \| docker compose exec -T ask python /app/scripts/usage_backfill.py` (safe to repeat) |
+| Prove what each kind of account can and cannot get out of Ask | `docker compose exec -T ask env ASK_URL=http://localhost:8900 CHIRON_API=http://chiron:8000 python /app/tests/permissions.py` (six identities, one question set, about ten minutes; makes and removes its own `perm_*` accounts) |
 | Stop, keeping everything | `docker compose stop` |
 | Start again | `docker compose up -d` |
 | Update to the latest code | `git pull && ./setup.sh` with the same options as before |
@@ -192,6 +193,58 @@ answered by the next one (Opus when it is listed); the trace under the answer sa
 3. Tunnel mode: delete the tunnel, and its public hostname and DNS record, in the
    Cloudflare dashboard. Https mode: remove the router's port forwards and the DNS record.
 4. Optionally delete `deploy/.env`, `deploy/gate.caddy` and `deploy/.gate-password`.
+
+## Who is asking: a sign-on gateway in front
+
+Chiron has its own login page, so on a site that already signs people in (an access
+manager, a Shibboleth service provider) everyone meets a second login and ends up as a
+demo account, and Ask, the traces, the call log and the usage ledger then say
+"demouser" rather than who it was. Such a gateway forwards every request with headers
+that name the person (`OBLIX_UID`, `REMOTE_USER`, `eppn`, `X-Remote-User` and the like),
+and with those Chiron can log the person in itself (`chiron_mcp/header_login.py`).
+In this order:
+
+1. **See what arrives.** Open `<PUBLIC_URL>/ask/whoami` in the browser, signed in as
+   `admin`: `headers.names` lists every request header the server received, and
+   `headers.identity` the values of those that may carry an identity.
+2. **Check that a visitor cannot forge one.** In the browser's console, on any page of
+   the site, signed in (the site's own path before `/ask`):
+   ```js
+   await (await fetch('/app/chiron/ask/whoami', {headers: {'OBLIX_UID': 'forged'}})).json()
+   ```
+   If `headers.identity` shows `forged`, the gateway passes a visitor's own headers
+   through, and header sign-on is not safe on this site: stop here. It is safe only
+   when the gateway strips or overwrites that header.
+3. **Check that nothing but the gateway reaches the web server.** `HTTP_PORT` in
+   `deploy/.env` must bind the loopback address the proxy in front uses
+   (`127.0.0.1:8088`), never every interface: a request that skipped the gateway could
+   carry any header.
+4. **Lower Chiron's auto-create rule.** In the Django admin each dataset has "autocreate
+   chiron user" and "auto access level": Chiron's own pages give anyone new that level
+   on their first visit, and the demo datasets ship with full access there. Set it to
+   aggregate or switch it off; the usage page's "Who has what" warns while it is above
+   aggregate, and `tests/permissions.py` fails on it once sign-on is on.
+5. **Turn it on**, in `deploy/.env`:
+   ```
+   SSO_USER_HEADER=OBLIX_UID           # the header that names the person (step 1)
+   SSO_FIRST_NAME_HEADER=OBLIX_FNAME   # optional, with SSO_LAST_NAME_HEADER and SSO_EMAIL_HEADER;
+                                       # or SSO_DISPLAY_NAME_HEADER for one "First Last" header
+   SSO_STRIP_DOMAIN=1                  # optional: abc1de@example.org signs in as abc1de
+   SSO_DEFAULT_ACCESS=agg              # a newcomer's level on every dataset: agg (default), deid, phi, none
+   SSO_DEFAULT_DATASETS=synthea-10k    # optional: those datasets only; unset, all of them
+   SSO_LOGOUT_URL=https://...          # optional: the gateway's logout, so Logout ends both sessions
+   ```
+   then `docker compose up -d chiron ask`. From then on a person who reaches the site is
+   logged into Chiron as themselves on their first request. The account is made on first
+   sight, with names and email from the headers and no rights, and gets the default
+   access on each dataset; an administrator raises individuals to de-identified or full
+   access in Chiron's admin (Chiron users) or with `scripts/grant_access.py`. The login
+   page keeps only the password form, for `admin` and for test accounts. When the header
+   stops arriving (the gateway's session ended) the next request logs the person out of
+   Chiron too. To retire `ADMIN_BUTTON`, make your own account a superuser in the Django
+   admin (Users, "superuser status") and remove the line from `.env`.
+6. **Prove it**: step 1 again as yourself (your name top right, `/ask/whoami` naming
+   you), then the permission suite from "Day to day".
 
 ## Security
 

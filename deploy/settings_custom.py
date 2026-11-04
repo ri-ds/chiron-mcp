@@ -76,10 +76,24 @@ import sys as _sys
 
 CHIRON_ADMIN_BUTTON = os.environ.get("CHIRON_ADMIN_BUTTON", "").lower() in ("1", "true", "yes")
 
+# Sign-on by request header (chiron_mcp/header_login.py): a gateway in front that
+# authenticates people and says who they are in a header. SSO_USER_HEADER in deploy/.env
+# names that header and turns it on; the rest of the SSO_* lines are optional. Unset,
+# nothing changes: Chiron's own login page is the way in.
+CHIRON_SSO_USER_HEADER = os.environ.get("CHIRON_SSO_USER_HEADER", "").strip()
+CHIRON_SSO_FIRST_NAME_HEADER = os.environ.get("CHIRON_SSO_FIRST_NAME_HEADER", "").strip()
+CHIRON_SSO_LAST_NAME_HEADER = os.environ.get("CHIRON_SSO_LAST_NAME_HEADER", "").strip()
+CHIRON_SSO_DISPLAY_NAME_HEADER = os.environ.get("CHIRON_SSO_DISPLAY_NAME_HEADER", "").strip()
+CHIRON_SSO_EMAIL_HEADER = os.environ.get("CHIRON_SSO_EMAIL_HEADER", "").strip()
+CHIRON_SSO_STRIP_DOMAIN = os.environ.get("CHIRON_SSO_STRIP_DOMAIN", "").strip()
+CHIRON_SSO_DEFAULT_ACCESS = os.environ.get("CHIRON_SSO_DEFAULT_ACCESS", "agg").strip()
+CHIRON_SSO_DEFAULT_DATASETS = os.environ.get("CHIRON_SSO_DEFAULT_DATASETS", "").strip()
+CHIRON_SSO_LOGOUT_URL = os.environ.get("CHIRON_SSO_LOGOUT_URL", "").strip()
+
 
 def deploy_globals(request):
     """Context processor: what the deployment's own templates need to know."""
-    return {"CHIRON_ADMIN_BUTTON": CHIRON_ADMIN_BUTTON}
+    return {"CHIRON_ADMIN_BUTTON": CHIRON_ADMIN_BUTTON, "CHIRON_SSO_ON": bool(CHIRON_SSO_USER_HEADER)}
 
 
 _parent = _sys.modules.get(__name__.rpartition(".")[0] + ".settings")
@@ -90,6 +104,24 @@ if _parent is not None and getattr(_parent, "TEMPLATES", None):
     _processors = _parent.TEMPLATES[0].setdefault("OPTIONS", {}).setdefault("context_processors", [])
     if __name__ + ".deploy_globals" not in _processors:
         _processors.append(__name__ + ".deploy_globals")
+
+if CHIRON_SSO_USER_HEADER and _parent is not None:
+    # The header login runs right after Django's own authentication middleware, and its
+    # backend comes first so a header signs the person in; the password backend stays,
+    # for admin and for the test accounts. Chiron's logout then goes to the gateway's
+    # logout, if one is given, so the gateway's session ends with Django's.
+    _mw = list(getattr(_parent, "MIDDLEWARE", []))
+    _auth = "django.contrib.auth.middleware.AuthenticationMiddleware"
+    if "chiron_mcp.header_login.HeaderLoginMiddleware" not in _mw:
+        _mw.insert(_mw.index(_auth) + 1 if _auth in _mw else len(_mw),
+                   "chiron_mcp.header_login.HeaderLoginMiddleware")
+    MIDDLEWARE = _mw
+    AUTHENTICATION_BACKENDS = [
+        "chiron_mcp.header_login.HeaderLoginBackend",
+        "django.contrib.auth.backends.ModelBackend",
+    ]
+    if CHIRON_SSO_LOGOUT_URL:
+        LOGOUT_REDIRECT_URL = CHIRON_SSO_LOGOUT_URL
 
 CHIRON_SITE_TITLE = os.environ.get("CHIRON_SITE_TITLE", "Chiron")
 CHIRON_INFOBAR = os.environ.get("CHIRON_INFOBAR", "Synthetic demo data only")
