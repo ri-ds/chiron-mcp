@@ -159,6 +159,12 @@ confirms Ask sees that login through the route, asks a question, and compares th
 in the answer with Chiron's own count; the last line checks that answers stream through
 the web server rather than arriving all at once. Every line should say PASS.
 
+**Who it is.** `<chiron address>/ask/whoami`, opened signed in, says who Ask answers as
+and their access level on each dataset. A staff account also sees the request headers
+the web server passes on, with the values of any that may carry a sign-on identity
+(REMOTE_USER, eppn, OBLIX_UID and the like): the way to learn what a sign-on gateway in
+front of this Chiron actually sends, before building anything on it.
+
 **Follow the calls.** The container's log has one line per model call and per Chiron
 call (user, dataset, model, tokens, cost, tool, status, time), and one per answer:
 

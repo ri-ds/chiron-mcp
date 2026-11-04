@@ -749,6 +749,78 @@ REQUIRE_SESSION = os.environ.get("CHIRON_MCP_REQUIRE_SESSION") == "1"
 NOT_LOGGED_IN = "Log in to Chiron first; Ask answers as the person logged in."
 
 
+def user_info(who: str, allow_superuser: bool) -> dict | None:
+    """The person behind a username, as the page's top bar shows them.
+
+    Names and email as Chiron's own header shows them, the staff flags, and the datasets
+    they may use with their access level on each (the same resolution every tool does,
+    so what the bar says is what the answers obey). None when no such user exists.
+    """
+    from django.contrib.auth import get_user_model
+
+    from chiron import models
+    from chiron_mcp import identity
+
+    user = get_user_model().objects.filter(username=who).first()
+    if user is None:
+        return None
+    out = {
+        "username": user.username,
+        "name": (user.get_full_name() or "").strip(),
+        "first_name": user.first_name or "",
+        "last_name": user.last_name or "",
+        "email": user.email or "",
+        "staff": bool(user.is_staff),
+        "superuser": bool(user.is_superuser),
+        "datasets": [],
+    }
+    for oDataset in models.Dataset.objects.all().order_by("unique_id"):
+        try:
+            ident = identity.resolve(
+                oDataset.unique_id, username=who, allow_superuser=allow_superuser
+            )
+        except identity.AccessError:
+            continue
+        out["datasets"].append({
+            "id": oDataset.unique_id,
+            "name": oDataset.display_name or oDataset.unique_id,
+            "access_level": ident.access_level,
+            "subject_details": ident.can_view_subject_details,
+            "workspace": ident.can_view_workspace,
+        })
+    return out
+
+
+# Request headers a sign-on gateway in front of a deployment may add to say who signed
+# in: the CCHMC access manager's OBLIX_* family, a Shibboleth SP's eppn, mail, givenName
+# and sn, the generic REMOTE_USER family. /whoami shows a staff account which of them
+# actually arrive, so a deployment can decide what to trust before any login is built on
+# them. The values are shown there and used for nothing else.
+_IDENTITY_HEADER_PREFIXES = ("OBLIX_", "SHIB_", "X_SHIB_", "X_REMOTE_", "X_AUTH_", "X_FORWARDED_USER")
+_IDENTITY_HEADERS = frozenset({
+    "REMOTE_USER", "EPPN", "MAIL", "EMAIL", "DISPLAYNAME", "DISPLAY_NAME", "GIVENNAME",
+    "GIVEN_NAME", "SN", "SURNAME", "UID", "CN", "PERSISTENT_ID", "AFFILIATION",
+    "UNSCOPED_AFFILIATION", "X_USER", "X_USERNAME", "X_EMAIL",
+})
+
+
+def identity_headers(headers) -> dict:
+    """Every request header's name, and the values of those that may carry an identity.
+
+    Cookie and Authorization are left out even by name. A value is cut at 200 characters.
+    """
+    names: list[str] = []
+    found: dict[str, str] = {}
+    for name, value in headers.items():
+        key = name.upper().replace("-", "_")
+        if key in ("COOKIE", "AUTHORIZATION", "PROXY_AUTHORIZATION"):
+            continue
+        names.append(name)
+        if key in _IDENTITY_HEADERS or key.startswith(_IDENTITY_HEADER_PREFIXES):
+            found[name] = (value or "")[:200]
+    return {"names": sorted(set(names), key=str.lower), "identity": found}
+
+
 def _mcp_config(username: str, allow_superuser: bool, thread: str | None = None,
                 extra_tools: list[str] | None = None) -> Path:
     """A per-request MCP config, so two people asking at once never swap identities.
@@ -1791,6 +1863,10 @@ class Handler(BaseHTTPRequestHandler):
             if not self._same_site():
                 return self.send_error(403, "cross-site request refused")
             return self._datasets()
+        if url.path == "/whoami":
+            if not self._same_site():
+                return self.send_error(403, "cross-site request refused")
+            return self._whoami()
         if url.path == "/ask":
             if not self._same_site():
                 return self.send_error(403, "cross-site request refused")
@@ -1838,33 +1914,45 @@ class Handler(BaseHTTPRequestHandler):
         """Who is asking, what they may use, and starter questions for ?dataset=."""
         who, allow_su = request_identity(self.headers.get("Cookie"))
         dataset = (parse_qs(urlparse(self.path).query).get("dataset") or [None])[0]
-        out: dict = {"identity": who, "datasets": [], "suggestions": [],
+        out: dict = {"identity": who, "user": None, "datasets": [], "suggestions": [],
                      "models": offered_models(), "model": default_model()}
         if not who:
             out["error"] = NOT_LOGGED_IN
             return self._json(out)
         try:
-            from chiron import models
-            from chiron_mcp import identity
-
-            for oDataset in models.Dataset.objects.all().order_by("unique_id"):
-                try:
-                    ident = identity.resolve(
-                        oDataset.unique_id, username=who, allow_superuser=allow_su
-                    )
-                except identity.AccessError:
-                    continue
-                out["datasets"].append({
-                    "id": oDataset.unique_id,
-                    "name": oDataset.display_name or oDataset.unique_id,
-                    "access_level": ident.access_level,
-                })
+            info = user_info(who, allow_su)
+            if info:
+                out["user"] = {k: v for k, v in info.items() if k != "datasets"}
+                out["datasets"] = [{"id": d["id"], "name": d["name"],
+                                    "access_level": d["access_level"]} for d in info["datasets"]]
             if dataset:
                 match = next((d for d in out["datasets"] if d["id"] == dataset), None)
                 out["access_level"] = match["access_level"] if match else None
                 if match and match["access_level"] in ("phi", "deid"):
                     out["pool"] = starter_pool(dataset, who, allow_su)
                     out["features"] = FEATURES
+        except Exception as exc:  # noqa: BLE001
+            out["error"] = str(exc)
+        return self._json(out)
+
+    def _whoami(self):
+        """Who this request acts as, for the page's top bar and for checking a deployment.
+
+        The person behind the session cookie (names, email, access level per dataset) and,
+        for a staff account only, which request headers arrive and what the ones that may
+        carry a sign-on identity say (see identity_headers): a deployment behind a
+        sign-on gateway learns here what the gateway passes before trusting any of it.
+        """
+        who, allow_su = request_identity(self.headers.get("Cookie"))
+        out: dict = {"identity": who, "user": None}
+        if not who:
+            out["error"] = NOT_LOGGED_IN
+            return self._json(out)
+        try:
+            info = user_info(who, allow_su)
+            out["user"] = info
+            if info and (info["staff"] or info["superuser"]):
+                out["headers"] = identity_headers(self.headers)
         except Exception as exc:  # noqa: BLE001
             out["error"] = str(exc)
         return self._json(out)

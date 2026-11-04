@@ -349,6 +349,8 @@ def _run(case: Case, cookie: str, truth: dict) -> Result:
         report_flow(r, case, cookie, truth)
     elif case.kind == "hijack":
         hijack(r, case, cookie, truth)
+    elif case.kind == "whoami":
+        whoami(r, case, cookie, truth)
     elif case.kind == "delete_refused":
         delete_refused(r, case, cookie)
     elif case.kind == "results_flow":
@@ -644,6 +646,34 @@ def hijack(r: Result, case: Case, cookie: str, truth: dict) -> None:
         r.fail("the intruder's answer used the owner's asthma cohort")
     else:
         r.ok_note("intruder got a fresh conversation with no prior cohort")
+
+
+def whoami(r: Result, case: Case, cookie: str, truth: dict) -> None:
+    """The top bar's facts: the person, their name, their level here. Headers to staff only."""
+    r.prefix = "[demouser] "
+    me = get_json(f"{ASK}/whoami", SESSIONS["demouser"])
+    u = me.get("user") or {}
+    if u.get("username") != "demouser":
+        r.fail(f"whoami names {u.get('username')!r}")
+    if not u.get("name"):
+        r.warn("demouser has no full name (bootstrap_demo.py gives the demo accounts one)")
+    ds = next((d for d in u.get("datasets") or [] if d.get("id") == case.dataset), None)
+    if not ds or ds.get("access_level") != "deid":
+        r.fail(f"access on {case.dataset}: {ds and ds.get('access_level')!r}, expected deid")
+    if "headers" in me:
+        r.fail("a non-staff account was shown the request headers")
+    r.prefix = "[admin] "
+    me = get_json(f"{ASK}/whoami", SESSIONS["admin"])
+    if (me.get("user") or {}).get("username") != "admin":
+        r.fail(f"whoami names {(me.get('user') or {}).get('username')!r}")
+    h = me.get("headers") or {}
+    if not h.get("names"):
+        r.fail("the staff account was not shown the request header names")
+    leaked = [n for n in h.get("names") or [] if n.lower() in ("cookie", "authorization")]
+    if leaked:
+        r.fail(f"{leaked} listed among the header names")
+    if not r.notes:
+        r.ok_note("names, levels and the staff-only header view are right")
 
 
 def _turn(r: Result, state: dict, case: Case, cookie: str, label: str, q: str) -> dict:
@@ -980,6 +1010,7 @@ CASES = [
     # --- an abandoned answer never locks its conversation
     Case("abandon", "", "abandon"),
     # --- identity and permissions
+    Case("whoami", "", "whoami"),
     Case("hijack", "", "hijack"),
     Case("no_access", f"How many patients are in {NO_ACCESS_DS}?", "refuse"),
     Case("agg_user", "How many subjects are there?", "agg", user="agguser",

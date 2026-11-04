@@ -288,7 +288,7 @@ export default function Header() {
                 onClick={handleMenu}
                 color="inherit"
               >
-                {user.name} <ArrowDropDown />
+                {user.name || user.username} <ArrowDropDown />
               </Button>
               <StyledMenu
                 id="menu-appbar"

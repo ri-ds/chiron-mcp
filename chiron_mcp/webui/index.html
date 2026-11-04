@@ -278,6 +278,18 @@
   .trace-toggle:hover { background: var(--panel); }
   .trace-toggle[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-strong); }
 
+  /* who is signed in, and what they may see here */
+  .who {
+    display: flex; flex-direction: column; align-items: flex-end; flex: none; min-width: 0;
+    line-height: 1.25; text-align: right; cursor: default;
+  }
+  .who b {
+    font-weight: 500; font-size: 13px; color: var(--ink); max-width: 240px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .who small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .who.out b { color: var(--danger); }
+
   .trace-slot { margin-top: 14px; }
   .trace-slot:empty { display: none; }
   .trace-bar {
@@ -440,6 +452,8 @@
     .msg.user .bubble { max-width: 88%; }
     :root { --tl-label: 128px; }
     .trace-toggle span { display: none; }
+    .who b { max-width: 130px; }
+    .who small { display: none; }
     .st-h { grid-template-columns: 44px 8px minmax(0, 1fr) auto; gap: 6px; padding: 6px 8px; }
     .st-b { padding: 2px 10px 10px 12px; }
     .tr-tools { width: 100%; }
@@ -474,6 +488,7 @@
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
       <span>Traces</span>
     </button>
+    <div class="who" id="who" hidden><b id="who-name"></b><small id="who-level"></small></div>
   </div>
 
   <main id="scroller">
@@ -1805,12 +1820,37 @@ function setupModels(d) {
   sel.onchange = () => { MODEL = sel.value; try { localStorage.setItem('chiron-ask:model', MODEL); } catch (_) {} };
 }
 
+// The top bar says who Ask answers as and what they may see of this dataset, in the
+// words Chiron's own access levels use. The server resolves both the same way the tools
+// do, so this is a statement of what the answers obey, not a label the page chose.
+const ACCESS = { phi: 'full access', deid: 'de-identified', agg: 'aggregate only' };
+function renderWho(d, match) {
+  const box = $('who'), name = $('who-name'), level = $('who-level');
+  box.hidden = false;
+  if (!ME) {
+    box.classList.add('out');
+    name.textContent = 'Not signed in';
+    level.textContent = '';
+    box.title = (d && d.error) || 'Log in to Chiron first; Ask answers as the person logged in.';
+    return;
+  }
+  const u = (d && d.user) || {};
+  box.classList.remove('out');
+  name.textContent = u.name || u.username || ME;
+  const lv = match && match.access_level;
+  level.textContent = lv ? (ACCESS[lv] || lv) + ' · ' + DATASET_NAME
+                         : (DATASET ? 'no access to ' + DATASET_NAME : '');
+  box.title = 'Signed in to Chiron as ' + ME + (u.email ? ' (' + u.email + ')' : '')
+    + (lv ? '. On ' + DATASET_NAME + ': ' + (ACCESS[lv] || lv) + '.' : '');
+}
+
 // Who is asking decides whose conversations to show, so nothing renders until then.
 function start(d) {
   ME = (d && d.identity) || null;
   setupModels(d);
   const match = d && (d.datasets || []).find(x => x.id === DATASET);
   DATASET_NAME = (match && match.name) || DATASET || 'this dataset';
+  renderWho(d, match);
   POOL = (d && d.pool) || [];
   FEATURES = (d && d.features) || {};
   load();

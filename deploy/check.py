@@ -156,6 +156,17 @@ def main():
         who = None
     check("Ask knows who is logged in", who == "demouser", f"identity {who}")
 
+    status, body, _ = get(f"{base}/ask/whoami", cookie)
+    try:
+        me = json.loads(body).get("user") or {}
+    except ValueError:
+        me = {}
+    level = next((d.get("access_level") for d in me.get("datasets") or []
+                  if d.get("id") == dataset), None)
+    check("Ask names the person and their access",
+          me.get("username") == "demouser" and bool(me.get("name")) and level == "deid",
+          f"{me.get('name')!r} ({me.get('username')}), {level} on {dataset}")
+
     q = urllib.parse.quote("How many patients are in this dataset?")
     status, body, _ = get(f"{base}/ask/ask?q={q}&dataset={dataset}", cookie, timeout=240)
     events = dict(re.findall(r"event: (\w+)\ndata: (.*)", body))

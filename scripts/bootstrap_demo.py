@@ -47,10 +47,12 @@ DEMO_PASSWORD = "demo1234"
 ADMIN_BUTTON = os.environ.get("CHIRON_ADMIN_BUTTON", "").lower() in ("1", "true", "yes")
 ADMIN_PASSWORD = (DEMO_PASSWORD if ADMIN_BUTTON
                   else os.environ.get("CHIRON_ADMIN_PASSWORD") or DEMO_PASSWORD)
+# username, access level, admin, first name, last name. The names are what Chiron's
+# header and the Ask page show beside the account; set once, and left alone afterwards.
 DEMO_USERS = [
-    ("demouser", "deid", False),   # "standard user with deidentified data access"
-    ("agguser", "agg", False),     # "standard user with aggregated data access"
-    ("admin", "phi", True),        # "administrator with full access"
+    ("demouser", "deid", False, "Demo", "User"),       # "standard user with deidentified data access"
+    ("agguser", "agg", False, "Aggregate", "User"),    # "standard user with aggregated data access"
+    ("admin", "phi", True, "Administrator", ""),       # "administrator with full access"
 ]
 
 
@@ -138,10 +140,13 @@ def main() -> int:
     from django.contrib.auth import get_user_model
 
     User = get_user_model()
-    for username, level, is_admin in DEMO_USERS:
+    for username, level, is_admin, first, last in DEMO_USERS:
         user, created = User.objects.get_or_create(
             username=username, defaults={"is_staff": is_admin, "is_superuser": is_admin}
         )
+        # A name beside the account, unless someone already gave it one.
+        if not (user.first_name or user.last_name):
+            user.first_name, user.last_name = first, last
         # Chiron's admin views open for any staff account, but the Django admin, where the
         # data dictionary is edited (a collection's event date, which allows longitudinal
         # queries, say), needs model permissions: admin is a superuser, as in Chiron's own
