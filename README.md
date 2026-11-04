@@ -118,6 +118,11 @@ What the Ask tab does:
   JSON and, for a staff account, the names of the request headers that reach the server
   and the values of those that may carry a sign-on identity, so a deployment behind a
   sign-on gateway can see what it is sent before trusting any of it.
+- **A usage page** at `/usage`: how many answers, what they cost, how long they took and
+  how many failed, for a period, per day, per person, per model and per dataset, with a
+  CSV download. Everyone sees their own; a superuser sees everyone, and who has what
+  access on each dataset. Fed by a ledger with one row per answer and no question text,
+  kept for good. See [The usage page](#the-usage-page).
 
 Questions take roughly 10 to 40 seconds, because the model makes several Chiron tool
 calls. Each one shows as a chip while it works.
@@ -173,6 +178,7 @@ at your own Chiron. See [Configuration](#configuration).
 - [Access model and safety](#access-model-and-safety)
 - [Known limits](#known-limits)
 - [The call log](#the-call-log)
+- [The usage page](#the-usage-page)
 - [Troubleshooting](#troubleshooting)
 - [Project layout](#project-layout)
 
@@ -564,6 +570,9 @@ The Ask server (`python -m chiron_mcp.webapp`) adds:
 | `CHIRON_MCP_STATE_DIR` | `~/.cache/chiron-ask` | Conversation index, answer traces (`traces/`) and the neutral working directory Claude runs in |
 | `CHIRON_MCP_TRACE` | on | `0` stops recording answer traces (the **Trace** under each answer), and with them the call log |
 | `CHIRON_MCP_CALL_LOG` | `stderr` | Where the call log goes (one line per model call and per Chiron call, see [The call log](#the-call-log)): the server's own output, a file path to append to, or `off` |
+| `CHIRON_MCP_USAGE_DB` | `<state dir>/usage.sqlite` | The usage ledger, one row per answer, behind [the usage page](#the-usage-page): a file path, or `off` |
+| `CHIRON_MCP_USAGE_RETENTION_DAYS` | *(kept)* | Ledger rows older than this many days are deleted when the server starts |
+| `CHIRON_MCP_USAGE_GROUP` | *(none)* | A Django group whose members see everyone's usage and who has what access, as superusers do |
 | `CHIRON_MCP_THINKING_DISPLAY` | `summarized` | Passed to Claude Code as `--thinking-display`, so traces show the model's reasoning. Empty leaves the flag off. Code that imports `ask_stream` rather than running the server leaves it off unless set |
 
 See `.env.example`. A superuser is refused in analyst mode; point it at a dedicated service user.
@@ -927,6 +936,44 @@ error line carries a status, not the message; the trace has the message. The lin
 from the trace, so `CHIRON_MCP_TRACE=0` silences them too; `CHIRON_MCP_CALL_LOG` names a
 file to append to instead of stderr, or `off`. In the deploy bundle and the add-on the
 lines are in `docker compose logs ask`.
+
+## The usage page
+
+`/usage` on the Ask server (in the deploy bundle and the add-on, `<chiron address>/ask/usage`)
+shows what Ask is being used for and what it costs: answers, spend, average answer time,
+errors and tokens for a period (today, 7, 30 or 90 days, all, or a date range), spend per
+day, and the same per model and per dataset, with the most recent answers listed one per
+row and a CSV download of the period. Signed in as anyone, the page shows that person's
+own answers. Signed in as a Django superuser, or as a member of the group
+`CHIRON_MCP_USAGE_GROUP` names, it shows everyone's, a table per person (click a name to
+see only theirs), and **Who has what**: every account with its access level on every
+dataset as Ask applies it under the ceiling, the row's own level where that differs, the
+two flags (identifying columns, workspace), the last sign-in, and a warning for any
+dataset whose auto-create rule would give a newcomer access on their first visit to
+Chiron's own pages, in red when that level is full access.
+
+Behind it is a ledger, `usage.sqlite` in the state directory (`CHIRON_MCP_USAGE_DB`
+moves it or switches it off), with one row per answer: who, which dataset, at what
+access level, when, which model, how many model and Chiron calls, the tokens, the cost
+(this answer's share, and the conversation's running total), the time split between the
+model and Chiron, and how it ended. No question text, no tool argument, no filter value,
+no result, so it is kept for good (`CHIRON_MCP_USAGE_RETENTION_DAYS` prunes it) and is
+safe to show an administrator; the trace under an answer has the details, for the person
+who asked, while the conversation lives. The row is written when the answer finishes, at
+the same moment as the call log's `answer` line, with the same figures.
+
+Answers given before the ledger existed can be added from the call log, which carries
+the same fields: `scripts/usage_backfill.py` reads call-log lines from stdin or files and
+writes the answers the ledger does not have yet (rows it has are kept), so it is safe to
+run again. In the deploy bundle:
+
+```
+docker compose logs --no-log-prefix ask | docker compose exec -T ask python /app/scripts/usage_backfill.py
+```
+
+`/usage.json?period=30d` is what the page reads, `/usage.csv?period=...` the download,
+and `/usage/access.json` the who-has-what table; all three follow the same rule about
+whose rows a person may see.
 
 ## Troubleshooting
 

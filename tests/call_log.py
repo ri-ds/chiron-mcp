@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ.setdefault("CHIRON_MCP_USERNAME", "tester")
 LOG = os.path.join(tempfile.mkdtemp(), "calls.log")
 os.environ["CHIRON_MCP_CALL_LOG"] = LOG
+os.environ["CHIRON_MCP_USAGE_DB"] = "off"  # synthetic answers stay out of the real ledger
 
 from chiron_mcp import calllog  # noqa: E402
 from chiron_mcp import trace as T  # noqa: E402

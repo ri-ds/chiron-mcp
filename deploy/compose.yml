@@ -84,9 +84,11 @@ services:
       #   ASK_MODELS=us.anthropic.claude-opus-5-5=Opus 5.5,us.anthropic.claude-haiku-5-5=Haiku 5.5
       # Unset, Claude Code's own model answers and the page shows no switcher.
       CHIRON_MCP_ASK_MODELS: ${ASK_MODELS:-}
+      # A Django group whose members see everyone's usage at /ask/usage, as superusers do.
+      CHIRON_MCP_USAGE_GROUP: ${ASK_USAGE_GROUP:-}
     volumes:
-      # The Claude login (made once with: docker compose exec -it ask claude) and the
-      # Ask server's conversation state live in this home directory.
+      # The Claude login (made once with: docker compose exec -it ask claude), the Ask
+      # server's conversation state and the usage ledger live in this home directory.
       - ask-home:/home/app
     depends_on:
       chiron:

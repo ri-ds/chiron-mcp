@@ -176,6 +176,14 @@ docker compose logs -f --no-log-prefix ask | grep ' ask '
 result is in these lines; the trace under an answer has those. See "The call log" in the
 main README.
 
+**What it costs, who uses it.** `<chiron address>/ask/usage`: answers, spend, answer
+time, errors, per day, per person, per model and per dataset, with a CSV download.
+Anyone sees their own; a Django superuser (or a member of the group
+`CHIRON_MCP_USAGE_GROUP` names in `.env`) sees everyone's and who has what access on
+each dataset. The ledger
+behind it keeps one row per answer and no question text, in the `ask-home` volume. See
+"The usage page" in the main README.
+
 ## What people get
 
 The **Ask** tab beside Aggregate: a question in plain words, an answer with Chiron's

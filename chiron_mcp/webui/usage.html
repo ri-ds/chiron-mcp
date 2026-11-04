@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask usage</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --accent: #00796b; --accent-strong: #00574d; --accent-soft: #e3f2ef; --accent-line: #b8ddd6;
+    --ink: #1d2328; --ink-2: #3c464f; --muted: #6b7780; --faint: #98a2ab;
+    --line: #e3e7ea; --line-2: #eef1f3;
+    --panel: #f7f8f9; --bg: #ffffff;
+    --danger: #b3261e; --danger-bg: #fdf0ef; --danger-line: #f3c9c5;
+    --warn: #7a5d00; --warn-bg: #fff7df; --warn-line: #f0dc9c;
+    --radius: 12px;
+    --font: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--panel); color: var(--ink); font-family: var(--font);
+    font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  button, input { font-family: inherit; }
+  a { color: var(--accent-strong); }
+
+  .topbar {
+    min-height: 52px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 8px 20px; background: var(--bg); border-bottom: 1px solid var(--line-2);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .topbar h1 { margin: 0; font-size: 15px; font-weight: 500; }
+  .topbar a.back { color: var(--muted); text-decoration: none; font-size: 13px; }
+  .topbar a.back:hover { color: var(--ink); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button {
+    border: 0; background: none; padding: 5px 10px; font-size: 12.5px; color: var(--ink-2); cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button:hover { background: var(--panel); }
+  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); }
+  .range { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); }
+  .range input { font-size: 12.5px; border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; color: var(--ink-2); }
+  .btn {
+    font-size: 12.5px; border: 1px solid var(--line); background: var(--bg); border-radius: 8px;
+    padding: 5px 10px; cursor: pointer; color: var(--ink-2);
+  }
+  .btn:hover { background: var(--panel); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 9px;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); border: 1px solid var(--accent-line);
+  }
+  .chip button { border: 0; background: none; cursor: pointer; color: inherit; font-size: 13px; padding: 0; line-height: 1; }
+  .who {
+    margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; min-width: 0;
+    line-height: 1.25; text-align: right;
+  }
+  .who b { font-weight: 500; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+  .who small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .who.out b { color: var(--danger); }
+
+  main { max-width: 1120px; margin: 0 auto; padding: 18px 20px 48px; display: flex; flex-direction: column; gap: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+  .tile small { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tile b { display: block; font-size: 24px; font-weight: 500; line-height: 1.3; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile span { font-size: 12px; color: var(--muted); }
+  .card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+  .card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card h2 .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+  .chart-wrap { position: relative; height: 220px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line-2); white-space: nowrap; vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  td.dim { color: var(--muted); }
+  tr.click { cursor: pointer; }
+  tr.click:hover td { background: var(--panel); }
+  tr.me td:first-child { font-weight: 500; }
+  .st-ok { color: var(--muted); }
+  .st-error { color: var(--danger); font-weight: 500; }
+  .st-incomplete { color: var(--warn); font-weight: 500; }
+  .lvl { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: var(--bg); line-height: 1.5; }
+  .lvl.deid { border-color: var(--accent-line); color: var(--accent-strong); background: var(--accent-soft); }
+  .lvl.phi { border-color: var(--danger-line); color: var(--danger); background: var(--danger-bg); }
+  .lvl.none { color: var(--faint); border-style: dashed; }
+  .flag { font-size: 11px; color: var(--muted); }
+  .empty { color: var(--muted); font-size: 13.5px; padding: 10px 0; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+  .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn); padding: 8px 10px; border-radius: 8px; font-size: 13px; margin: 0 0 10px; }
+  .warn.danger { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger); }
+  .hide { display: none !important; }
+  @media (max-width: 760px) {
+    .topbar { padding: 8px 12px; gap: 8px; }
+    main { padding: 12px 12px 32px; }
+    th, td { padding: 5px 6px; }
+    .who small { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="./" title="Back to Ask">← Ask</a>
+  <h1>Usage</h1>
+  <div class="seg" id="periods" role="group" aria-label="Period">
+    <button type="button" data-period="today">Today</button>
+    <button type="button" data-period="7d">7 days</button>
+    <button type="button" data-period="30d">30 days</button>
+    <button type="button" data-period="90d">90 days</button>
+    <button type="button" data-period="all">All</button>
+  </div>
+  <span class="range"><input type="date" id="from" aria-label="From"> – <input type="date" id="to" aria-label="To">
+    <button class="btn" id="apply" type="button">Apply</button></span>
+  <span class="chip hide" id="filter"><span id="filter-text"></span><button type="button" id="clear" title="Back to everyone">✕</button></span>
+  <button class="btn" id="csv" type="button" title="Download this period's answers as CSV, one row each, no question text">CSV</button>
+  <div class="who" id="who" hidden><b id="who-name"></b><small id="who-sub"></small></div>
+</header>
+
+<main id="main">
+  <div class="tiles" id="tiles"></div>
+  <section class="card">
+    <h2>Spend per day <span class="sub" id="chart-sub"></span></h2>
+    <div class="chart-wrap" id="chart-wrap"><canvas id="chart" aria-label="Spend per day, in dollars"></canvas></div>
+    <div class="empty hide" id="chart-empty">No answers in this period.</div>
+  </section>
+  <section class="card hide" id="people-card">
+    <h2>People <span class="sub">click a name to see only their answers</span></h2>
+    <div class="scroll" id="people"></div>
+  </section>
+  <section class="card">
+    <h2>Models and datasets</h2>
+    <div class="two"><div class="scroll" id="models"></div><div class="scroll" id="datasets"></div></div>
+  </section>
+  <section class="card">
+    <h2>Recent answers <span class="sub" id="recent-sub"></span></h2>
+    <div class="scroll" id="recent"></div>
+    <p class="note">One row per answer: no question text, no filter values, no results. The trace under an answer in Ask has those, for the person who asked, while the conversation lives.</p>
+  </section>
+  <section class="card hide" id="access-card">
+    <h2>Who has what <span class="sub" id="access-sub"></span></h2>
+    <div id="access-warnings"></div>
+    <div class="scroll" id="access"></div>
+    <p class="note">The level is the one Chiron's row holds; the one shown is what Ask applies under this deployment's ceiling. Change access in Chiron's admin, or with scripts/grant_access.py.</p>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const ACCESS = { phi: 'full access', deid: 'de-identified', agg: 'aggregate only' };
+let PERIOD = '30d', FILTER_USER = null, CHART = null, PEOPLE = {}, ACCESS_DATA = null;
+try { PERIOD = localStorage.getItem('chiron-ask:usage-period') || PERIOD; } catch (_) {}
+try { FILTER_USER = new URLSearchParams(location.search).get('user') || null; } catch (_) {}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function money(x) {
+  if (x == null || isNaN(x)) return '–';
+  return x >= 1 ? '$' + x.toFixed(2) : '$' + x.toFixed(x >= 0.01 ? 3 : 4);
+}
+function secs(ms) { return ms == null ? '–' : (ms / 1000).toFixed(1) + ' s'; }
+function num(n) { return n == null ? '–' : Number(n).toLocaleString(); }
+function pct(a, b) { return b ? Math.round(100 * a / b) + '%' : '–'; }
+function when(iso) {
+  if (!iso) return '–';
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function shortModel(m) { return (m || '–').replace(/^us\.anthropic\./, '').replace(/^claude-/, ''); }
+function person(u) {
+  const p = PEOPLE[u];
+  return p && p.name ? p.name : (u || '–');
+}
+function lvl(level) {
+  const s = el('span', 'lvl ' + (level || 'none'), level ? (ACCESS[level] || level) : 'no access');
+  return s;
+}
+function table(headers, rows, opts) {
+  const t = el('table'), thead = el('thead'), tr = el('tr');
+  headers.forEach(h => { const th = el('th', h.n ? 'n' : '', h.label); tr.appendChild(th); });
+  thead.appendChild(tr); t.appendChild(thead);
+  const tb = el('tbody');
+  rows.forEach(r => tb.appendChild(r));
+  t.appendChild(tb);
+  return t;
+}
+function cell(v, cls) {
+  const td = el('td', cls || '');
+  if (v instanceof Node) td.appendChild(v); else td.textContent = v == null ? '–' : v;
+  return td;
+}
+
+function renderWho(d) {
+  const box = $('who'), name = $('who-name'), sub = $('who-sub');
+  box.hidden = false;
+  if (!d || d.error || !d.identity) {
+    box.classList.add('out');
+    name.textContent = 'Not signed in';
+    sub.textContent = '';
+    return;
+  }
+  box.classList.remove('out');
+  const u = d.user || {};
+  name.textContent = u.name || u.username || d.identity;
+  sub.textContent = d.everyone ? 'sees everyone' : 'your own usage';
+  box.title = 'Signed in to Chiron as ' + d.identity + (u.email ? ' (' + u.email + ')' : '');
+}
+
+function renderTiles(d) {
+  const t = d.totals || {}, box = $('tiles');
+  box.textContent = '';
+  const tiles = [
+    ['Answers', num(t.answers || 0), t.incomplete ? num(t.incomplete) + ' incomplete' : ''],
+  ];
+  if (d.everyone && !d.filter_user) tiles.push(['People', num(t.people || 0), (t.datasets || 0) + ' dataset' + (t.datasets === 1 ? '' : 's')]);
+  tiles.push(['Spend', money(t.cost_usd || 0), t.answers ? money(t.avg_cost) + ' per answer' : '']);
+  tiles.push(['Answer time', t.answers ? secs(t.avg_ms) : '–', 'average']);
+  tiles.push(['Errors', num(t.errors || 0), t.answers ? pct(t.errors || 0, t.answers) + ' of answers' : '']);
+  tiles.push(['Tokens', num(t.tokens_in || 0), num(t.tokens_out || 0) + ' out']);
+  tiles.forEach(([label, value, sub]) => {
+    const tile = el('div', 'tile');
+    tile.appendChild(el('small', '', label));
+    tile.appendChild(el('b', '', value));
+    tile.appendChild(el('span', '', sub));
+    box.appendChild(tile);
+  });
+}
+
+function renderChart(d) {
+  const days = d.per_day || [];
+  $('chart-empty').classList.toggle('hide', days.length > 0);
+  $('chart-wrap').classList.toggle('hide', days.length === 0);
+  $('chart-sub').textContent = days.length ? money(days.reduce((a, x) => a + (x.cost_usd || 0), 0)) + ' over ' + days.length + ' day' + (days.length === 1 ? '' : 's') : '';
+  if (CHART) { CHART.destroy(); CHART = null; }
+  if (!days.length) return;
+  const style = getComputedStyle(document.documentElement);
+  CHART = new Chart($('chart'), {
+    type: 'bar',
+    data: {
+      labels: days.map(x => x.day),
+      datasets: [{
+        label: 'Spend', data: days.map(x => x.cost_usd || 0),
+        backgroundColor: style.getPropertyValue('--accent').trim() || '#00796b',
+        hoverBackgroundColor: style.getPropertyValue('--accent-strong').trim() || '#00574d',
+        borderRadius: 4, borderSkipped: 'bottom', maxBarThickness: 36,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          displayColors: false,
+          callbacks: {
+            title: items => items[0].label,
+            label: item => {
+              const x = days[item.dataIndex];
+              return [money(x.cost_usd || 0), num(x.answers) + ' answer' + (x.answers === 1 ? '' : 's') + (x.errors ? ', ' + x.errors + ' error' + (x.errors === 1 ? '' : 's') : ''),
+                      'average ' + secs(x.avg_ms)];
+            },
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7780', maxRotation: 0, autoSkip: true, font: { size: 11 } } },
+        y: { beginAtZero: true, grid: { color: '#eef1f3' }, border: { display: false },
+             ticks: { color: '#6b7780', font: { size: 11 }, callback: v => money(v) } },
+      },
+    },
+  });
+}
+
+function renderPeople(d) {
+  const card = $('people-card'), box = $('people');
+  card.classList.toggle('hide', !d.everyone || !!d.filter_user);
+  if (!d.everyone || d.filter_user) return;
+  box.textContent = '';
+  const rows = (d.per_user || []).map(u => {
+    const tr = el('tr', 'click' + (u.user === d.identity ? ' me' : ''));
+    tr.title = 'Only ' + (u.user || '') + "'s answers";
+    tr.onclick = () => { FILTER_USER = u.user; load(); };
+    const who = el('div');
+    who.appendChild(el('span', '', person(u.user)));
+    if (PEOPLE[u.user] && PEOPLE[u.user].name) { who.appendChild(el('br')); who.appendChild(el('span', 'flag', u.user)); }
+    tr.appendChild(cell(who));
+    tr.appendChild(cell(num(u.answers), 'n'));
+    tr.appendChild(cell(money(u.cost_usd), 'n'));
+    tr.appendChild(cell(money(u.avg_cost), 'n'));
+    tr.appendChild(cell(secs(u.avg_ms), 'n'));
+    tr.appendChild(cell(u.errors ? num(u.errors) : '0', 'n' + (u.errors ? ' st-error' : '')));
+    tr.appendChild(cell(when(u.last), 'dim'));
+    const levels = el('div');
+    (u.levels || '').split(',').filter(Boolean).forEach(l => { levels.appendChild(lvl(l)); levels.appendChild(document.createTextNode(' ')); });
+    tr.appendChild(cell(levels));
+    tr.appendChild(cell((u.datasets || '').split(',').join(', '), 'dim'));
+    return tr;
+  });
+  if (!rows.length) { box.appendChild(el('div', 'empty', 'Nobody asked anything in this period.')); return; }
+  box.appendChild(table([
+    { label: 'Person' }, { label: 'Answers', n: 1 }, { label: 'Spend', n: 1 }, { label: 'Per answer', n: 1 },
+    { label: 'Avg time', n: 1 }, { label: 'Errors', n: 1 }, { label: 'Last asked' }, { label: 'Level' }, { label: 'Datasets' },
+  ], rows));
+}
+
+function renderGroups(d) {
+  const models = $('models'), datasets = $('datasets');
+  models.textContent = ''; datasets.textContent = '';
+  const mk = (rowsIn, keyLabel, key, fmt) => {
+    const rows = (rowsIn || []).map(x => {
+      const tr = el('tr');
+      tr.appendChild(cell(fmt(x[key])));
+      tr.appendChild(cell(num(x.answers), 'n'));
+      tr.appendChild(cell(money(x.cost_usd), 'n'));
+      tr.appendChild(cell(money(x.avg_cost), 'n'));
+      tr.appendChild(cell(secs(x.avg_ms), 'n'));
+      tr.appendChild(cell(x.errors ? num(x.errors) : '0', 'n' + (x.errors ? ' st-error' : '')));
+      return tr;
+    });
+    if (!rows.length) return el('div', 'empty', 'Nothing yet.');
+    return table([{ label: keyLabel }, { label: 'Answers', n: 1 }, { label: 'Spend', n: 1 }, { label: 'Per answer', n: 1 },
+                  { label: 'Avg time', n: 1 }, { label: 'Errors', n: 1 }], rows);
+  };
+  models.appendChild(mk(d.per_model, 'Model', 'model', shortModel));
+  datasets.appendChild(mk(d.per_dataset, 'Dataset', 'dataset', x => x || '–'));
+}
+
+function renderRecent(d) {
+  const box = $('recent'), rows = d.recent || [];
+  box.textContent = '';
+  $('recent-sub').textContent = rows.length ? 'latest ' + rows.length + (d.totals && d.totals.answers > rows.length ? ' of ' + num(d.totals.answers) : '') : '';
+  if (!rows.length) { box.appendChild(el('div', 'empty', 'No answers in this period.')); return; }
+  const headers = [{ label: 'When' }];
+  if (d.everyone) headers.push({ label: 'Person' });
+  headers.push({ label: 'Dataset' }, { label: 'Level' }, { label: 'Model' }, { label: 'Status' }, { label: 'Turn', n: 1 },
+               { label: 'Model calls', n: 1 }, { label: 'Chiron calls', n: 1 }, { label: 'Tokens in', n: 1 },
+               { label: 'Out', n: 1 }, { label: 'Cost', n: 1 }, { label: 'Time', n: 1 });
+  box.appendChild(table(headers, rows.map(r => {
+    const tr = el('tr');
+    tr.appendChild(cell(when(r.ended), 'dim'));
+    if (d.everyone) tr.appendChild(cell(person(r.user)));
+    tr.appendChild(cell(r.dataset));
+    tr.appendChild(cell(r.access_level ? lvl(r.access_level) : '–'));
+    tr.appendChild(cell(shortModel(r.model)));
+    const st = r.status || '–';
+    tr.appendChild(cell(st === 'error' ? '✕ error' : st === 'incomplete' ? '! incomplete' : st, 'st-' + st));
+    tr.appendChild(cell((r.turn || 1) + (r.followup ? ' ↩' : ''), 'n'));
+    tr.appendChild(cell(num(r.model_calls), 'n'));
+    tr.appendChild(cell((r.chiron_calls == null ? '–' : num(r.chiron_calls)) + (r.chiron_errors ? ' (' + r.chiron_errors + ' failed)' : ''), 'n'));
+    tr.appendChild(cell(num((r.tokens_in || 0) + (r.cache_read || 0) + (r.cache_write || 0)), 'n'));
+    tr.appendChild(cell(num(r.tokens_out), 'n'));
+    tr.appendChild(cell(money(r.cost_usd), 'n'));
+    tr.appendChild(cell(secs(r.ms), 'n'));
+    return tr;
+  })));
+}
+
+function renderAccess(a) {
+  const card = $('access-card'), box = $('access'), warnings = $('access-warnings');
+  if (!a || a.error) { card.classList.add('hide'); return; }
+  card.classList.remove('hide');
+  $('access-sub').textContent = 'ceiling ' + (ACCESS[a.ceiling] || a.ceiling) + ': Ask never shows more than that, whatever the row says';
+  warnings.textContent = '';
+  (a.datasets || []).forEach(ds => {
+    if (!ds.autocreate) return;
+    const w = el('div', 'warn' + (ds.auto_level === 'phi' ? ' danger' : ''),
+      ds.name + ': Chiron\'s own pages give anyone new ' + (ACCESS[ds.auto_level] || ds.auto_level || 'access') +
+      ' on their first visit (the dataset\'s auto-create rule).' + (ds.auto_level === 'phi' ? ' That is full access. Lower it in the Django admin before real people sign in.' : ''));
+    warnings.appendChild(w);
+  });
+  box.textContent = '';
+  const dsIds = (a.datasets || []).map(x => x.id);
+  const headers = [{ label: 'Person' }, { label: 'Role' }, { label: 'Last sign-in' }];
+  (a.datasets || []).forEach(ds => headers.push({ label: ds.name }));
+  const rows = (a.people || []).map(p => {
+    const tr = el('tr' , p.username === a.identity ? 'me' : '');
+    const who = el('div');
+    who.appendChild(el('span', '', p.name || p.username));
+    const sub = [p.name ? p.username : '', p.email].filter(Boolean).join(' · ');
+    if (sub) { who.appendChild(el('br')); who.appendChild(el('span', 'flag', sub)); }
+    tr.appendChild(cell(who));
+    tr.appendChild(cell(p.superuser ? 'superuser' : p.staff ? 'staff' : (p.active ? '' : 'inactive'), 'dim'));
+    tr.appendChild(cell(when(p.last_login), 'dim'));
+    dsIds.forEach(id => {
+      const d = (p.datasets || []).find(x => x.id === id);
+      const c = el('div');
+      if (!d) { c.appendChild(lvl(null)); }
+      else {
+        c.appendChild(lvl(d.effective || d.level));
+        const flags = [];
+        if (d.effective && d.level && d.effective !== d.level) flags.push('row says ' + (ACCESS[d.level] || d.level));
+        if (!d.subject_details) flags.push('no identifying columns');
+        if (!d.workspace) flags.push('no workspace');
+        if (flags.length) { c.appendChild(el('br')); c.appendChild(el('span', 'flag', flags.join(', '))); }
+      }
+      tr.appendChild(cell(c));
+    });
+    return tr;
+  });
+  box.appendChild(table(headers, rows));
+}
+
+function renderError(msg) {
+  const main = $('main');
+  main.textContent = '';
+  const card = el('section', 'card');
+  card.appendChild(el('h2', '', 'Usage'));
+  card.appendChild(el('div', 'empty', msg));
+  main.appendChild(card);
+}
+
+function render(d) {
+  renderWho(d);
+  if (!d || d.error) { renderError((d && d.error) || 'The usage data could not be read.'); return; }
+  document.querySelectorAll('#periods button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.period === PERIOD)));
+  const custom = PERIOD.includes('..');
+  if (custom) { const [a, b] = PERIOD.split('..'); $('from').value = a; $('to').value = b; }
+  $('filter').classList.toggle('hide', !d.everyone || !d.filter_user);
+  if (d.filter_user) $('filter-text').textContent = person(d.filter_user) + "'s answers";
+  renderTiles(d);
+  renderChart(d);
+  renderPeople(d);
+  renderGroups(d);
+  renderRecent(d);
+}
+
+async function load() {
+  const q = new URLSearchParams({ period: PERIOD });
+  if (FILTER_USER) q.set('user', FILTER_USER);
+  let d;
+  try { d = await fetch('usage.json?' + q).then(r => r.json()); }
+  catch (_) { d = { error: 'The usage data could not be read.' }; }
+  if (d && d.everyone && !ACCESS_DATA) {
+    try {
+      ACCESS_DATA = await fetch('usage/access.json').then(r => r.json());
+      (ACCESS_DATA.people || []).forEach(p => { PEOPLE[p.username] = p; });
+    } catch (_) { ACCESS_DATA = { error: 'unavailable' }; }
+  }
+  render(d);
+  if (d && d.everyone) renderAccess(ACCESS_DATA);
+}
+
+document.querySelectorAll('#periods button').forEach(b => b.onclick = () => {
+  PERIOD = b.dataset.period;
+  $('from').value = ''; $('to').value = '';
+  try { localStorage.setItem('chiron-ask:usage-period', PERIOD); } catch (_) {}
+  load();
+});
+$('apply').onclick = () => {
+  const a = $('from').value, b = $('to').value;
+  if (!a || !b) return;
+  PERIOD = a + '..' + b;
+  try { localStorage.setItem('chiron-ask:usage-period', PERIOD); } catch (_) {}
+  load();
+};
+$('clear').onclick = () => { FILTER_USER = null; load(); };
+$('csv').onclick = () => {
+  const q = new URLSearchParams({ period: PERIOD });
+  if (FILTER_USER) q.set('user', FILTER_USER);
+  location.href = 'usage.csv?' + q;
+};
+load();
+</script>
+</body>
+</html>

@@ -26,6 +26,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from chiron_mcp import trace as tracing
+from chiron_mcp import usage
 from chiron_mcp.config import CONFIG
 
 HERE = Path(__file__).resolve().parent
@@ -772,6 +773,7 @@ def user_info(who: str, allow_superuser: bool) -> dict | None:
         "email": user.email or "",
         "staff": bool(user.is_staff),
         "superuser": bool(user.is_superuser),
+        "groups": sorted(user.groups.values_list("name", flat=True)),
         "datasets": [],
     }
     for oDataset in models.Dataset.objects.all().order_by("unique_id"):
@@ -789,6 +791,68 @@ def user_info(who: str, allow_superuser: bool) -> dict | None:
             "workspace": ident.can_view_workspace,
         })
     return out
+
+
+# Who may see everyone's usage and who has what access: Django superusers, and the
+# members of the Django group this names (unset: superusers only). Everyone else sees
+# their own usage.
+USAGE_GROUP = os.environ.get("CHIRON_MCP_USAGE_GROUP", "").strip()
+
+
+def sees_everyone(info: dict | None) -> bool:
+    if not info:
+        return False
+    return bool(info.get("superuser")) or bool(USAGE_GROUP and USAGE_GROUP in (info.get("groups") or []))
+
+
+def _when(dt) -> str | None:
+    """A Django datetime as the ledger writes times: UTC, to the second."""
+    if not dt:
+        return None
+    try:
+        from datetime import timezone as _tz
+
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(_tz.utc)
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def access_listing() -> dict:
+    """Every account and its access on every dataset, for the usage page's "who has
+    what" table: the level Chiron's row holds, the level Ask applies under the ceiling,
+    the two flags, and when the person last signed in. Plus each dataset's own
+    auto-create rule, since Chiron's pages provision a newcomer at that level."""
+    from django.contrib.auth import get_user_model
+
+    from chiron import models
+    from chiron_mcp import identity
+
+    people: dict[str, dict] = {}
+    for u in get_user_model().objects.all().order_by("username"):
+        people[u.username] = {
+            "username": u.username, "name": (u.get_full_name() or "").strip(), "email": u.email or "",
+            "staff": bool(u.is_staff), "superuser": bool(u.is_superuser), "active": bool(u.is_active),
+            "last_login": _when(u.last_login), "joined": _when(u.date_joined), "datasets": [],
+        }
+    for cu in models.ChironUser.objects.select_related("user", "dataset").order_by(
+            "user__username", "dataset__unique_id"):
+        p = people.get(cu.user.username)
+        if p is None:
+            continue
+        level = cu.access_level
+        p["datasets"].append({
+            "id": cu.dataset.unique_id, "name": cu.dataset.display_name or cu.dataset.unique_id,
+            "level": level, "effective": identity._ceiling(level) if level else None,
+            "subject_details": bool(cu.can_view_subject_details), "workspace": bool(cu.can_view_workspace),
+        })
+    datasets = [{
+        "id": d.unique_id, "name": d.display_name or d.unique_id,
+        "autocreate": bool(getattr(d, "autocreate_chiron_user", False)),
+        "auto_level": getattr(d, "auto_access_level", None),
+    } for d in models.Dataset.objects.all().order_by("unique_id")]
+    return {"ceiling": CONFIG.max_access_level, "people": list(people.values()), "datasets": datasets}
 
 
 # Request headers a sign-on gateway in front of a deployment may add to say who signed
@@ -1593,19 +1657,24 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
             proc.kill()
 
 
-def _tools_for(dataset: str | None, username: str, allow_superuser: bool) -> list[str]:
-    """Tools offered beside the usual list for this person on this dataset: the
-    aggregate-safe breakdown for an aggregate-only account, which the instructions send
-    there and which chiron_query cannot serve. Anyone else keeps the plain list."""
+def _access_level(dataset: str | None, username: str, allow_superuser: bool) -> str | None:
+    """This person's access level on the dataset (agg, deid, phi), resolved as every
+    tool resolves it; None when they have none, or there is no such dataset."""
     if not dataset:
-        return []
+        return None
     try:
         from chiron_mcp import identity
 
-        ident = identity.resolve(dataset, username=username, allow_superuser=allow_superuser)
+        return identity.resolve(dataset, username=username, allow_superuser=allow_superuser).access_level
     except Exception:  # noqa: BLE001  (no access, no such dataset: the tools will say so)
-        return []
-    return ["chiron_breakdown"] if ident.access_level == "agg" else []
+        return None
+
+
+def _tools_for(level: str | None) -> list[str]:
+    """Tools offered beside the usual list for this access level: the aggregate-safe
+    breakdown for an aggregate-only account, which the instructions send there and which
+    chiron_query cannot serve. Anyone else keeps the plain list."""
+    return ["chiron_breakdown"] if level == "agg" else []
 
 
 def ask_stream(
@@ -1653,7 +1722,8 @@ def ask_stream(
     # The tools this person gets: the list, plus the aggregate-safe breakdown for an
     # aggregate-only account. Both the MCP server and the CLI's allow-list must agree,
     # or the CLI refuses the call ("requested permissions ... not granted").
-    offered = TOOLS + [t for t in _tools_for(dataset, username, allow_superuser) if t not in TOOLS]
+    level = _access_level(dataset, username, allow_superuser)
+    offered = TOOLS + [t for t in _tools_for(level) if t not in TOOLS]
     cfg = _mcp_config(username, allow_superuser, thread=tid, extra_tools=offered)
     trace = tracing.OFF
     outcome: dict = {}
@@ -1664,7 +1734,7 @@ def ask_stream(
                 question=question, dataset=dataset, user=username, thread=tid, followup=resume,
                 prior=tracing.prior(_trace_root(), tid, username) if resume else [],
                 inherited=THREADS.cohort(tid) if resume else None, redact=_redact,
-                groups=_groups_dict(tid) if resume else None)
+                groups=_groups_dict(tid) if resume else None, access_level=level)
             yield "trace_start", trace.head()
         for _attempt in range(2):
             if resume:
@@ -1867,6 +1937,16 @@ class Handler(BaseHTTPRequestHandler):
             if not self._same_site():
                 return self.send_error(403, "cross-site request refused")
             return self._whoami()
+        if url.path == "/usage":
+            return self._file(WEBUI / "usage.html", "text/html; charset=utf-8")
+        if url.path in ("/usage.json", "/usage.csv", "/usage/access.json"):
+            if not self._same_site():
+                return self.send_error(403, "cross-site request refused")
+            if url.path == "/usage.json":
+                return self._usage_json(parse_qs(url.query))
+            if url.path == "/usage.csv":
+                return self._usage_csv(parse_qs(url.query))
+            return self._usage_access()
         if url.path == "/ask":
             if not self._same_site():
                 return self.send_error(403, "cross-site request refused")
@@ -1955,6 +2035,83 @@ class Handler(BaseHTTPRequestHandler):
                 out["headers"] = identity_headers(self.headers)
         except Exception as exc:  # noqa: BLE001
             out["error"] = str(exc)
+        return self._json(out)
+
+    # -- the usage page --------------------------------------------------------------------
+
+    def _usage_who(self):
+        """(username, user info, may see everyone) behind a usage request."""
+        who, allow_su = request_identity(self.headers.get("Cookie"))
+        if not who:
+            return None, None, False
+        try:
+            info = user_info(who, allow_su)
+        except Exception:  # noqa: BLE001
+            info = None
+        return who, info, sees_everyone(info)
+
+    def _usage_scope(self, params, everyone: bool, who: str) -> dict:
+        """The period and the filters a usage request asks for, within what the person
+        may see: anyone else's rows only when they may see everyone's."""
+        period = (params.get("period") or ["30d"])[0]
+        since, until = usage.period(period)
+        wanted = (params.get("user") or [None])[0] or None
+        return {"period": period, "since": since, "until": until,
+                "user": wanted if everyone else who,
+                "dataset": (params.get("dataset") or [None])[0] or None}
+
+    def _usage_json(self, params):
+        """What the usage page shows: totals, per person, per model, per dataset, per
+        day and the recent answers of a period, from the ledger (chiron_mcp.usage)."""
+        who, info, everyone = self._usage_who()
+        if not who:
+            return self._json({"error": NOT_LOGGED_IN})
+        scope = self._usage_scope(params, everyone, who)
+        try:
+            recent = max(1, min(int((params.get("recent") or ["100"])[0]), 1000))
+        except ValueError:
+            recent = 100
+        out = usage.summary(since=scope["since"], until=scope["until"], user=scope["user"],
+                            dataset=scope["dataset"], recent=recent)
+        if not everyone:
+            out.pop("ledger", None)
+        out.update({
+            "identity": who, "everyone": everyone, "period": scope["period"],
+            "filter_user": scope["user"], "filter_dataset": scope["dataset"],
+            "ceiling": CONFIG.max_access_level,
+            "user": {k: info.get(k) for k in ("username", "name", "email", "staff", "superuser")} if info else None,
+        })
+        return self._json(out)
+
+    def _usage_csv(self, params):
+        """The period's rows as a CSV download, same scope rules as the JSON."""
+        who, info, everyone = self._usage_who()
+        if not who:
+            return self.send_error(403, NOT_LOGGED_IN)
+        scope = self._usage_scope(params, everyone, who)
+        body = usage.csv_text(since=scope["since"], until=scope["until"], user=scope["user"],
+                              dataset=scope["dataset"]).encode("utf-8")
+        name = re.sub(r"[^A-Za-z0-9_.-]+", "-", f"ask-usage-{scope['period']}") + ".csv"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/csv; charset=utf-8")
+        self.send_header("Content-Disposition", f'attachment; filename="{name}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _usage_access(self):
+        """Who has what access, for those who may see everyone's usage."""
+        who, info, everyone = self._usage_who()
+        if not who:
+            return self._json({"error": NOT_LOGGED_IN})
+        if not everyone:
+            return self._json({"error": "Only a superuser, or a member of the usage group, can list who has access."})
+        try:
+            out = access_listing()
+        except Exception as exc:  # noqa: BLE001
+            return self._json({"error": str(exc)})
+        out["identity"] = who
         return self._json(out)
 
     def _origin_ok(self) -> bool:
@@ -2084,6 +2241,7 @@ def main() -> int:
     if THINKING_DISPLAY is None:
         THINKING_DISPLAY = "summarized"
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    pruned = usage.prune()
     print(f"Chiron Ask running at http://localhost:{PORT}")
     if REQUIRE_SESSION:
         print(f"  identity : the user logged into Chiron, nobody else (ceiling {CONFIG.max_access_level})")
@@ -2093,6 +2251,10 @@ def main() -> int:
     print(f"  chiron ui: {CONFIG.ui_url}")
     print(f"  traces   : {'on' if TRACE else 'off'}"
           + (f", reasoning {THINKING_DISPLAY}" if TRACE and THINKING_DISPLAY else ""))
+    print(f"  usage    : {usage.path() or 'off'}"
+          + (f", {pruned} old row(s) pruned" if pruned else "")
+          + (f", everyone's to superusers and the group {USAGE_GROUP!r}" if USAGE_GROUP
+             else ", everyone's to superusers"))
     print("  Ctrl-C to stop")
     try:
         srv.serve_forever()

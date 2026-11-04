@@ -88,7 +88,10 @@ env = json.loads(cfg.read_text())["mcpServers"]["chiron"]["env"]
 cfg.unlink()
 check("an aggregate account's config adds chiron_breakdown after the short list",
       env.get("CHIRON_MCP_TOOLS") == ",".join(webapp.TOOLS + ["chiron_breakdown"]), env.get("CHIRON_MCP_TOOLS"))
-check("no dataset, no extra tool", webapp._tools_for(None, "tester", False) == [])
+check("no dataset, no access level and no extra tool",
+      webapp._access_level(None, "tester", False) is None and webapp._tools_for(None) == [])
+check("an aggregate account gets the breakdown tool, others nothing",
+      webapp._tools_for("agg") == ["chiron_breakdown"] and webapp._tools_for("deid") == [])
 from pathlib import Path as _P  # noqa: E402
 
 cmd = webapp._claude_command("claude", "q", [], _P("cfg.json"), None, tools=webapp.TOOLS + ["chiron_breakdown"])
@@ -98,7 +101,7 @@ check("the CLI's allow-list follows the per-question tools", "mcp__chiron__chiro
 cmd = webapp._claude_command("claude", "q", [], _P("cfg.json"), None)
 check("without extras the allow-list is the short list",
       cmd[cmd.index("--allowed-tools") + 1] == ",".join(f"mcp__chiron__{t}" for t in webapp.TOOLS))
-check("an unknown dataset adds no tool", webapp._tools_for("no-such-dataset", "tester", False) == [])
+check("an unknown dataset has no access level", webapp._access_level("no-such-dataset", "tester", False) is None)
 
 print()
 print("all passed" if not fails else f"{len(fails)} failed: {fails}")

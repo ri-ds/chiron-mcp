@@ -156,6 +156,8 @@ ProxyPass /.well-known/oauth-authorization-server/chiron http://localhost:8088/.
 | Follow every model call and Chiron call | `docker compose logs -f --no-log-prefix ask \| grep ' ask '` (one line each, with user, dataset, model, tokens, cost, tool, status and time; see "The call log" in the main README) |
 | One conversation, end to end | `docker compose logs --no-log-prefix ask \| grep thread=<id>` (the id is in the page's address and in every line of the conversation) |
 | See who Ask takes you for, and what a sign-on gateway in front sends | open `<PUBLIC_URL>/ask/whoami` in the browser, signed in: name, email and access level per dataset; a staff account also sees the request headers that arrived, with the values of those that may carry a sign-on identity |
+| See what Ask is used for and what it costs, per person, model, dataset and day | open `<PUBLIC_URL>/ask/usage` signed in as `admin` (everyone's; anyone else sees their own, and so do the members of the Django group `ASK_USAGE_GROUP` in `.env` names); "Who has what" lists every account's access per dataset. The ledger behind it lives in the `ask-home` volume, one row per answer, no question text (see "The usage page" in the main README) |
+| Add the answers given before the ledger existed | `docker compose logs --no-log-prefix ask \| docker compose exec -T ask python /app/scripts/usage_backfill.py` (safe to repeat) |
 | Stop, keeping everything | `docker compose stop` |
 | Start again | `docker compose up -d` |
 | Update to the latest code | `git pull && ./setup.sh` with the same options as before |

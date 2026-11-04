@@ -42,6 +42,8 @@ services:
       CHIRON_MCP_THREAD_TTL_HOURS: ${CHIRON_MCP_THREAD_TTL_HOURS:-12}
       CHIRON_MCP_TURN_SECONDS: ${CHIRON_MCP_TURN_SECONDS:-240}
       CHIRON_MCP_PG_CHECK_INTERVAL: ${CHIRON_MCP_PG_CHECK_INTERVAL:-2000}
+      # a Django group whose members see everyone's usage at /ask/usage, as superusers do
+      CHIRON_MCP_USAGE_GROUP: ${CHIRON_MCP_USAGE_GROUP:-}
     ports:
       # this machine only, unless ASK_BIND says otherwise; the web server forwards /ask here
       - "${ASK_BIND:-127.0.0.1:8900}:8900"

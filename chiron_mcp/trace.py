@@ -39,7 +39,7 @@ import time
 import uuid
 from pathlib import Path
 
-from chiron_mcp import calllog
+from chiron_mcp import calllog, usage
 
 VERSION = 1
 
@@ -355,7 +355,7 @@ class Trace:
 
     def __init__(self, *, question: str, dataset: str | None, user: str, thread: str,
                  followup: bool, prior: list[dict] | None = None, inherited: dict | None = None,
-                 redact=None, groups: dict | None = None):
+                 redact=None, groups: dict | None = None, access_level: str | None = None):
         prior = prior or []
         self.id = uuid.uuid4().hex
         # The conversation's groups so far (g1, g2: what was counted and how many), so a
@@ -392,6 +392,7 @@ class Trace:
         self.data: dict = {
             "id": self.id, "version": VERSION, "started": time.time(),
             "question": question, "dataset": dataset, "user": user, "thread": thread,
+            "access_level": access_level,
             "followup": followup, "turn": len(prior) + 1 if followup else 1,
             "previous": [p.get("question") for p in prior],
             # A follow-up whose earlier answers were not all traced (asked before tracing
@@ -842,8 +843,11 @@ class Trace:
             self.data["checks"] = _checks(self) + _data_checks(self)
             st, res = self.data["stats"], self.data.get("result") or {}
             u = res.get("usage") or {}
-            calllog.write(
-                "answer", **self._tag(), turn=self.data.get("turn"), followup=self.data.get("followup"),
+            # The answer's summary: one call-log line, and one row in the usage ledger
+            # (chiron_mcp.usage), the same fields in both.
+            row = dict(
+                self._tag(), level=self.data.get("access_level"), turn=self.data.get("turn"),
+                followup=self.data.get("followup"),
                 status="error" if self.data.get("error") or res.get("is_error") else
                 ("ok" if self.data.get("answer") else "incomplete"),
                 model=self.data.get("model"), model_calls=st.get("model_calls"),
@@ -855,6 +859,10 @@ class Trace:
                 cost_total=st.get("cost_usd_cumulative"),
                 ms=int(round(self.data["ended"])), model_ms=int(round(st.get("model_ms") or 0)),
                 chiron_ms=int(round(st.get("chiron_ms") or 0)), rc=rc)
+            calllog.write("answer", **row)
+            started = self.data.get("started")
+            usage.record(row, started=started,
+                         ended=(started + self.data["ended"] / 1000.0) if started else None)
         self._guard(go)
         with _LIVE_GUARD:
             LIVE.pop(self.id, None)
