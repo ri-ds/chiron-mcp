@@ -403,6 +403,41 @@ def cross_checks(cookies: dict[str, str], answers: dict[str, dict[str, Answer]])
     acc = E.get_json(f"{ASK}/usage/access.json", cookies["admin"])
     check("[cross] /usage/access.json lists everyone for the superuser",
           {p["username"] for p in acc.get("people") or []} >= set(IDENTITIES), acc.get("error"))
+    # Changing access from the usage page: superusers only, never one's own admin flag,
+    # and every change visible in whoami at once and in the change log.
+    post = lambda who, body: E.post_json(f"{ASK}/usage/access", body, cookies[who])  # noqa: E731
+    r = post(owner, {"username": intruder, "dataset": DS, "level": "phi"})
+    check("[access] a non-admin cannot change access", "error" in r, r.get("error"))
+    r = post("admin", {"username": owner, "dataset": DS, "level": "agg"})
+    me = E.get_json(f"{ASK}/whoami", cookies[owner])
+    lvl = next((d["access_level"] for d in (me.get("user") or {}).get("datasets") or [] if d["id"] == DS), None)
+    check("[access] admin lowers a person to aggregate, and whoami says so at once",
+          "error" not in r and lvl == "agg", (r.get("changed"), lvl))
+    r = post("admin", {"username": owner, "dataset": DS, "level": "deid", "subject_details": False})
+    me = E.get_json(f"{ASK}/whoami", cookies[owner])
+    row = next((d for d in (me.get("user") or {}).get("datasets") or [] if d["id"] == DS), {})
+    check("[access] and back to de-identified without identifying columns",
+          "error" not in r and row.get("access_level") == "deid" and row.get("subject_details") is False, (r.get("changed"), row))
+    r = post("admin", {"username": "perm_none", "dataset": DS, "level": "deid"})
+    me = E.get_json(f"{ASK}/whoami", cookies["perm_none"])
+    got = [d["id"] for d in (me.get("user") or {}).get("datasets") or []]
+    r2 = post("admin", {"username": "perm_none", "dataset": DS, "level": "none"})
+    me2 = E.get_json(f"{ASK}/whoami", cookies["perm_none"])
+    gone = [d["id"] for d in (me2.get("user") or {}).get("datasets") or []]
+    check("[access] a row can be given to a person without one, and taken away again",
+          "error" not in r and DS in got and "error" not in r2 and DS not in gone, (r.get("changed"), got, r2.get("changed"), gone))
+    r = post("admin", {"username": intruder, "superuser": True})
+    me = E.get_json(f"{ASK}/whoami", cookies[intruder])
+    r2 = post("admin", {"username": intruder, "superuser": False})
+    me2 = E.get_json(f"{ASK}/whoami", cookies[intruder])
+    check("[access] admin can be given and taken away, and whoami shows it",
+          "error" not in r and (me.get("user") or {}).get("superuser") is True
+          and "error" not in r2 and (me2.get("user") or {}).get("superuser") is False, (r.get("changed"), r2.get("changed")))
+    r = post("admin", {"username": "admin", "superuser": False})
+    check("[access] a superuser cannot take away their own admin", "error" in r, r.get("error"))
+    acc = E.get_json(f"{ASK}/usage/access.json", cookies["admin"])
+    logged = [c for c in acc.get("changes") or [] if c.get("actor") == "admin" and c.get("username") in (owner, intruder, "perm_none")]
+    check("[access] the change log has these changes, with who made them", len(logged) >= 6 and acc.get("can_change") is True, len(logged))
     bad = [d for d in acc.get("datasets") or [] if d.get("autocreate") and d.get("auto_level") in ("deid", "phi")]
     detail = [(d["id"], d["auto_level"]) for d in bad]
     # Chiron's own pages hand a newcomer that level on their first visit. With a sign-on

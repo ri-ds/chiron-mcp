@@ -855,6 +855,79 @@ def access_listing() -> dict:
     return {"ceiling": CONFIG.max_access_level, "people": list(people.values()), "datasets": datasets}
 
 
+ACCESS_LEVELS = ("agg", "deid", "phi")
+
+
+def change_access(actor: str, username: str, dataset: str | None = None, level: str | None = None,
+                  subject_details: bool | None = None, superuser: bool | None = None) -> dict:
+    """One change to one account, by a superuser, from the usage page's table.
+
+    `dataset` with `level` sets the account's row there (agg, deid, phi), or removes it
+    (none); `subject_details` sets whether that row may see identifying columns.
+    `superuser` gives or takes admin (superuser and staff together). A superuser can
+    never change their own admin flag, so nobody locks everyone out. Every change is
+    written to the access log and to the server's output. Returns what changed, in words.
+    """
+    from django.contrib.auth import get_user_model
+    from django.db.models import ProtectedError
+
+    from chiron import models
+
+    user = get_user_model().objects.filter(username=username).first()
+    if user is None:
+        raise ValueError(f"No account named {username!r}.")
+    done: list[str] = []
+    if superuser is not None:
+        if username == actor:
+            raise ValueError("You cannot change your own admin status.")
+        user.is_superuser = user.is_staff = bool(superuser)
+        user.save()
+        done.append("admin given" if superuser else "admin taken away")
+        usage.audit(actor, username, None, done[-1])
+    if dataset:
+        ds = models.Dataset.objects.filter(unique_id=dataset).first()
+        if ds is None:
+            raise ValueError(f"No dataset {dataset!r}.")
+        row = models.ChironUser.objects.filter(user=user, dataset=ds).first()
+        if level is not None:
+            level = str(level).lower()
+            if level == "none":
+                if row is not None:
+                    try:
+                        row.delete()
+                    except ProtectedError:
+                        raise ValueError("This account has saved reports on that dataset, so its row "
+                                         "cannot be removed; set it to aggregate only instead.") from None
+                done.append("access removed")
+            elif level in ACCESS_LEVELS:
+                if row is None:
+                    row = models.ChironUser(user=user, dataset=ds, access_level=level,
+                                            can_view_workspace=True, can_view_subject_details=False)
+                    row.save()
+                    for default in models.DefaultPermissionGroup.objects.filter(dataset=ds):
+                        row.permission_groups.add(default.permission_group)
+                else:
+                    row.access_level = level
+                    row.save()
+                done.append(f"access {level}")
+            else:
+                raise ValueError(f"Level must be one of none, {', '.join(ACCESS_LEVELS)}.")
+        if subject_details is not None and level != "none":
+            if row is None:
+                raise ValueError("Give the account a level on that dataset first.")
+            row.can_view_subject_details = bool(subject_details)
+            row.save()
+            done.append("identifying columns " + ("allowed" if subject_details else "refused"))
+        if done and (level is not None or subject_details is not None):
+            usage.audit(actor, username, dataset, ", ".join(d for d in done if not d.startswith("admin")))
+    if not done:
+        raise ValueError("Nothing to change.")
+    summary = ", ".join(done)
+    print(f"access: {actor} changed {username}" + (f" on {dataset}" if dataset else "") + f": {summary}",
+          file=sys.stderr, flush=True)
+    return {"username": username, "dataset": dataset, "changed": summary}
+
+
 # Request headers a sign-on gateway in front of a deployment may add to say who signed
 # in: the CCHMC access manager's OBLIX_* family, a Shibboleth SP's eppn, mail, givenName
 # and sn, the generic REMOTE_USER family. /whoami shows a staff account which of them
@@ -1964,6 +2037,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._load()
         if url.path == "/forget":
             return self._forget()
+        if url.path == "/usage/access":
+            return self._usage_access_change()
         self.send_error(404)
 
     def _file(self, path: Path, ctype: str):
@@ -2115,6 +2190,42 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001
             return self._json({"error": str(exc)})
         out["identity"] = who
+        out["can_change"] = bool(info and info.get("superuser"))
+        out["changes"] = usage.changes(50)
+        return self._json(out)
+
+    def _usage_access_change(self):
+        """POST {"username", "dataset"?, "level"?, "subject_details"?, "superuser"?}:
+        one change to one account, by a superuser (see change_access)."""
+        if not self._same_site():
+            return self._json({"error": "Refused: request came from an untrusted origin."})
+        who, info, _everyone = self._usage_who()
+        if not who:
+            return self._json({"error": NOT_LOGGED_IN})
+        if not info or not info.get("superuser"):
+            return self._json({"error": "Only a superuser can change access."})
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, TypeError):
+            return self._json({"error": "Body must be JSON."})
+        if not isinstance(body, dict) or not body.get("username"):
+            return self._json({"error": "username is required."})
+        try:
+            out = change_access(
+                who, str(body["username"]), dataset=body.get("dataset") or None,
+                level=body.get("level"), subject_details=body.get("subject_details"),
+                superuser=body.get("superuser"))
+        except ValueError as exc:
+            return self._json({"error": str(exc)})
+        except Exception as exc:  # noqa: BLE001
+            return self._json({"error": f"{type(exc).__name__}: {exc}"})
+        try:
+            listing = access_listing()
+            out["person"] = next((p for p in listing["people"] if p["username"] == out["username"]), None)
+        except Exception:  # noqa: BLE001
+            out["person"] = None
+        out["changes"] = usage.changes(50)
         return self._json(out)
 
     def _origin_ok(self) -> bool:

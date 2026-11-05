@@ -965,7 +965,12 @@ see only theirs), and **Who has what**: every account with its access level on e
 dataset as Ask applies it under the ceiling, the row's own level where that differs, the
 two flags (identifying columns, workspace), the last sign-in, and a warning for any
 dataset whose auto-create rule would give a newcomer access on their first visit to
-Chiron's own pages, in red when that level is full access.
+Chiron's own pages, in red when that level is full access. A superuser changes access
+right there: a level per dataset (no access, aggregate only, de-identified, full
+access), whether a row may see identifying columns, and admin (superuser) for anyone
+but themselves, so nobody can lock everyone out; full access and admin take a second
+click. Every change goes into a change log under the table, with who made it, and
+into the server's output.
 
 Behind it is a ledger, `usage.sqlite` in the state directory (`CHIRON_MCP_USAGE_DB`
 moves it or switches it off), with one row per answer: who, which dataset, at what
@@ -987,8 +992,10 @@ docker compose logs --no-log-prefix ask | docker compose exec -T ask python /app
 ```
 
 `/usage.json?period=30d` is what the page reads, `/usage.csv?period=...` the download,
-and `/usage/access.json` the who-has-what table; all three follow the same rule about
-whose rows a person may see.
+and `/usage/access.json` the who-has-what table with the change log; all three follow
+the same rule about whose rows a person may see. `POST /usage/access` with
+`{"username", "dataset", "level"}`, `{"username", "dataset", "subject_details"}` or
+`{"username", "superuser"}` is the change, superusers only, same-site only.
 
 ## Troubleshooting
 

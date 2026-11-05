@@ -41,6 +41,10 @@ COLUMNS = (
 )
 
 _SCHEMA = """
+CREATE TABLE IF NOT EXISTS access_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT, actor TEXT, username TEXT, dataset TEXT, change TEXT
+);
 CREATE TABLE IF NOT EXISTS answers (
     id TEXT PRIMARY KEY,
     thread TEXT, user TEXT, dataset TEXT, access_level TEXT,
@@ -195,6 +199,41 @@ def prune() -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"usage ledger: {exc}", file=sys.stderr)
         return 0
+
+
+def audit(actor: str, username: str, dataset: str | None, change: str) -> None:
+    """One line in the access log: who changed whose access to what, when."""
+    p = path()
+    if p is None:
+        return
+    try:
+        con = _connect(p)
+        try:
+            con.execute("INSERT INTO access_log (at, actor, username, dataset, change) VALUES (?, ?, ?, ?, ?)",
+                        (iso(time.time()), actor, username, dataset, change))
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"usage ledger: {exc}", file=sys.stderr)
+
+
+def changes(limit: int = 50, username: str | None = None) -> list[dict]:
+    """The latest access changes, newest first."""
+    p = path()
+    if p is None or not p.exists():
+        return []
+    try:
+        con = _connect(p)
+        try:
+            where, args = ("WHERE username = ?", [username]) if username else ("", [])
+            return [dict(r) for r in con.execute(
+                f"SELECT at, actor, username, dataset, change FROM access_log {where} "
+                "ORDER BY id DESC LIMIT ?", args + [int(limit)]).fetchall()]
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"usage ledger: {exc}", file=sys.stderr)
+        return []
 
 
 def delete_users(users: list[str]) -> int:

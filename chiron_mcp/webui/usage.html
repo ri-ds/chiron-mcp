@@ -91,6 +91,19 @@
   .note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
   .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn); padding: 8px 10px; border-radius: 8px; font-size: 13px; margin: 0 0 10px; }
   .warn.danger { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger); }
+  .msg { font-size: 13px; padding: 8px 10px; border-radius: 8px; margin: 0 0 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); }
+  .msg.bad { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger); }
+  .sub-h { font-size: 13px; font-weight: 600; margin: 16px 0 6px; color: var(--ink); }
+  .acc { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+  .acc select, .acc .flagbox {
+    font-size: 12.5px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 7px; padding: 3px 6px; background: var(--bg);
+  }
+  .acc select.phi { border-color: var(--danger-line); color: var(--danger); }
+  .acc select.deid { border-color: var(--accent-line); color: var(--accent-strong); }
+  .acc label { font-size: 11.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .acc label input { margin: 0; }
+  .confirm { font-size: 11.5px; padding: 2px 8px; border-radius: 7px; border: 1px solid var(--danger-line); background: var(--danger-bg); color: var(--danger); cursor: pointer; }
+  .acc .busy { opacity: .5; pointer-events: none; }
   .hide { display: none !important; }
   @media (max-width: 760px) {
     .topbar { padding: 8px 12px; gap: 8px; }
@@ -141,8 +154,11 @@
   <section class="card hide" id="access-card">
     <h2>Who has what <span class="sub" id="access-sub"></span></h2>
     <div id="access-warnings"></div>
+    <div class="msg hide" id="access-msg"></div>
     <div class="scroll" id="access"></div>
-    <p class="note">The level is the one Chiron's row holds; the one shown is what Ask applies under this deployment's ceiling. Change access in Chiron's admin, or with scripts/grant_access.py.</p>
+    <p class="note" id="access-note">The level shown is what Ask applies under this deployment's ceiling; where Chiron's row says more, the row is noted. A superuser can change levels and admin rights here; others see them.</p>
+    <h3 class="sub-h hide" id="changes-h">Recent changes</h3>
+    <div class="scroll" id="changes"></div>
   </section>
 </main>
 
@@ -374,35 +390,144 @@ function renderAccess(a) {
     warnings.appendChild(w);
   });
   box.textContent = '';
-  const dsIds = (a.datasets || []).map(x => x.id);
+  $('access-msg').classList.add('hide');
   const headers = [{ label: 'Person' }, { label: 'Role' }, { label: 'Last sign-in' }];
   (a.datasets || []).forEach(ds => headers.push({ label: ds.name }));
-  const rows = (a.people || []).map(p => {
-    const tr = el('tr' , p.username === a.identity ? 'me' : '');
-    const who = el('div');
-    who.appendChild(el('span', '', p.name || p.username));
-    const sub = [p.name ? p.username : '', p.email].filter(Boolean).join(' · ');
-    if (sub) { who.appendChild(el('br')); who.appendChild(el('span', 'flag', sub)); }
-    tr.appendChild(cell(who));
-    tr.appendChild(cell(p.superuser ? 'superuser' : p.staff ? 'staff' : (p.active ? '' : 'inactive'), 'dim'));
-    tr.appendChild(cell(when(p.last_login), 'dim'));
-    dsIds.forEach(id => {
-      const d = (p.datasets || []).find(x => x.id === id);
-      const c = el('div');
-      if (!d) { c.appendChild(lvl(null)); }
-      else {
-        c.appendChild(lvl(d.effective || d.level));
-        const flags = [];
-        if (d.effective && d.level && d.effective !== d.level) flags.push('row says ' + (ACCESS[d.level] || d.level));
-        if (!d.subject_details) flags.push('no identifying columns');
-        if (!d.workspace) flags.push('no workspace');
-        if (flags.length) { c.appendChild(el('br')); c.appendChild(el('span', 'flag', flags.join(', '))); }
+  box.appendChild(table(headers, (a.people || []).map(p => personRow(p, a))));
+  renderChanges(a.changes);
+}
+
+function accessMsg(text, bad) {
+  const m = $('access-msg');
+  m.textContent = text;
+  m.classList.toggle('bad', !!bad);
+  m.classList.remove('hide');
+}
+
+// One change to one account, by a superuser. The server answers with the person's row
+// as it now is, which replaces the row on the page, and the change log.
+async function changeAccess(tr, body, a) {
+  tr.classList.add('busy');
+  let res;
+  try {
+    res = await fetch('usage/access', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(body) }).then(r => r.json());
+  } catch (_) { res = { error: 'The change could not be sent.' }; }
+  tr.classList.remove('busy');
+  if (!res || res.error) {
+    accessMsg((res && res.error) || 'The change failed.', true);
+    const old = (ACCESS_DATA.people || []).find(x => x.username === body.username);
+    if (old) tr.replaceWith(personRow(old, a));
+    return;
+  }
+  accessMsg(person(body.username) + ': ' + res.changed + '.', false);
+  if (res.person) {
+    const i = (ACCESS_DATA.people || []).findIndex(x => x.username === res.person.username);
+    if (i >= 0) ACCESS_DATA.people[i] = res.person;
+    PEOPLE[res.person.username] = res.person;
+    tr.replaceWith(personRow(res.person, a));
+  }
+  if (res.changes) { ACCESS_DATA.changes = res.changes; renderChanges(res.changes); }
+}
+
+// A sensitive change (full access, admin) takes a second click on an inline Confirm.
+function withConfirm(holder, apply, cancel) {
+  const b = el('button', 'confirm', 'Confirm');
+  b.type = 'button';
+  const c = el('button', 'confirm', 'Cancel');
+  c.type = 'button'; c.style.background = 'var(--bg)'; c.style.color = 'var(--muted)'; c.style.borderColor = 'var(--line)';
+  b.onclick = () => { b.remove(); c.remove(); apply(); };
+  c.onclick = () => { b.remove(); c.remove(); cancel(); };
+  holder.appendChild(b); holder.appendChild(c);
+}
+
+function personRow(p, a) {
+  const tr = el('tr', p.username === a.identity ? 'me' : '');
+  const who = el('div');
+  who.appendChild(el('span', '', p.name || p.username));
+  const sub = [p.name ? p.username : '', p.email].filter(Boolean).join(' · ');
+  if (sub) { who.appendChild(el('br')); who.appendChild(el('span', 'flag', sub)); }
+  tr.appendChild(cell(who));
+
+  // role: a toggle for a superuser, never for themselves
+  if (a.can_change && p.username !== a.identity) {
+    const holder = el('div', 'acc');
+    const lab = el('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = !!p.superuser;
+    lab.appendChild(cb); lab.appendChild(document.createTextNode('admin'));
+    holder.appendChild(lab);
+    cb.onchange = () => {
+      if (cb.checked) withConfirm(holder, () => changeAccess(tr, { username: p.username, superuser: true }, a),
+                                  () => { cb.checked = false; });
+      else changeAccess(tr, { username: p.username, superuser: false }, a);
+    };
+    if (!p.active) holder.appendChild(el('span', 'flag', 'inactive'));
+    tr.appendChild(cell(holder));
+  } else {
+    tr.appendChild(cell((p.superuser ? 'admin' : p.staff ? 'staff' : (p.active ? '' : 'inactive'))
+                        + (p.username === a.identity ? ' (you)' : ''), 'dim'));
+  }
+  tr.appendChild(cell(when(p.last_login), 'dim'));
+
+  (a.datasets || []).forEach(ds => {
+    const d = (p.datasets || []).find(x => x.id === ds.id);
+    const c = el('div', 'acc');
+    if (a.can_change) {
+      const sel = document.createElement('select');
+      [['none', 'no access'], ['agg', 'aggregate only'], ['deid', 'de-identified'], ['phi', 'full access']].forEach(([v, t]) => {
+        const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o);
+      });
+      sel.value = d ? (d.level || 'none') : 'none';
+      sel.className = sel.value;
+      sel.title = d && d.effective && d.level && d.effective !== d.level
+        ? 'The row says ' + (ACCESS[d.level] || d.level) + '; Ask applies ' + (ACCESS[d.effective] || d.effective) + ' (the ceiling)' : '';
+      sel.onchange = () => {
+        const v = sel.value;
+        const go = () => changeAccess(tr, { username: p.username, dataset: ds.id, level: v }, a);
+        if (v === 'phi') withConfirm(c, go, () => { sel.value = d ? (d.level || 'none') : 'none'; });
+        else go();
+      };
+      c.appendChild(sel);
+      if (d && d.level !== 'agg') {
+        const lab = el('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.checked = !!d.subject_details;
+        lab.appendChild(cb); lab.appendChild(document.createTextNode('identifying columns'));
+        cb.onchange = () => changeAccess(tr, { username: p.username, dataset: ds.id, subject_details: cb.checked }, a);
+        c.appendChild(lab);
       }
-      tr.appendChild(cell(c));
-    });
-    return tr;
+      if (d && d.effective && d.level && d.effective !== d.level) c.appendChild(el('span', 'flag', 'Ask applies ' + (ACCESS[d.effective] || d.effective)));
+    } else if (!d) {
+      c.appendChild(lvl(null));
+    } else {
+      c.appendChild(lvl(d.effective || d.level));
+      const flags = [];
+      if (d.effective && d.level && d.effective !== d.level) flags.push('row says ' + (ACCESS[d.level] || d.level));
+      if (!d.subject_details) flags.push('no identifying columns');
+      if (!d.workspace) flags.push('no workspace');
+      if (flags.length) c.appendChild(el('span', 'flag', flags.join(', ')));
+    }
+    tr.appendChild(cell(c));
   });
-  box.appendChild(table(headers, rows));
+  return tr;
+}
+
+function renderChanges(changes) {
+  const h = $('changes-h'), box = $('changes');
+  box.textContent = '';
+  if (!changes || !changes.length) { h.classList.add('hide'); return; }
+  h.classList.remove('hide');
+  box.appendChild(table([{ label: 'When' }, { label: 'By' }, { label: 'Account' }, { label: 'Dataset' }, { label: 'Change' }],
+    changes.map(ch => {
+      const tr = el('tr');
+      tr.appendChild(cell(when(ch.at), 'dim'));
+      tr.appendChild(cell(person(ch.actor)));
+      tr.appendChild(cell(person(ch.username)));
+      tr.appendChild(cell(ch.dataset || '–', 'dim'));
+      tr.appendChild(cell(ch.change));
+      return tr;
+    })));
 }
 
 function renderError(msg) {
