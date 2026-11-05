@@ -202,6 +202,12 @@ def _groups(ident, var: Var) -> tuple[list[dict], dict]:
     record (seconds to a minute on large tables) and every question runs a fresh Chiron MCP
     process, so the list is also kept on disk until the dataset is next loaded (or a week).
     It holds the variable's values only, never patient data."""
+    if _identifying(var):
+        # Never from a cache another identity filled: an account without subject details
+        # is refused a name field here, before any copy of its values is looked at.
+        from chiron_mcp import server as S
+
+        S._require_concept_viewable(ident, var.concept, "listed")
     key = f"vals:{ident.dataset_id}:{var.cid}"
     if key in _CACHE:
         return _CACHE[key]

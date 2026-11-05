@@ -777,7 +777,7 @@ layer. They are re-implemented in `chiron_mcp/identity.py`, and every tool calls
 *allows* agg users for non-PHI concepts (`data_definition_models.py:1114-1120`). The agg block is
 the DRF class, and only the DRF class.
 
-### Four hazards handled explicitly
+### Five hazards handled explicitly
 
 1. **No silent provisioning.** `get_request_chironuser` (`chiron/authorization.py:61-72`) writes a
    `ChironUser` as a side effect of a *read*, granting at `Dataset.auto_access_level`, which is
@@ -791,6 +791,16 @@ the DRF class, and only the DRF class.
 4. **A failed filter returns no reusable cohort.** On failure `chiron_edit_cohort` omits the
    `cohort_def` key entirely and returns `unchanged_cohort_def` instead, so a failed transformation
    cannot be chained into an accidental whole-dataset query.
+5. **A name is withheld on every path, not only as a column.** A synthetic dataset's dictionary
+   marks no `has_phi`, so Chiron's own pages let a de-identified account without subject details
+   add a first or last name column or filter on one. Here such a concept is refused wherever it
+   could show or single out a person: as a column (listed, exported, in Results, in a report,
+   added later), as the values of a field, in a description with statistics, as a breakdown or
+   crosstab dimension, and as a filter (how many people named X have asthma is a question about
+   a person), whether the filter arrives through `chiron_edit_cohort`, in a hand-written
+   `cohort_def` or inside a saved report. A report or Results tab that already holds such a
+   column runs with it withheld and says so. `tests/permissions_adversarial.py` tries each of
+   these as that account.
 
 ### Verifying
 
@@ -801,6 +811,7 @@ CHIRON_MCP_USERNAME=<agg-user>  .venv/bin/python tests/safety.py   # agg refusal
 .venv/bin/python -m tests.protocol_oauth                           # HTTP endpoint, OAuth login per user
 .venv/bin/python tests/ask_e2e.py                                  # the Ask tab, end to end
 .venv/bin/python tests/permissions.py                              # what each kind of account cannot get
+.venv/bin/python tests/permissions_adversarial.py                  # every way past one's level: tools, questions, the server
 .venv/bin/python -m tests.protocol                                 # real MCP stdio handshake
 .venv/bin/python tests/usage.py; .venv/bin/python tests/header_login.py   # offline: the ledger, the header sign-on
 ```
@@ -840,6 +851,24 @@ and so are its conversations and their transcripts.
 
 Point it at a Chiron that shares file locking with the Ask server (`CHIRON_API`, default
 `http://localhost:8000`). With the bundled demo that is `http://localhost:8001`.
+
+`tests/permissions_adversarial.py` attacks instead of asking. As a de-identified account without
+subject details, an aggregate-only one and a login with no row (plus a control that may see
+names), it tries every way past the level: every tool called in-process with the arguments a
+model could be talked into (the values of a name field, a breakdown or crosstab by last name, the
+statistics of a name, a filter on a name, a hand-written `cohort_def` with one, a name column
+added to Results or a report afterwards, a shared report that holds names, an export, another
+dataset); adversarial questions through `/ask` (claimed authority, injected tool calls,
+obfuscation in uppercase or base64, membership questions with real names, other datasets); and
+the web server itself (no session, a forged one, forged identity headers, cross-site origins on
+reads and on writes, another person's trace, conversation and usage rows, the CSV scope, path
+tricks, the MCP route). It does not trust the answer: every real first and last name in the
+dataset is read from the warehouse and searched for in the answer and in every tool result the
+trace holds, and the control account proves the detector sees names where they are allowed. A
+policy layer reports what the rules permit by design (birthdate, zip and gender per patient at
+the de-identified level; what a masked breakdown still lets one derive; what Chiron's own pages
+would show the same account) as observations. `--no-model` runs the tool and server layers
+alone, in under a minute; `--layer` picks layers.
 
 ## Known limits
 
@@ -1052,6 +1081,7 @@ tests/
   protocol_oauth.py   the HTTP endpoint's OAuth login, as two users with different access
   ask_e2e.py          the Ask tab end to end, checked against raw SQL and Chiron's API
   permissions.py      what each kind of account cannot get out of Ask, as six identities
+  permissions_adversarial.py  every way past one's access level: tools in-process, questions, the web server
   usage.py            the usage ledger, its summaries and the backfill from the call log (offline)
   header_login.py     sign-on by request header: created on first sight, kept in step (offline)
   chiron_patches.py   the run-time fixes land on an unfixed Chiron and leave a fixed one alone

@@ -274,6 +274,7 @@ def _validated_cohort(ident, cohort_def: list):
     from chiron import query_definition as qdef
 
     cohort_def, rule_notes = normalize_cohort_rules(cohort_def)
+    _require_cohort_viewable(ident, cohort_def)
     try:
         cohort = qdef.Cohort(identity.checked_chironuser(ident), cohort_def or [])
     except Exception as exc:  # noqa: BLE001
@@ -406,6 +407,69 @@ def _require_columns_viewable(ident, concepts: list) -> None:
             "and offer columns that do not identify anyone (birthdate, gender, city) or counts.")
 
 
+def _require_concept_viewable(ident, oConcept, how: str) -> None:
+    """An identity that may not view subject details may not list, describe, break down
+    by or filter on a concept that identifies a person either: its values are a list of
+    people, and a filter on it turns any count into "does this person have asthma"."""
+    if ident.can_view_subject_details or not _identifies_person(oConcept):
+        return
+    name = str(getattr(oConcept, "name", None) or str(oConcept.permanent_id).split("__")[-1])
+    raise AccessError(
+        f"{name} identifies people, and this account (de-identified access) may not view "
+        f"subject details, so it cannot be {how}. Say so, and offer columns that do not "
+        "identify anyone (birthdate, gender, city) or counts.")
+
+
+def _cohort_concept_ids(cohort_def) -> list[str]:
+    """Every concept_id a cohort_def names, at any depth."""
+    found: list[str] = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            cid = node.get("concept_id")
+            if isinstance(cid, str) and cid:
+                found.append(cid)
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+    walk(cohort_def)
+    return list(dict.fromkeys(found))
+
+
+def _require_cohort_viewable(ident, cohort_def) -> None:
+    """No filter on a concept that identifies a person, for an identity without details,
+    wherever the cohort_def came from: a tool, a saved report, or written by hand."""
+    if ident.can_view_subject_details:
+        return
+    from chiron import models
+
+    for cid in _cohort_concept_ids(cohort_def):
+        oConcept = models.Concept.objects.filter(permanent_id=cid, collection__dataset=ident.dataset).first()
+        if oConcept is not None:
+            _require_concept_viewable(ident, oConcept, "filtered on")
+
+
+def _withheld_columns(ident, cu, table_def: dict) -> tuple[dict, list[str]]:
+    """A table_def without the columns that identify a person, for an identity without
+    details, and the names withheld. Chiron's own pages let such an account add a name
+    column when the dictionary marks no has_phi on it; it is still not shown here."""
+    if ident.can_view_subject_details:
+        return table_def, []
+    from chiron import models
+
+    td = copy.deepcopy(table_def or {})
+    withheld: list[str] = []
+    for entry in list(td.get("fields") or []):
+        oConcept = models.Concept.objects.filter(
+            permanent_id=entry.get("concept_id"), collection__dataset=ident.dataset).first()
+        if oConcept is not None and _identifies_person(oConcept):
+            td = _apply_td(cu, td, {"type": "delete_entry", "entry_id": entry["entry_id"]})
+            withheld.append(str(getattr(oConcept, "name", None) or entry.get("concept_id")))
+    return td, withheld
+
+
 def _table_def_from_columns(ident, cohort_def: list, columns: list[dict]) -> dict:
     """Turn a plain column list into a real table_def via Chiron's own transformations."""
     cu = identity.checked_chironuser(ident)
@@ -488,6 +552,7 @@ def _edit_columns(ident, table_def: dict, add=None, remove=None, aggregation=Non
         changed.append(f"removed {_column_name(entry)}")
     for col in add or []:
         oConcept = _concept(ident, col["concept_id"])
+        _require_columns_viewable(ident, [oConcept])
         td = _apply_td(cu, td, _column_transformation(cu, oConcept, col))
         changed.append(f"added {oConcept.name}")
     for change in aggregation or []:
@@ -701,6 +766,7 @@ def chiron_describe_concept(
         identity.require_workspace(ident)
         cu = identity.checked_chironuser(ident)
         oConcept = _concept(ident, concept_id)
+        _require_concept_viewable(ident, oConcept, "described, listed or filtered on")
 
         can_use, reason = oConcept.user_can_use_concept_in_cohort_def(cu)
         processor = oConcept.get_cohort_def_processor(cu, prefilter_value)
@@ -753,6 +819,7 @@ def chiron_concept_values(
         identity.require_subject_level(ident)
         cu = identity.checked_chironuser(ident)
         oConcept = _concept(ident, concept_id)
+        _require_concept_viewable(ident, oConcept, "listed")
 
         can_use, reason = oConcept.user_can_use_concept_in_cohort_def(cu)
         if not can_use:
@@ -813,6 +880,15 @@ def chiron_edit_cohort(
                 f"Unknown transformation type {ttype!r}. Available: {sorted(lookup)}"
             )
         transformation, notes = check_transformation(transformation)
+        _require_cohort_viewable(ident, cohort_def or [])
+        cid = transformation.get("concept_id")
+        if isinstance(cid, str) and cid:
+            try:
+                oConcept = _concept(ident, cid)
+            except AccessError:
+                oConcept = None  # an unknown id: Chiron's own error below says so
+            if oConcept is not None:
+                _require_concept_viewable(ident, oConcept, "filtered on")
 
         # Chiron's transformations are not all pure: apply_transformation_add_entry
         # mutates the list it is handed (unlike create_event_rule, which deepcopies).
@@ -1127,6 +1203,7 @@ def chiron_crosstab(
     The aggregate-safe path -- this is the only analysis surface Chiron applies
     small-count masking to, so it is available to aggregate-level identities.
     """
+    from chiron import models
     from chiron.api.utils import analysis_def as ad_utils
     from chiron.query_definition import Analysis
     from chiron.query_engine import get_querytool
@@ -1157,6 +1234,10 @@ def chiron_crosstab(
         add = ad_utils.transformation_function_lookup["add_entry"]
         for role, concept_ids in (("rows", rows), ("cols", cols)):
             for concept_id in concept_ids:
+                known = models.Concept.objects.filter(
+                    permanent_id=concept_id, collection__dataset=ident.dataset).first()
+                if known is not None:
+                    _require_concept_viewable(ident, known, "cross-tabulated by")
                 result = add(cu, analysis_def, {
                     "type": "add_entry", "concept_id": concept_id, "role": role,
                 })
@@ -1229,6 +1310,7 @@ def _value_counts(ident, cohort_def: list, oConcept) -> dict:
     """{raw value: distinct patients} for one variable within a cohort."""
     from chiron.query_engine import get_stattool
 
+    _require_concept_viewable(ident, oConcept, "listed")
     rows = get_stattool(
         chironuser=identity.checked_chironuser(ident),
         cohort_def=copy.deepcopy(cohort_def or []),
@@ -1350,6 +1432,7 @@ def chiron_breakdown(
                 # published concepts by name, whatever the account's access level.
                 oConcept = _concept_by_name(ident, str(concept_id))
                 concept_id = oConcept.permanent_id
+            _require_concept_viewable(ident, oConcept, "broken down by")
             can_use, reason = oConcept.user_can_use_concept_in_cohort_def(cu)
             if not can_use:
                 raise AccessError(f"Not permitted to use {concept_id!r}: {reason}")
@@ -1447,6 +1530,7 @@ def chiron_saved_reports(
     """
     try:
         ident = identity.resolve(dataset_id)
+        identity.require_subject_level(ident)
         cu = identity.checked_chironuser(ident)
         qs = cu.get_viewable_reports()
 
@@ -1524,6 +1608,7 @@ def _run_saved_report(dataset_id: str, report_id: int, page: int, records_per_pa
         definition = oReport.get_definition() or {}
         cohort_def = definition.get("cohort_def") or []
         table_def = definition.get("table_def") or {}
+        table_def, withheld = _withheld_columns(ident, cu, table_def)
         cohort = _validated_cohort(ident, cohort_def)
 
         response = get_paginated_preview(
@@ -1538,6 +1623,7 @@ def _run_saved_report(dataset_id: str, report_id: int, page: int, records_per_pa
         return {
             "report_id": oReport.pk,
             "name": oReport.name,
+            **({"withheld": withheld} if withheld else {}),
             "header": _header_from(table),
             "records": response.get("data"),
             "record_count": response.get("record_count"),
@@ -1758,10 +1844,12 @@ def _results_now(dataset_id: str, rows: int) -> dict:
         cohort_def = models.CohortDefSnapshot.get_active_cohort_def(cu) or []
         cohort = _validated_cohort(ident, cohort_def)
         table_def = models.TableDefSnapshot.get_active_table_def(cu)
+        table_def, withheld = _withheld_columns(ident, cu, table_def)
         columns, sort = _describe_columns(table_def)
         return {
             "dataset_id": dataset_id,
             "url": f"{CONFIG.ui_url}/{ident.dataset_id}/results",
+            **({"withheld": withheld} if withheld else {}),
             "filters": _plain_filters(ident, cohort.cohort_def),
             "cohort_def": cohort.cohort_def,
             "columns": columns,
