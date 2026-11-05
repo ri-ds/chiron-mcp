@@ -112,10 +112,11 @@ What the Ask tab does:
 - **A call log** in the server's output: one line per model call and per Chiron call,
   with the user, dataset, model, tokens, cost, tool, status and time, so a conversation
   can be followed end to end with grep. See [The call log](#the-call-log).
-- **Who is asking, in the top bar**: the person's access level on this dataset (full
-  access, de-identified, aggregate only), resolved the way every tool resolves them, so
-  the bar states what the answers obey; with their name too when the page is opened on
-  its own rather than inside the Chiron UI, whose header already shows it. `/whoami` returns the same as
+- **Who is asking**: opened on its own, the Ask page's top bar shows the person's name
+  and their access level on this dataset (full access, de-identified, aggregate only),
+  resolved the way every tool resolves them, so the bar states what the answers obey.
+  Inside the Chiron UI the bar stays empty: Chiron's own header and dataset page already
+  show the name, the dataset and the level. `/whoami` returns the same as
   JSON and, for a staff account, the names of the request headers that reach the server
   and the values of those that may carry a sign-on identity, so a deployment behind a
   sign-on gateway can see what it is sent before trusting any of it.

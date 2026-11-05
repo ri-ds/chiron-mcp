@@ -286,7 +286,6 @@
     font-weight: 500; font-size: 13px; color: var(--ink); max-width: 240px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .who b.lvl-only { font-weight: 400; font-size: 12.5px; color: var(--muted); }
   .who small { font-size: 11px; color: var(--muted); white-space: nowrap; }
   .who.out b { color: var(--danger); }
 
@@ -1834,15 +1833,13 @@ function renderWho(d, match) {
   const levelText = lv ? (ACCESS[lv] || lv) + ' · ' + DATASET_NAME
                        : (DATASET ? 'no access to ' + DATASET_NAME : '');
   if (EMBEDDED) {
-    // Chiron's own header already shows the person's name right above this bar.
-    name.textContent = levelText;
-    name.classList.add('lvl-only');
-    level.textContent = '';
-  } else {
-    name.textContent = u.name || u.username || ME;
-    name.classList.remove('lvl-only');
-    level.textContent = levelText;
+    // Inside the Chiron UI the name, the dataset and the access level are already on
+    // Chiron's own pages, so the box only ever shows the "not signed in" warning there.
+    box.hidden = true;
+    return;
   }
+  name.textContent = u.name || u.username || ME;
+  level.textContent = levelText;
   box.title = 'Signed in to Chiron as ' + (u.name || ME) + (u.email ? ' (' + u.email + ')' : '')
     + (lv ? '. On ' + DATASET_NAME + ': ' + (ACCESS[lv] || lv) + '.' : '');
 }
