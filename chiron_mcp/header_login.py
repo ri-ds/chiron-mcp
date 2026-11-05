@@ -12,10 +12,15 @@ administrator raises in Chiron's admin. With the header unset nothing here runs 
 Chiron's own login page is the only way in.
 
 The header is believed as it arrives. So this may stand only behind a gateway that
-strips the same header from what the client sent, and nothing but that gateway may
-reach the web server: /ask/whoami shows a staff account what arrives, and a bogus
-header sent from the browser must not show up there. The Ask server trusts only the
-Django session this creates, never the header itself.
+strips or overwrites the same header in what the client sent, and nothing but that
+gateway may reach the web server: /ask/whoami shows a staff account what arrives, and a
+bogus header sent from the browser must not show up there. (The PCGC gateway, measured
+2026-11-04, overwrites its own Oblix-* headers but passes a visitor's eppn and
+X-Remote-User through: only Oblix-Uid may be trusted there.) A request with no header
+at all is left as it is, logged in or not: the gateway adds the header to every request
+it lets through, so such a request came from inside, where the deploy check and the test
+suites make their sessions without any header. The Ask server trusts only the Django
+session this creates, never the header itself.
 
 Settings (read from the environment by deploy/settings_custom.py):
 
@@ -68,9 +73,15 @@ def meta(request, name: str) -> str:
 
 
 class HeaderLoginMiddleware(RemoteUserMiddleware):
-    """Logs in the person the sign-on header names, and logs out a session whose header
-    has gone (the gateway's session ended), so a Django login never outlives the
-    gateway's. Inert when CHIRON_SSO_USER_HEADER is unset."""
+    """Logs in the person the sign-on header names. A request that carries the header
+    is always that person: a session logged in as someone else is switched. A request
+    without the header is left alone: the gateway sends it on every request it lets
+    through, so a request without one came from inside (the deploy check, the test
+    suites, a script), whose sessions are made without any header and must keep
+    working. Inert when CHIRON_SSO_USER_HEADER is unset."""
+
+    # Keep a session alive when the header is absent (see above).
+    force_logout_if_no_header = False
 
     @property
     def header(self):  # type: ignore[override]
@@ -79,7 +90,7 @@ class HeaderLoginMiddleware(RemoteUserMiddleware):
     def process_request(self, request):
         if not setting("CHIRON_SSO_USER_HEADER"):
             return None
-        # A blank value is no identity: treat it as a missing header, which logs out.
+        # A blank value is no identity: treat it as a missing header.
         key = self.header
         value = (request.META.get(key) or "").strip()
         if value:

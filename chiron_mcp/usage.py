@@ -197,6 +197,23 @@ def prune() -> int:
         return 0
 
 
+def delete_users(users: list[str]) -> int:
+    """Remove every row of these usernames (a test suite's throwaway accounts)."""
+    p = path()
+    if p is None or not p.exists() or not users:
+        return 0
+    try:
+        con = _connect(p)
+        try:
+            marks = ", ".join("?" for _ in users)
+            return con.execute(f"DELETE FROM answers WHERE user IN ({marks})", list(users)).rowcount
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"usage ledger: {exc}", file=sys.stderr)
+        return 0
+
+
 def _where(since: str | None, until: str | None, user: str | None,
            dataset: str | None = None) -> tuple[str, list]:
     parts, args = [], []

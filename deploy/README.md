@@ -212,9 +212,12 @@ In this order:
    ```js
    await (await fetch('/app/chiron/ask/whoami', {headers: {'OBLIX_UID': 'forged'}})).json()
    ```
-   If `headers.identity` shows `forged`, the gateway passes a visitor's own headers
-   through, and header sign-on is not safe on this site: stop here. It is safe only
-   when the gateway strips or overwrites that header.
+   If `headers.identity` shows `forged` under the header you meant to use, the gateway
+   passes a visitor's own value through, and that header is not safe to sign on with.
+   Only a header the gateway strips or overwrites may be used. Measured on the PCGC
+   gateway on 2026-11-04: it overwrites its own `Oblix-Uid`, `Oblix-Fname`,
+   `Oblix-Lname` and `Oblix-Email`, but passes a visitor's `eppn` and `X-Remote-User`
+   straight through, so there only `Oblix-Uid` will do.
 3. **Check that nothing but the gateway reaches the web server.** `HTTP_PORT` in
    `deploy/.env` must bind the loopback address the proxy in front uses
    (`127.0.0.1:8088`), never every interface: a request that skipped the gateway could
@@ -239,10 +242,14 @@ In this order:
    sight, with names and email from the headers and no rights, and gets the default
    access on each dataset; an administrator raises individuals to de-identified or full
    access in Chiron's admin (Chiron users) or with `scripts/grant_access.py`. The login
-   page keeps only the password form, for `admin` and for test accounts. When the header
-   stops arriving (the gateway's session ended) the next request logs the person out of
-   Chiron too. To retire `ADMIN_BUTTON`, make your own account a superuser in the Django
-   admin (Users, "superuser status") and remove the line from `.env`.
+   page keeps only the password form, for `admin` and for test accounts. A request that
+   carries the header is always that person, so behind the gateway nobody can stay
+   signed in as a different account (the password form is of no use there); a request
+   without the header is left as it is, since the gateway adds it to everything it lets
+   through and only the deploy check and the test suites, from inside, send none. To
+   retire `ADMIN_BUTTON`, sign in once through the gateway so your account exists, make
+   it a superuser in the Django admin (Users, "superuser status") or with
+   `docker compose exec -T chiron python -c "..."`, and remove the line from `.env`.
 6. **Prove it**: step 1 again as yourself (your name top right, `/ask/whoami` naming
    you), then the permission suite from "Day to day".
 

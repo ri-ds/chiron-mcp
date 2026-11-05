@@ -140,7 +140,10 @@ def remove_accounts() -> None:
     m, _ = models.UserCreatedContent.objects.filter(name__startswith="Perm check",
                                                      creator__user__username="admin").delete()
     get_user_model().objects.filter(username__in=names).delete()
-    print(f"removed {len(names)} accounts and {n + m} report(s) they made")
+    # Their answers are not usage anyone should see on the usage page.
+    from chiron_mcp import usage
+    rows = usage.delete_users(names)
+    print(f"removed {len(names)} accounts, {n + m} report(s) they made and {rows} ledger row(s)")
 
 
 # --- reading an answer ------------------------------------------------------------------
@@ -298,6 +301,10 @@ def judge(who: str, cookie: str, answers: dict[str, Answer], ceiling: str) -> No
     # what whoami says
     me = E.get_json(f"{ASK}/whoami", cookie)
     row = next((d for d in (me.get("user") or {}).get("datasets") or [] if d["id"] == DS), None)
+    if spec == "as is" and row:
+        # The deployment's own account: judge it by the row it actually has.
+        level = effective = row.get("access_level")
+        details = bool(row.get("subject_details"))
     check(f"{tag} whoami states the level Ask applies ({effective or 'no access'})",
           (row or {}).get("access_level") == effective if effective else row is None, row)
     if who == "admin":

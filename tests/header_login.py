@@ -101,9 +101,12 @@ check("the same person again is the same account, names left alone",
       req.user.username == "abc1de" and req.user.first_name == "Ada" and User.objects.count() == 1,
       (req.user.first_name, User.objects.count()))
 
-# --- the header goes: the gateway's session ended, so Django's does too --------------
+# --- no header: a request from inside (a check, a suite); the session is left alone --
 req = request({}, key)
-check("no header, no login, even with the session cookie of a login", not req.user.is_authenticated)
+check("a request without the header keeps the session's login", req.user.is_authenticated
+      and req.user.username == "abc1de")
+req = request({})
+check("a request without the header and without a session is nobody", not req.user.is_authenticated)
 
 # --- a different person on the same browser session ---------------------------------
 req = request({"OBLIX_UID": "zzz9", "displayName": "Grace Hopper"}, key)
