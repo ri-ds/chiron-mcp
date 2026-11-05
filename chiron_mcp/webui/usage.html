@@ -24,151 +24,227 @@
   button, input { font-family: inherit; }
   a { color: var(--accent-strong); }
 
-  .topbar {
-    min-height: 52px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    padding: 8px 20px; background: var(--bg); border-bottom: 1px solid var(--line-2);
-    position: sticky; top: 0; z-index: 5;
+  /* ---- header: title, tabs, who ------------------------------------------------- */
+  .top {
+    height: 52px; display: flex; align-items: center; gap: 18px; padding: 0 22px;
+    background: var(--bg); border-bottom: 1px solid var(--line-2); position: sticky; top: 0; z-index: 5;
   }
-  .topbar h1 { margin: 0; font-size: 15px; font-weight: 500; }
-  .topbar a.back { color: var(--muted); text-decoration: none; font-size: 13px; }
-  .topbar a.back:hover { color: var(--ink); }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
-  .seg button {
-    border: 0; background: none; padding: 5px 10px; font-size: 12.5px; color: var(--ink-2); cursor: pointer;
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand h1 { margin: 0; font-size: 15px; font-weight: 500; }
+  .brand a { color: var(--muted); text-decoration: none; font-size: 13px; }
+  .brand a:hover { color: var(--ink); }
+  .tabs { display: flex; gap: 2px; height: 100%; }
+  .tabs button {
+    border: 0; background: none; padding: 0 12px; font-size: 13.5px; color: var(--muted); cursor: pointer;
+    border-bottom: 2px solid transparent; height: 100%;
   }
-  .seg button + button { border-left: 1px solid var(--line); }
-  .seg button:hover { background: var(--panel); }
-  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); }
-  .range { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); }
-  .range input { font-size: 12.5px; border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; color: var(--ink-2); }
-  .btn {
-    font-size: 12.5px; border: 1px solid var(--line); background: var(--bg); border-radius: 8px;
-    padding: 5px 10px; cursor: pointer; color: var(--ink-2);
-  }
-  .btn:hover { background: var(--panel); }
-  .chip {
-    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 9px;
-    border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); border: 1px solid var(--accent-line);
-  }
-  .chip button { border: 0; background: none; cursor: pointer; color: inherit; font-size: 13px; padding: 0; line-height: 1; }
-  .who {
-    margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; min-width: 0;
-    line-height: 1.25; text-align: right;
-  }
-  .who b { font-weight: 500; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-  .who small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button[aria-selected="true"] { color: var(--accent-strong); border-bottom-color: var(--accent); font-weight: 500; }
+  .who { margin-left: auto; text-align: right; line-height: 1.25; min-width: 0; }
+  .who b { display: block; font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+  .who small { font-size: 11px; color: var(--muted); }
   .who.out b { color: var(--danger); }
 
-  main { max-width: 1120px; margin: 0 auto; padding: 18px 20px 48px; display: flex; flex-direction: column; gap: 16px; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-  .tile { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
-  .tile small { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .tile b { display: block; font-size: 24px; font-weight: 500; line-height: 1.3; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  main { max-width: 1080px; margin: 0 auto; padding: 18px 22px 56px; }
+  .view { display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---- toolbar: period, filters, download ------------------------------------- */
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 34px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--bg); }
+  .seg button { border: 0; background: none; padding: 6px 11px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button:hover { background: var(--panel); }
+  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); font-weight: 500; }
+  .range { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .range input { font-size: 12.5px; border: 1px solid var(--line); border-radius: 7px; padding: 5px 7px; color: var(--ink-2); background: var(--bg); }
+  .btn {
+    font-size: 12.5px; border: 1px solid var(--line); background: var(--bg); border-radius: 8px;
+    padding: 6px 11px; cursor: pointer; color: var(--ink-2); white-space: nowrap;
+  }
+  .btn:hover { background: var(--panel); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-strong); }
+  .btn.danger { border-color: var(--danger-line); background: var(--danger-bg); color: var(--danger); }
+  .btn.small { padding: 3px 9px; font-size: 12px; }
+  .spacer { flex: 1; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 4px 10px;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); border: 1px solid var(--accent-line);
+  }
+  .chip button { border: 0; background: none; cursor: pointer; color: inherit; font-size: 14px; padding: 0; line-height: 1; }
+  .search { font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; min-width: 240px; background: var(--bg); }
+
+  /* ---- tiles ------------------------------------------------------------------- */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+  .tile { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+  .tile small { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .tile b { display: block; font-size: 26px; font-weight: 500; line-height: 1.3; margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile span { font-size: 12px; color: var(--muted); }
-  .card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
-  .card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--ink); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+
+  /* ---- cards and tables -------------------------------------------------------- */
+  .card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; }
+  .card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .card h2 .sub { font-weight: 400; color: var(--muted); font-size: 12.5px; }
-  .chart-wrap { position: relative; height: 220px; }
-  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+  .grid-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; }
+  .chart-wrap { position: relative; height: 230px; }
   .scroll { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line-2); white-space: nowrap; vertical-align: top; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-2); white-space: nowrap; vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
   th { color: var(--muted); font-weight: 500; font-size: 12px; }
   td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   td.dim { color: var(--muted); }
   tr.click { cursor: pointer; }
   tr.click:hover td { background: var(--panel); }
   tr.me td:first-child { font-weight: 500; }
-  .st-ok { color: var(--muted); }
-  .st-error { color: var(--danger); font-weight: 500; }
-  .st-incomplete { color: var(--warn); font-weight: 500; }
-  .lvl { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: var(--bg); line-height: 1.5; }
-  .lvl.deid { border-color: var(--accent-line); color: var(--accent-strong); background: var(--accent-soft); }
-  .lvl.phi { border-color: var(--danger-line); color: var(--danger); background: var(--danger-bg); }
+  .name { display: flex; flex-direction: column; line-height: 1.3; }
+  .name small { color: var(--muted); font-size: 11.5px; }
+  .status { display: inline-flex; align-items: center; gap: 6px; }
+  .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .status.error { color: var(--danger); } .status.error::before { background: var(--danger); }
+  .status.incomplete { color: var(--warn); } .status.incomplete::before { background: var(--warn); }
+  .empty { color: var(--muted); font-size: 13.5px; padding: 12px 0; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+
+  /* breakdown lists: a label, a thin bar, a figure */
+  .bars { display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr auto; gap: 10px; align-items: center; font-size: 13px; }
+  .bar-row .track { height: 6px; background: var(--line-2); border-radius: 3px; overflow: hidden; }
+  .bar-row .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .bar-row .fig { color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
+  .bars + .bars { margin-top: 14px; }
+  .bars h3 { margin: 0 0 2px; font-size: 12px; font-weight: 500; color: var(--muted); }
+
+  /* ---- people & access ----------------------------------------------------------- */
+  .person { display: grid; grid-template-columns: minmax(220px, 1.3fr) minmax(0, 2fr) auto; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+  .person:last-child { border-bottom: 0; }
+  .person .meta { font-size: 11.5px; color: var(--muted); }
+  .badge { display: inline-block; font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); border: 1px solid var(--accent-line); margin-left: 6px; vertical-align: 1px; }
+  .badge.off { background: var(--panel); color: var(--muted); border-color: var(--line); }
+  .levels { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lvl { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: var(--bg); white-space: nowrap; }
+  .lvl .ds { color: var(--muted); }
+  .lvl.deid { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-strong); }
+  .lvl.deid .ds { color: var(--accent-strong); opacity: .75; }
+  .lvl.phi { border-color: var(--danger-line); background: var(--danger-bg); color: var(--danger); }
+  .lvl.phi .ds { color: var(--danger); opacity: .75; }
   .lvl.none { color: var(--faint); border-style: dashed; }
-  .flag { font-size: 11px; color: var(--muted); }
-  .empty { color: var(--muted); font-size: 13.5px; padding: 10px 0; }
-  .note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
-  .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn); padding: 8px 10px; border-radius: 8px; font-size: 13px; margin: 0 0 10px; }
-  .warn.danger { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger); }
-  .msg { font-size: 13px; padding: 8px 10px; border-radius: 8px; margin: 0 0 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); }
+  .editor { grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 4px; }
+  .editor h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .editor table { background: var(--bg); border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+  .editor select { font-size: 12.5px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 7px; padding: 4px 7px; background: var(--bg); }
+  .editor select.phi { border-color: var(--danger-line); color: var(--danger); }
+  .editor select.deid { border-color: var(--accent-line); color: var(--accent-strong); }
+  .editor label { font-size: 12.5px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .editor label input { margin: 0; }
+  .editor .row-msg { font-size: 12px; color: var(--muted); }
+  .confirm { display: inline-flex; gap: 6px; margin-left: 8px; }
+  .busy { opacity: .5; pointer-events: none; }
+  .msg { font-size: 13px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); }
   .msg.bad { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger); }
-  .sub-h { font-size: 13px; font-weight: 600; margin: 16px 0 6px; color: var(--ink); }
-  .acc { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-  .acc select, .acc .flagbox {
-    font-size: 12.5px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 7px; padding: 3px 6px; background: var(--bg);
-  }
-  .acc select.phi { border-color: var(--danger-line); color: var(--danger); }
-  .acc select.deid { border-color: var(--accent-line); color: var(--accent-strong); }
-  .acc label { font-size: 11.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-  .acc label input { margin: 0; }
-  .confirm { font-size: 11.5px; padding: 2px 8px; border-radius: 7px; border: 1px solid var(--danger-line); background: var(--danger-bg); color: var(--danger); cursor: pointer; }
-  .acc .busy { opacity: .5; pointer-events: none; }
+  .msg.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn); }
   .hide { display: none !important; }
-  @media (max-width: 760px) {
-    .topbar { padding: 8px 12px; gap: 8px; }
-    main { padding: 12px 12px 32px; }
-    th, td { padding: 5px 6px; }
+
+  @media (max-width: 820px) {
+    .top { height: auto; padding: 8px 14px; flex-wrap: wrap; gap: 10px; }
+    .tabs { height: 36px; }
+    main { padding: 12px 14px 40px; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .person { grid-template-columns: 1fr; gap: 8px; }
+    th, td { padding: 6px 8px; }
     .who small { display: none; }
   }
 </style>
 </head>
 <body>
-<header class="topbar">
-  <a class="back" href="./" title="Back to Ask">← Ask</a>
-  <h1>Usage</h1>
-  <div class="seg" id="periods" role="group" aria-label="Period">
-    <button type="button" data-period="today">Today</button>
-    <button type="button" data-period="7d">7 days</button>
-    <button type="button" data-period="30d">30 days</button>
-    <button type="button" data-period="90d">90 days</button>
-    <button type="button" data-period="all">All</button>
-  </div>
-  <span class="range"><input type="date" id="from" aria-label="From"> – <input type="date" id="to" aria-label="To">
-    <button class="btn" id="apply" type="button">Apply</button></span>
-  <span class="chip hide" id="filter"><span id="filter-text"></span><button type="button" id="clear" title="Back to everyone">✕</button></span>
-  <button class="btn" id="csv" type="button" title="Download this period's answers as CSV, one row each, no question text">CSV</button>
+<header class="top">
+  <div class="brand"><a href="./" title="Back to Ask">← Ask</a><h1>Usage</h1></div>
+  <nav class="tabs" id="tabs" role="tablist">
+    <button type="button" role="tab" data-view="usage" aria-selected="true">Usage</button>
+    <button type="button" role="tab" data-view="access" aria-selected="false" class="hide" id="tab-access">People &amp; access</button>
+  </nav>
   <div class="who" id="who" hidden><b id="who-name"></b><small id="who-sub"></small></div>
 </header>
 
-<main id="main">
-  <div class="tiles" id="tiles"></div>
-  <section class="card">
-    <h2>Spend per day <span class="sub" id="chart-sub"></span></h2>
-    <div class="chart-wrap" id="chart-wrap"><canvas id="chart" aria-label="Spend per day, in dollars"></canvas></div>
-    <div class="empty hide" id="chart-empty">No answers in this period.</div>
+<main>
+  <!-- ======================= Usage ======================= -->
+  <section class="view" id="view-usage">
+    <div class="toolbar">
+      <div class="seg" id="periods" role="group" aria-label="Period">
+        <button type="button" data-period="today">Today</button>
+        <button type="button" data-period="7d">7 days</button>
+        <button type="button" data-period="30d">30 days</button>
+        <button type="button" data-period="90d">90 days</button>
+        <button type="button" data-period="all">All</button>
+        <button type="button" data-period="custom" id="custom-btn">Custom</button>
+      </div>
+      <span class="range hide" id="range"><input type="date" id="from" aria-label="From"> – <input type="date" id="to" aria-label="To">
+        <button class="btn small" id="apply" type="button">Apply</button></span>
+      <span class="chip hide" id="filter"><span id="filter-text"></span><button type="button" id="clear" title="Everyone">✕</button></span>
+      <div class="spacer"></div>
+      <button class="btn" id="csv" type="button" title="Every answer of this period, one row each, no question text">Download CSV</button>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="grid-2">
+      <section class="card">
+        <h2>Spend per day <span class="sub" id="chart-sub"></span></h2>
+        <div class="chart-wrap" id="chart-wrap"><canvas id="chart" aria-label="Spend per day, in dollars"></canvas></div>
+        <div class="empty hide" id="chart-empty">No answers in this period.</div>
+      </section>
+      <section class="card">
+        <h2>Where it went</h2>
+        <div id="breakdown"></div>
+      </section>
+    </div>
+
+    <section class="card hide" id="people-card">
+      <h2>People <span class="sub">click a name to see only their answers</span></h2>
+      <div class="scroll" id="people"></div>
+    </section>
+
+    <section class="card">
+      <h2>Recent answers <span class="sub" id="recent-sub"></span></h2>
+      <div class="scroll" id="recent"></div>
+      <p class="note">One row per answer, with no question text and no results. The trace under an answer in Ask has those, for the person who asked, while the conversation lives.</p>
+    </section>
   </section>
-  <section class="card hide" id="people-card">
-    <h2>People <span class="sub">click a name to see only their answers</span></h2>
-    <div class="scroll" id="people"></div>
-  </section>
-  <section class="card">
-    <h2>Models and datasets</h2>
-    <div class="two"><div class="scroll" id="models"></div><div class="scroll" id="datasets"></div></div>
-  </section>
-  <section class="card">
-    <h2>Recent answers <span class="sub" id="recent-sub"></span></h2>
-    <div class="scroll" id="recent"></div>
-    <p class="note">One row per answer: no question text, no filter values, no results. The trace under an answer in Ask has those, for the person who asked, while the conversation lives.</p>
-  </section>
-  <section class="card hide" id="access-card">
-    <h2>Who has what <span class="sub" id="access-sub"></span></h2>
-    <div id="access-warnings"></div>
+
+  <!-- ======================= People & access ======================= -->
+  <section class="view hide" id="view-access">
+    <div class="toolbar">
+      <input class="search" id="search" type="search" placeholder="Find a person" aria-label="Find a person">
+      <span class="sub" id="people-count" style="color: var(--muted); font-size: 12.5px"></span>
+      <div class="spacer"></div>
+      <span style="color: var(--muted); font-size: 12.5px" id="ceiling-note"></span>
+    </div>
+    <div class="msg warn hide" id="autocreate"></div>
     <div class="msg hide" id="access-msg"></div>
-    <div class="scroll" id="access"></div>
-    <p class="note" id="access-note">The level shown is what Ask applies under this deployment's ceiling; where Chiron's row says more, the row is noted. A superuser can change levels and admin rights here; others see them.</p>
-    <h3 class="sub-h hide" id="changes-h">Recent changes</h3>
-    <div class="scroll" id="changes"></div>
+    <section class="card">
+      <div id="persons"></div>
+      <p class="note">Everyone who passes the sign-on arrives with de-identified access. Raise or lower a person here; full access and admin take a second click. A superuser cannot change their own admin.</p>
+    </section>
+    <section class="card hide" id="changes-card">
+      <h2>Recent changes</h2>
+      <div class="scroll" id="changes"></div>
+    </section>
   </section>
 </main>
 
 <script>
 const $ = id => document.getElementById(id);
 const ACCESS = { phi: 'full access', deid: 'de-identified', agg: 'aggregate only' };
-let PERIOD = '30d', FILTER_USER = null, CHART = null, PEOPLE = {}, ACCESS_DATA = null;
+const LEVEL_OPTIONS = [['none', 'no access'], ['agg', 'aggregate only'], ['deid', 'de-identified'], ['phi', 'full access']];
+let PERIOD = '30d', FILTER_USER = null, CHART = null, PEOPLE = {}, ACCESS_DATA = null, VIEW = 'usage', OPEN_EDITOR = null;
 try { PERIOD = localStorage.getItem('chiron-ask:usage-period') || PERIOD; } catch (_) {}
-try { FILTER_USER = new URLSearchParams(location.search).get('user') || null; } catch (_) {}
+try {
+  const q = new URLSearchParams(location.search);
+  FILTER_USER = q.get('user') || null;
+  if (q.get('view') === 'access') VIEW = 'access';
+} catch (_) {}
 
+// ---- helpers ------------------------------------------------------------------------
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -188,17 +264,10 @@ function when(iso) {
   return isNaN(d) ? iso : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 function shortModel(m) { return (m || '–').replace(/^us\.anthropic\./, '').replace(/^claude-/, ''); }
-function person(u) {
-  const p = PEOPLE[u];
-  return p && p.name ? p.name : (u || '–');
-}
-function lvl(level) {
-  const s = el('span', 'lvl ' + (level || 'none'), level ? (ACCESS[level] || level) : 'no access');
-  return s;
-}
-function table(headers, rows, opts) {
+function person(u) { const p = PEOPLE[u]; return p && p.name ? p.name : (u || '–'); }
+function table(headers, rows) {
   const t = el('table'), thead = el('thead'), tr = el('tr');
-  headers.forEach(h => { const th = el('th', h.n ? 'n' : '', h.label); tr.appendChild(th); });
+  headers.forEach(h => tr.appendChild(el('th', h.n ? 'n' : '', h.label)));
   thead.appendChild(tr); t.appendChild(thead);
   const tb = el('tbody');
   rows.forEach(r => tb.appendChild(r));
@@ -210,34 +279,45 @@ function cell(v, cls) {
   if (v instanceof Node) td.appendChild(v); else td.textContent = v == null ? '–' : v;
   return td;
 }
+function nameBlock(u, withUser) {
+  const p = PEOPLE[u] || {};
+  const box = el('div', 'name');
+  box.appendChild(el('span', '', p.name || u || '–'));
+  if (withUser && p.name) box.appendChild(el('small', '', u));
+  return box;
+}
 
+// ---- header ---------------------------------------------------------------------------
 function renderWho(d) {
   const box = $('who'), name = $('who-name'), sub = $('who-sub');
   box.hidden = false;
   if (!d || d.error || !d.identity) {
-    box.classList.add('out');
-    name.textContent = 'Not signed in';
-    sub.textContent = '';
+    box.classList.add('out'); name.textContent = 'Not signed in'; sub.textContent = '';
     return;
   }
   box.classList.remove('out');
   const u = d.user || {};
   name.textContent = u.name || u.username || d.identity;
-  sub.textContent = d.everyone ? 'sees everyone' : 'your own usage';
-  box.title = 'Signed in to Chiron as ' + d.identity + (u.email ? ' (' + u.email + ')' : '');
+  sub.textContent = d.everyone ? (u.superuser ? 'admin · sees everyone' : 'sees everyone') : 'your own usage';
+  box.title = 'Signed in as ' + d.identity + (u.email ? ' (' + u.email + ')' : '');
 }
+function showView(v) {
+  VIEW = v;
+  $('view-usage').classList.toggle('hide', v !== 'usage');
+  $('view-access').classList.toggle('hide', v !== 'access');
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === v)));
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showView(b.dataset.view));
 
+// ---- usage view -------------------------------------------------------------------------
 function renderTiles(d) {
   const t = d.totals || {}, box = $('tiles');
   box.textContent = '';
-  const tiles = [
-    ['Answers', num(t.answers || 0), t.incomplete ? num(t.incomplete) + ' incomplete' : ''],
-  ];
+  const tiles = [['Answers', num(t.answers || 0), t.incomplete ? num(t.incomplete) + ' incomplete' : (t.answers ? 'in this period' : '')]];
   if (d.everyone && !d.filter_user) tiles.push(['People', num(t.people || 0), (t.datasets || 0) + ' dataset' + (t.datasets === 1 ? '' : 's')]);
   tiles.push(['Spend', money(t.cost_usd || 0), t.answers ? money(t.avg_cost) + ' per answer' : '']);
   tiles.push(['Answer time', t.answers ? secs(t.avg_ms) : '–', 'average']);
   tiles.push(['Errors', num(t.errors || 0), t.answers ? pct(t.errors || 0, t.answers) + ' of answers' : '']);
-  tiles.push(['Tokens', num(t.tokens_in || 0), num(t.tokens_out || 0) + ' out']);
   tiles.forEach(([label, value, sub]) => {
     const tile = el('div', 'tile');
     tile.appendChild(el('small', '', label));
@@ -254,42 +334,51 @@ function renderChart(d) {
   $('chart-sub').textContent = days.length ? money(days.reduce((a, x) => a + (x.cost_usd || 0), 0)) + ' over ' + days.length + ' day' + (days.length === 1 ? '' : 's') : '';
   if (CHART) { CHART.destroy(); CHART = null; }
   if (!days.length) return;
-  const style = getComputedStyle(document.documentElement);
   CHART = new Chart($('chart'), {
     type: 'bar',
-    data: {
-      labels: days.map(x => x.day),
-      datasets: [{
-        label: 'Spend', data: days.map(x => x.cost_usd || 0),
-        backgroundColor: style.getPropertyValue('--accent').trim() || '#00796b',
-        hoverBackgroundColor: style.getPropertyValue('--accent-strong').trim() || '#00574d',
-        borderRadius: 4, borderSkipped: 'bottom', maxBarThickness: 36,
-      }],
-    },
+    data: { labels: days.map(x => x.day), datasets: [{
+      label: 'Spend', data: days.map(x => x.cost_usd || 0),
+      backgroundColor: '#00796b', hoverBackgroundColor: '#00574d',
+      borderRadius: 4, borderSkipped: 'bottom', maxBarThickness: 36,
+    }] },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          displayColors: false,
-          callbacks: {
-            title: items => items[0].label,
-            label: item => {
-              const x = days[item.dataIndex];
-              return [money(x.cost_usd || 0), num(x.answers) + ' answer' + (x.answers === 1 ? '' : 's') + (x.errors ? ', ' + x.errors + ' error' + (x.errors === 1 ? '' : 's') : ''),
-                      'average ' + secs(x.avg_ms)];
-            },
-          },
-        },
-      },
+      plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: {
+        title: items => items[0].label,
+        label: item => { const x = days[item.dataIndex];
+          return [money(x.cost_usd || 0), num(x.answers) + ' answer' + (x.answers === 1 ? '' : 's') + (x.errors ? ', ' + x.errors + ' error' + (x.errors === 1 ? '' : 's') : ''), 'average ' + secs(x.avg_ms)]; },
+      } } },
       scales: {
         x: { grid: { display: false }, ticks: { color: '#6b7780', maxRotation: 0, autoSkip: true, font: { size: 11 } } },
-        y: { beginAtZero: true, grid: { color: '#eef1f3' }, border: { display: false },
-             ticks: { color: '#6b7780', font: { size: 11 }, callback: v => money(v) } },
+        y: { beginAtZero: true, grid: { color: '#eef1f3' }, border: { display: false }, ticks: { color: '#6b7780', font: { size: 11 }, callback: v => money(v) } },
       },
     },
   });
+}
+
+function bars(title, rows, key, fmt) {
+  const box = el('div', 'bars');
+  box.appendChild(el('h3', '', title));
+  const max = Math.max(...rows.map(r => r.cost_usd || 0), 0) || 1;
+  rows.forEach(r => {
+    const row = el('div', 'bar-row');
+    row.appendChild(el('span', '', fmt(r[key])));
+    const track = el('div', 'track'); const fill = el('div', 'fill');
+    fill.style.width = Math.max(2, Math.round(100 * (r.cost_usd || 0) / max)) + '%';
+    track.appendChild(fill); row.appendChild(track);
+    row.appendChild(el('span', 'fig', money(r.cost_usd) + ' · ' + num(r.answers) + (r.errors ? ' · ' + r.errors + ' err' : '')));
+    box.appendChild(row);
+  });
+  return box;
+}
+function renderBreakdown(d) {
+  const box = $('breakdown');
+  box.textContent = '';
+  const models = d.per_model || [], datasets = d.per_dataset || [];
+  if (!models.length && !datasets.length) { box.appendChild(el('div', 'empty', 'Nothing yet.')); return; }
+  box.appendChild(bars('By model', models, 'model', shortModel));
+  box.appendChild(bars('By dataset', datasets, 'dataset', x => x || '–'));
 }
 
 function renderPeople(d) {
@@ -299,51 +388,20 @@ function renderPeople(d) {
   box.textContent = '';
   const rows = (d.per_user || []).map(u => {
     const tr = el('tr', 'click' + (u.user === d.identity ? ' me' : ''));
-    tr.title = 'Only ' + (u.user || '') + "'s answers";
+    tr.title = 'Only ' + person(u.user) + "'s answers";
     tr.onclick = () => { FILTER_USER = u.user; load(); };
-    const who = el('div');
-    who.appendChild(el('span', '', person(u.user)));
-    if (PEOPLE[u.user] && PEOPLE[u.user].name) { who.appendChild(el('br')); who.appendChild(el('span', 'flag', u.user)); }
-    tr.appendChild(cell(who));
+    tr.appendChild(cell(nameBlock(u.user, true)));
     tr.appendChild(cell(num(u.answers), 'n'));
     tr.appendChild(cell(money(u.cost_usd), 'n'));
     tr.appendChild(cell(money(u.avg_cost), 'n'));
     tr.appendChild(cell(secs(u.avg_ms), 'n'));
-    tr.appendChild(cell(u.errors ? num(u.errors) : '0', 'n' + (u.errors ? ' st-error' : '')));
+    tr.appendChild(cell(u.errors ? num(u.errors) : '0', 'n' + (u.errors ? ' status error' : '')));
     tr.appendChild(cell(when(u.last), 'dim'));
-    const levels = el('div');
-    (u.levels || '').split(',').filter(Boolean).forEach(l => { levels.appendChild(lvl(l)); levels.appendChild(document.createTextNode(' ')); });
-    tr.appendChild(cell(levels));
-    tr.appendChild(cell((u.datasets || '').split(',').join(', '), 'dim'));
     return tr;
   });
   if (!rows.length) { box.appendChild(el('div', 'empty', 'Nobody asked anything in this period.')); return; }
-  box.appendChild(table([
-    { label: 'Person' }, { label: 'Answers', n: 1 }, { label: 'Spend', n: 1 }, { label: 'Per answer', n: 1 },
-    { label: 'Avg time', n: 1 }, { label: 'Errors', n: 1 }, { label: 'Last asked' }, { label: 'Level' }, { label: 'Datasets' },
-  ], rows));
-}
-
-function renderGroups(d) {
-  const models = $('models'), datasets = $('datasets');
-  models.textContent = ''; datasets.textContent = '';
-  const mk = (rowsIn, keyLabel, key, fmt) => {
-    const rows = (rowsIn || []).map(x => {
-      const tr = el('tr');
-      tr.appendChild(cell(fmt(x[key])));
-      tr.appendChild(cell(num(x.answers), 'n'));
-      tr.appendChild(cell(money(x.cost_usd), 'n'));
-      tr.appendChild(cell(money(x.avg_cost), 'n'));
-      tr.appendChild(cell(secs(x.avg_ms), 'n'));
-      tr.appendChild(cell(x.errors ? num(x.errors) : '0', 'n' + (x.errors ? ' st-error' : '')));
-      return tr;
-    });
-    if (!rows.length) return el('div', 'empty', 'Nothing yet.');
-    return table([{ label: keyLabel }, { label: 'Answers', n: 1 }, { label: 'Spend', n: 1 }, { label: 'Per answer', n: 1 },
-                  { label: 'Avg time', n: 1 }, { label: 'Errors', n: 1 }], rows);
-  };
-  models.appendChild(mk(d.per_model, 'Model', 'model', shortModel));
-  datasets.appendChild(mk(d.per_dataset, 'Dataset', 'dataset', x => x || '–'));
+  box.appendChild(table([{ label: 'Person' }, { label: 'Answers', n: 1 }, { label: 'Spend', n: 1 }, { label: 'Per answer', n: 1 },
+                         { label: 'Avg time', n: 1 }, { label: 'Errors', n: 1 }, { label: 'Last asked' }], rows));
 }
 
 function renderRecent(d) {
@@ -353,171 +411,185 @@ function renderRecent(d) {
   if (!rows.length) { box.appendChild(el('div', 'empty', 'No answers in this period.')); return; }
   const headers = [{ label: 'When' }];
   if (d.everyone) headers.push({ label: 'Person' });
-  headers.push({ label: 'Dataset' }, { label: 'Level' }, { label: 'Model' }, { label: 'Status' }, { label: 'Turn', n: 1 },
-               { label: 'Model calls', n: 1 }, { label: 'Chiron calls', n: 1 }, { label: 'Tokens in', n: 1 },
-               { label: 'Out', n: 1 }, { label: 'Cost', n: 1 }, { label: 'Time', n: 1 });
+  headers.push({ label: 'Dataset' }, { label: 'Model' }, { label: 'Status' }, { label: 'Calls', n: 1 }, { label: 'Tokens', n: 1 }, { label: 'Cost', n: 1 }, { label: 'Time', n: 1 });
   box.appendChild(table(headers, rows.map(r => {
     const tr = el('tr');
     tr.appendChild(cell(when(r.ended), 'dim'));
     if (d.everyone) tr.appendChild(cell(person(r.user)));
-    tr.appendChild(cell(r.dataset));
-    tr.appendChild(cell(r.access_level ? lvl(r.access_level) : '–'));
+    const ds = cell(r.dataset); ds.title = r.access_level ? (ACCESS[r.access_level] || r.access_level) + (r.followup ? ', follow-up #' + r.turn : '') : '';
+    tr.appendChild(ds);
     tr.appendChild(cell(shortModel(r.model)));
     const st = r.status || '–';
-    tr.appendChild(cell(st === 'error' ? '✕ error' : st === 'incomplete' ? '! incomplete' : st, 'st-' + st));
-    tr.appendChild(cell((r.turn || 1) + (r.followup ? ' ↩' : ''), 'n'));
-    tr.appendChild(cell(num(r.model_calls), 'n'));
-    tr.appendChild(cell((r.chiron_calls == null ? '–' : num(r.chiron_calls)) + (r.chiron_errors ? ' (' + r.chiron_errors + ' failed)' : ''), 'n'));
-    tr.appendChild(cell(num((r.tokens_in || 0) + (r.cache_read || 0) + (r.cache_write || 0)), 'n'));
-    tr.appendChild(cell(num(r.tokens_out), 'n'));
+    tr.appendChild(cell(el('span', 'status ' + st, st === 'ok' ? 'ok' : st), ''));
+    const calls = cell(num(r.model_calls) + ' + ' + (r.chiron_calls == null ? '–' : num(r.chiron_calls)) + (r.chiron_errors ? ' (' + r.chiron_errors + ' failed)' : ''), 'n');
+    calls.title = 'model calls + Chiron calls';
+    tr.appendChild(calls);
+    const tok = cell(num((r.tokens_in || 0) + (r.cache_read || 0) + (r.cache_write || 0)) + ' / ' + num(r.tokens_out), 'n');
+    tok.title = 'in / out';
+    tr.appendChild(tok);
     tr.appendChild(cell(money(r.cost_usd), 'n'));
     tr.appendChild(cell(secs(r.ms), 'n'));
     return tr;
   })));
 }
 
-function renderAccess(a) {
-  const card = $('access-card'), box = $('access'), warnings = $('access-warnings');
-  if (!a || a.error) { card.classList.add('hide'); return; }
-  card.classList.remove('hide');
-  $('access-sub').textContent = 'ceiling ' + (ACCESS[a.ceiling] || a.ceiling) + ': Ask never shows more than that, whatever the row says';
-  warnings.textContent = '';
-  (a.datasets || []).forEach(ds => {
-    if (!ds.autocreate) return;
-    const w = el('div', 'warn' + (ds.auto_level === 'phi' ? ' danger' : ''),
-      ds.name + ': Chiron\'s own pages give anyone new ' + (ACCESS[ds.auto_level] || ds.auto_level || 'access') +
-      ' on their first visit (the dataset\'s auto-create rule).' + (ds.auto_level === 'phi' ? ' That is full access. Lower it in the Django admin before real people sign in.' : ''));
-    warnings.appendChild(w);
-  });
-  box.textContent = '';
-  $('access-msg').classList.add('hide');
-  const headers = [{ label: 'Person' }, { label: 'Role' }, { label: 'Last sign-in' }];
-  (a.datasets || []).forEach(ds => headers.push({ label: ds.name }));
-  box.appendChild(table(headers, (a.people || []).map(p => personRow(p, a))));
-  renderChanges(a.changes);
+// ---- people & access view ----------------------------------------------------------------
+function lvlChip(ds, d) {
+  const level = d ? d.level : null;
+  const chip = el('span', 'lvl ' + (level || 'none'));
+  chip.appendChild(el('span', 'ds', ds.name + ':'));
+  chip.appendChild(el('span', '', level ? (ACCESS[level] || level) : 'no access'));
+  const notes = [];
+  if (d && d.effective && d.level && d.effective !== d.level) notes.push('Ask applies ' + (ACCESS[d.effective] || d.effective) + ' (the ceiling)');
+  if (d && d.level && d.level !== 'agg') notes.push(d.subject_details ? 'may see identifying columns' : 'no identifying columns');
+  chip.title = notes.join('. ');
+  return chip;
 }
 
 function accessMsg(text, bad) {
   const m = $('access-msg');
-  m.textContent = text;
-  m.classList.toggle('bad', !!bad);
-  m.classList.remove('hide');
+  m.textContent = text; m.classList.toggle('bad', !!bad); m.classList.remove('hide');
 }
 
-// One change to one account, by a superuser. The server answers with the person's row
-// as it now is, which replaces the row on the page, and the change log.
-async function changeAccess(tr, body, a) {
-  tr.classList.add('busy');
+async function changeAccess(body, holder) {
+  if (holder) holder.classList.add('busy');
   let res;
   try {
-    res = await fetch('usage/access', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(body) }).then(r => r.json());
+    res = await fetch('usage/access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
   } catch (_) { res = { error: 'The change could not be sent.' }; }
-  tr.classList.remove('busy');
-  if (!res || res.error) {
-    accessMsg((res && res.error) || 'The change failed.', true);
-    const old = (ACCESS_DATA.people || []).find(x => x.username === body.username);
-    if (old) tr.replaceWith(personRow(old, a));
-    return;
-  }
+  if (holder) holder.classList.remove('busy');
+  if (!res || res.error) { accessMsg((res && res.error) || 'The change failed.', true); renderPersons(); return false; }
   accessMsg(person(body.username) + ': ' + res.changed + '.', false);
   if (res.person) {
     const i = (ACCESS_DATA.people || []).findIndex(x => x.username === res.person.username);
     if (i >= 0) ACCESS_DATA.people[i] = res.person;
     PEOPLE[res.person.username] = res.person;
-    tr.replaceWith(personRow(res.person, a));
   }
-  if (res.changes) { ACCESS_DATA.changes = res.changes; renderChanges(res.changes); }
+  if (res.changes) ACCESS_DATA.changes = res.changes;
+  renderPersons();
+  renderChanges();
+  return true;
 }
 
-// A sensitive change (full access, admin) takes a second click on an inline Confirm.
 function withConfirm(holder, apply, cancel) {
-  const b = el('button', 'confirm', 'Confirm');
-  b.type = 'button';
-  const c = el('button', 'confirm', 'Cancel');
-  c.type = 'button'; c.style.background = 'var(--bg)'; c.style.color = 'var(--muted)'; c.style.borderColor = 'var(--line)';
-  b.onclick = () => { b.remove(); c.remove(); apply(); };
-  c.onclick = () => { b.remove(); c.remove(); cancel(); };
-  holder.appendChild(b); holder.appendChild(c);
+  const box = el('span', 'confirm');
+  const ok = el('button', 'btn small danger', 'Confirm'); ok.type = 'button';
+  const no = el('button', 'btn small', 'Cancel'); no.type = 'button';
+  ok.onclick = () => { box.remove(); apply(); };
+  no.onclick = () => { box.remove(); cancel(); };
+  box.appendChild(ok); box.appendChild(no);
+  holder.appendChild(box);
 }
 
-function personRow(p, a) {
-  const tr = el('tr', p.username === a.identity ? 'me' : '');
-  const who = el('div');
-  who.appendChild(el('span', '', p.name || p.username));
-  const sub = [p.name ? p.username : '', p.email].filter(Boolean).join(' · ');
-  if (sub) { who.appendChild(el('br')); who.appendChild(el('span', 'flag', sub)); }
-  tr.appendChild(cell(who));
-
-  // role: a toggle for a superuser, never for themselves
-  if (a.can_change && p.username !== a.identity) {
-    const holder = el('div', 'acc');
+function editor(p, a) {
+  const box = el('div', 'editor');
+  const head = el('h4', '', 'Access for ' + (p.name || p.username));
+  const done = el('button', 'btn small', 'Done'); done.type = 'button';
+  done.onclick = () => { OPEN_EDITOR = null; renderPersons(); };
+  head.appendChild(el('span', 'spacer'));
+  if (p.username !== a.identity) {
     const lab = el('label');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = !!p.superuser;
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!p.superuser;
     lab.appendChild(cb); lab.appendChild(document.createTextNode('admin'));
-    holder.appendChild(lab);
+    lab.title = 'Sees everyone\'s usage and can change access';
     cb.onchange = () => {
-      if (cb.checked) withConfirm(holder, () => changeAccess(tr, { username: p.username, superuser: true }, a),
-                                  () => { cb.checked = false; });
-      else changeAccess(tr, { username: p.username, superuser: false }, a);
+      if (cb.checked) withConfirm(lab, () => changeAccess({ username: p.username, superuser: true }, box), () => { cb.checked = false; });
+      else changeAccess({ username: p.username, superuser: false }, box);
     };
-    if (!p.active) holder.appendChild(el('span', 'flag', 'inactive'));
-    tr.appendChild(cell(holder));
+    head.appendChild(lab);
   } else {
-    tr.appendChild(cell((p.superuser ? 'admin' : p.staff ? 'staff' : (p.active ? '' : 'inactive'))
-                        + (p.username === a.identity ? ' (you)' : ''), 'dim'));
+    head.appendChild(el('span', 'meta', 'admin (you)'));
   }
-  tr.appendChild(cell(when(p.last_login), 'dim'));
-
-  (a.datasets || []).forEach(ds => {
+  head.appendChild(done);
+  box.appendChild(head);
+  const rows = (a.datasets || []).map(ds => {
     const d = (p.datasets || []).find(x => x.id === ds.id);
-    const c = el('div', 'acc');
-    if (a.can_change) {
-      const sel = document.createElement('select');
-      [['none', 'no access'], ['agg', 'aggregate only'], ['deid', 'de-identified'], ['phi', 'full access']].forEach(([v, t]) => {
-        const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o);
-      });
-      sel.value = d ? (d.level || 'none') : 'none';
-      sel.className = sel.value;
-      sel.title = d && d.effective && d.level && d.effective !== d.level
-        ? 'The row says ' + (ACCESS[d.level] || d.level) + '; Ask applies ' + (ACCESS[d.effective] || d.effective) + ' (the ceiling)' : '';
-      sel.onchange = () => {
-        const v = sel.value;
-        const go = () => changeAccess(tr, { username: p.username, dataset: ds.id, level: v }, a);
-        if (v === 'phi') withConfirm(c, go, () => { sel.value = d ? (d.level || 'none') : 'none'; });
-        else go();
-      };
-      c.appendChild(sel);
-      if (d && d.level !== 'agg') {
-        const lab = el('label');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox'; cb.checked = !!d.subject_details;
-        lab.appendChild(cb); lab.appendChild(document.createTextNode('identifying columns'));
-        cb.onchange = () => changeAccess(tr, { username: p.username, dataset: ds.id, subject_details: cb.checked }, a);
-        c.appendChild(lab);
-      }
-      if (d && d.effective && d.level && d.effective !== d.level) c.appendChild(el('span', 'flag', 'Ask applies ' + (ACCESS[d.effective] || d.effective)));
-    } else if (!d) {
-      c.appendChild(lvl(null));
+    const tr = el('tr');
+    tr.appendChild(cell(ds.name));
+    const sel = document.createElement('select');
+    LEVEL_OPTIONS.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); });
+    sel.value = d ? (d.level || 'none') : 'none';
+    sel.className = sel.value;
+    const selCell = el('td');
+    selCell.appendChild(sel);
+    sel.onchange = () => {
+      const v = sel.value;
+      const go = () => changeAccess({ username: p.username, dataset: ds.id, level: v }, box);
+      if (v === 'phi') withConfirm(selCell, go, () => { sel.value = d ? (d.level || 'none') : 'none'; sel.className = sel.value; });
+      else go();
+    };
+    tr.appendChild(selCell);
+    const flagCell = el('td');
+    if (d && d.level && d.level !== 'agg') {
+      const lab = el('label');
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!d.subject_details;
+      lab.appendChild(cb); lab.appendChild(document.createTextNode('may see identifying columns'));
+      cb.onchange = () => changeAccess({ username: p.username, dataset: ds.id, subject_details: cb.checked }, box);
+      flagCell.appendChild(lab);
     } else {
-      c.appendChild(lvl(d.effective || d.level));
-      const flags = [];
-      if (d.effective && d.level && d.effective !== d.level) flags.push('row says ' + (ACCESS[d.level] || d.level));
-      if (!d.subject_details) flags.push('no identifying columns');
-      if (!d.workspace) flags.push('no workspace');
-      if (flags.length) c.appendChild(el('span', 'flag', flags.join(', ')));
+      flagCell.appendChild(el('span', 'row-msg', d && d.level === 'agg' ? 'counts only, small ones masked' : ''));
     }
-    tr.appendChild(cell(c));
+    tr.appendChild(flagCell);
+    const note = el('td', 'dim');
+    if (d && d.effective && d.level && d.effective !== d.level) note.textContent = 'Ask applies ' + (ACCESS[d.effective] || d.effective) + ' (the ceiling)';
+    tr.appendChild(note);
+    return tr;
   });
-  return tr;
+  box.appendChild(table([{ label: 'Dataset' }, { label: 'Level' }, { label: 'Identifying columns' }, { label: '' }], rows));
+  return box;
 }
 
-function renderChanges(changes) {
-  const h = $('changes-h'), box = $('changes');
+function renderPersons() {
+  const a = ACCESS_DATA;
+  const box = $('persons');
   box.textContent = '';
-  if (!changes || !changes.length) { h.classList.add('hide'); return; }
-  h.classList.remove('hide');
+  if (!a || a.error) { box.appendChild(el('div', 'empty', 'The access list could not be read.')); return; }
+  const q = ($('search').value || '').trim().toLowerCase();
+  const people = (a.people || []).filter(p => !q || [p.name, p.username, p.email].some(x => (x || '').toLowerCase().includes(q)));
+  $('people-count').textContent = people.length + ' of ' + (a.people || []).length + ' people';
+  $('ceiling-note').textContent = 'Ask shows at most ' + (ACCESS[a.ceiling] || a.ceiling) + ' here, whatever the row says';
+  const above = (a.datasets || []).filter(ds => ds.autocreate && (ds.auto_level === 'deid' || ds.auto_level === 'phi'));
+  const ac = $('autocreate');
+  if (above.length) {
+    ac.textContent = 'Chiron\'s own pages give a newcomer ' + above.map(ds => (ACCESS[ds.auto_level] || ds.auto_level) + ' on ' + ds.name).join(', ')
+      + ' on their first visit. Lower that in the Django admin before a sign-on gateway logs everyone in.';
+    ac.classList.remove('hide');
+  } else ac.classList.add('hide');
+  if (!people.length) { box.appendChild(el('div', 'empty', 'Nobody matches.')); return; }
+  people.forEach(p => {
+    const row = el('div', 'person');
+    const idc = el('div');
+    const nm = el('div');
+    nm.appendChild(el('span', '', p.name || p.username));
+    if (p.superuser) nm.appendChild(el('span', 'badge', 'admin'));
+    else if (p.staff) nm.appendChild(el('span', 'badge off', 'staff'));
+    if (!p.active) nm.appendChild(el('span', 'badge off', 'inactive'));
+    if (p.username === a.identity) nm.appendChild(el('span', 'badge off', 'you'));
+    idc.appendChild(nm);
+    idc.appendChild(el('div', 'meta', [p.name ? p.username : '', p.email].filter(Boolean).join(' · ')));
+    idc.appendChild(el('div', 'meta', p.last_login ? 'last sign-in ' + when(p.last_login) : 'never signed in'));
+    row.appendChild(idc);
+    const levels = el('div', 'levels');
+    (a.datasets || []).forEach(ds => levels.appendChild(lvlChip(ds, (p.datasets || []).find(x => x.id === ds.id))));
+    row.appendChild(levels);
+    const act = el('div');
+    if (a.can_change) {
+      const b = el('button', 'btn small', OPEN_EDITOR === p.username ? 'Close' : 'Edit'); b.type = 'button';
+      b.onclick = () => { OPEN_EDITOR = OPEN_EDITOR === p.username ? null : p.username; renderPersons(); };
+      act.appendChild(b);
+    }
+    row.appendChild(act);
+    if (a.can_change && OPEN_EDITOR === p.username) row.appendChild(editor(p, a));
+    box.appendChild(row);
+  });
+}
+
+function renderChanges() {
+  const changes = (ACCESS_DATA && ACCESS_DATA.changes) || [];
+  const card = $('changes-card'), box = $('changes');
+  box.textContent = '';
+  if (!changes.length) { card.classList.add('hide'); return; }
+  card.classList.remove('hide');
   box.appendChild(table([{ label: 'When' }, { label: 'By' }, { label: 'Account' }, { label: 'Dataset' }, { label: 'Change' }],
     changes.map(ch => {
       const tr = el('tr');
@@ -529,29 +601,33 @@ function renderChanges(changes) {
       return tr;
     })));
 }
+$('search').oninput = () => renderPersons();
 
+// ---- loading ----------------------------------------------------------------------------
 function renderError(msg) {
-  const main = $('main');
-  main.textContent = '';
+  const v = $('view-usage');
+  v.textContent = '';
   const card = el('section', 'card');
-  card.appendChild(el('h2', '', 'Usage'));
   card.appendChild(el('div', 'empty', msg));
-  main.appendChild(card);
+  v.appendChild(card);
+  $('tab-access').classList.add('hide');
 }
 
 function render(d) {
   renderWho(d);
   if (!d || d.error) { renderError((d && d.error) || 'The usage data could not be read.'); return; }
-  document.querySelectorAll('#periods button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.period === PERIOD)));
   const custom = PERIOD.includes('..');
+  document.querySelectorAll('#periods button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.period === PERIOD || (custom && b.dataset.period === 'custom'))));
+  $('range').classList.toggle('hide', !custom && $('range').dataset.open !== '1');
   if (custom) { const [a, b] = PERIOD.split('..'); $('from').value = a; $('to').value = b; }
   $('filter').classList.toggle('hide', !d.everyone || !d.filter_user);
   if (d.filter_user) $('filter-text').textContent = person(d.filter_user) + "'s answers";
   renderTiles(d);
   renderChart(d);
+  renderBreakdown(d);
   renderPeople(d);
-  renderGroups(d);
   renderRecent(d);
+  $('tab-access').classList.toggle('hide', !d.everyone);
 }
 
 async function load() {
@@ -567,11 +643,19 @@ async function load() {
     } catch (_) { ACCESS_DATA = { error: 'unavailable' }; }
   }
   render(d);
-  if (d && d.everyone) renderAccess(ACCESS_DATA);
+  if (d && d.everyone) { renderPersons(); renderChanges(); showView(VIEW); }
+  else showView('usage');
 }
 
 document.querySelectorAll('#periods button').forEach(b => b.onclick = () => {
+  if (b.dataset.period === 'custom') {
+    const r = $('range'); r.dataset.open = r.dataset.open === '1' ? '0' : '1';
+    r.classList.toggle('hide', r.dataset.open !== '1');
+    b.setAttribute('aria-pressed', r.dataset.open === '1' ? 'true' : 'false');
+    return;
+  }
   PERIOD = b.dataset.period;
+  $('range').dataset.open = '0';
   $('from').value = ''; $('to').value = '';
   try { localStorage.setItem('chiron-ask:usage-period', PERIOD); } catch (_) {}
   load();

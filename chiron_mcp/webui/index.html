@@ -276,23 +276,17 @@
     --warn: #8a5300; --warn-bg: #fff4e2; --info: #1a5aa6; --info-bg: #eef4fb;
     --pass: #2e7d32; --pass-bg: #edf7ee; --tl-label: 230px;
   }
-  .trace-toggle {
-    margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none;
-    font-size: 12.5px; color: var(--ink-2); background: none; border: 1px solid var(--line);
-    padding: 5px 10px; border-radius: 9px; cursor: pointer;
-  }
-  .trace-toggle:hover { background: var(--panel); }
-  .trace-toggle[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-strong); }
-
-  /* who is signed in, and what they may see here */
+  /* who is signed in, and what they may see here. Inside the Chiron UI the person's
+     name is already in Chiron's own header, so only the access level shows there. */
   .who {
-    display: flex; flex-direction: column; align-items: flex-end; flex: none; min-width: 0;
+    margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; flex: none; min-width: 0;
     line-height: 1.25; text-align: right; cursor: default;
   }
   .who b {
     font-weight: 500; font-size: 13px; color: var(--ink); max-width: 240px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .who b.lvl-only { font-weight: 400; font-size: 12.5px; color: var(--muted); }
   .who small { font-size: 11px; color: var(--muted); white-space: nowrap; }
   .who.out b { color: var(--danger); }
 
@@ -457,8 +451,7 @@
     .cards { grid-template-columns: 1fr; }
     .msg.user .bubble { max-width: 88%; }
     :root { --tl-label: 128px; }
-    .trace-toggle span { display: none; }
-    .who b { max-width: 130px; }
+    .who b { max-width: 150px; }
     .who small { display: none; }
     .st-h { grid-template-columns: 44px 8px minmax(0, 1fr) auto; gap: 6px; padding: 6px 8px; }
     .st-b { padding: 2px 10px 10px 12px; }
@@ -496,11 +489,6 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <h1 id="chat-title">New chat</h1>
-    <button class="trace-toggle" id="trace-all" type="button" aria-pressed="false"
-            title="Open the trace under every answer: each step, its timing, and checks on what may have gone wrong">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
-      <span>Traces</span>
-    </button>
     <div class="who" id="who" hidden><b id="who-name"></b><small id="who-level"></small></div>
   </div>
 
@@ -1170,9 +1158,10 @@ const CHEV_ICON = '<svg class="chev" width="12" height="12" viewBox="0 0 24 24" 
 const TRACE_UI = {};   // turn id -> { open, sel, keys }: what the reader has opened
 const TRACES = {};     // trace id -> the full trace, or { loading } / { error }
 const LIVE = {};       // turn id -> the trace as it streams in
-let TRACE_ALL = false, TRACE_LEVEL = 'summary';
+// Each answer has its own Trace button; nothing opens them all at once.
+const TRACE_ALL = false;
+let TRACE_LEVEL = 'summary';
 try {
-  TRACE_ALL = localStorage.getItem('chiron-ask:trace-all') === '1';
   TRACE_LEVEL = localStorage.getItem('chiron-ask:trace-level') || 'summary';
 } catch (_) {}
 if (!LEVELS.some(l => l[0] === TRACE_LEVEL)) TRACE_LEVEL = 'summary';
@@ -1805,16 +1794,6 @@ setInterval(() => {
   Object.values(LIVE).forEach(l => { if (!l.tail && l.turn.pending) repaintTrace(l.turn); });
 }, 1000);
 
-function setTraceAll(on) {
-  TRACE_ALL = on;
-  try { localStorage.setItem('chiron-ask:trace-all', on ? '1' : '0'); } catch (_) {}
-  $('trace-all').setAttribute('aria-pressed', on ? 'true' : 'false');
-  Object.values(TRACE_UI).forEach(u => (u.open = on));
-  repaintAllTraces();
-}
-$('trace-all').onclick = () => setTraceAll(!TRACE_ALL);
-$('trace-all').setAttribute('aria-pressed', TRACE_ALL ? 'true' : 'false');
-
 // --- start ---------------------------------------------------------------------------
 // The model that answers, when the server lists more than one (CHIRON_MCP_ASK_MODELS).
 // The choice is kept per browser; a follow-up may use a different model than the question
@@ -1837,6 +1816,8 @@ function setupModels(d) {
 // words Chiron's own access levels use. The server resolves both the same way the tools
 // do, so this is a statement of what the answers obey, not a label the page chose.
 const ACCESS = { phi: 'full access', deid: 'de-identified', agg: 'aggregate only' };
+let EMBEDDED = false;
+try { EMBEDDED = window.self !== window.top; } catch (_) { EMBEDDED = true; }
 function renderWho(d, match) {
   const box = $('who'), name = $('who-name'), level = $('who-level');
   box.hidden = false;
@@ -1849,11 +1830,20 @@ function renderWho(d, match) {
   }
   const u = (d && d.user) || {};
   box.classList.remove('out');
-  name.textContent = u.name || u.username || ME;
   const lv = match && match.access_level;
-  level.textContent = lv ? (ACCESS[lv] || lv) + ' · ' + DATASET_NAME
-                         : (DATASET ? 'no access to ' + DATASET_NAME : '');
-  box.title = 'Signed in to Chiron as ' + ME + (u.email ? ' (' + u.email + ')' : '')
+  const levelText = lv ? (ACCESS[lv] || lv) + ' · ' + DATASET_NAME
+                       : (DATASET ? 'no access to ' + DATASET_NAME : '');
+  if (EMBEDDED) {
+    // Chiron's own header already shows the person's name right above this bar.
+    name.textContent = levelText;
+    name.classList.add('lvl-only');
+    level.textContent = '';
+  } else {
+    name.textContent = u.name || u.username || ME;
+    name.classList.remove('lvl-only');
+    level.textContent = levelText;
+  }
+  box.title = 'Signed in to Chiron as ' + (u.name || ME) + (u.email ? ' (' + u.email + ')' : '')
     + (lv ? '. On ' + DATASET_NAME + ': ' + (ACCESS[lv] || lv) + '.' : '');
 }
 
