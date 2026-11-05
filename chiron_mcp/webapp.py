@@ -2080,6 +2080,7 @@ class Handler(BaseHTTPRequestHandler):
                 out["user"] = {k: v for k, v in info.items() if k != "datasets"}
                 out["datasets"] = [{"id": d["id"], "name": d["name"],
                                     "access_level": d["access_level"]} for d in info["datasets"]]
+                out["usage"] = {"everyone": sees_everyone(info)}
             if dataset:
                 match = next((d for d in out["datasets"] if d["id"] == dataset), None)
                 out["access_level"] = match["access_level"] if match else None
@@ -2146,7 +2147,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": NOT_LOGGED_IN})
         scope = self._usage_scope(params, everyone, who)
         try:
-            recent = max(1, min(int((params.get("recent") or ["100"])[0]), 1000))
+            recent = max(0, min(int((params.get("recent") or ["100"])[0]), 1000))
         except ValueError:
             recent = 100
         out = usage.summary(since=scope["since"], until=scope["until"], user=scope["user"],
@@ -2156,7 +2157,7 @@ class Handler(BaseHTTPRequestHandler):
         out.update({
             "identity": who, "everyone": everyone, "period": scope["period"],
             "filter_user": scope["user"], "filter_dataset": scope["dataset"],
-            "ceiling": CONFIG.max_access_level,
+            "ceiling": CONFIG.max_access_level, "chiron": CONFIG.ui_url,
             "user": {k: info.get(k) for k in ("username", "name", "email", "staff", "superuser")} if info else None,
         })
         return self._json(out)

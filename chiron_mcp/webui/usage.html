@@ -157,7 +157,7 @@
 </head>
 <body>
 <header class="top">
-  <div class="brand"><a href="./" title="Back to Ask">← Ask</a></div>
+  <div class="brand"><a href="../" id="back" title="Back to the dataset list">← Datasets</a></div>
   <nav class="tabs" id="tabs" role="tablist">
     <button type="button" role="tab" data-view="usage" aria-selected="true">Usage</button>
     <button type="button" role="tab" data-view="access" aria-selected="false" class="hide" id="tab-access">People &amp; access</button>
@@ -635,6 +635,7 @@ async function load() {
   let d;
   try { d = await fetch('usage.json?' + q).then(r => r.json()); }
   catch (_) { d = { error: 'The usage data could not be read.' }; }
+  if (d && d.chiron) $('back').href = String(d.chiron).replace(/\/*$/, '/');
   if (d && d.everyone && !ACCESS_DATA) {
     try {
       ACCESS_DATA = await fetch('usage/access.json').then(r => r.json());

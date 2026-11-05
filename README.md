@@ -122,8 +122,9 @@ What the Ask tab does:
   sign-on gateway can see what it is sent before trusting any of it.
 - **A usage page** at `/usage`: how many answers, what they cost, how long they took and
   how many failed, for a period, per day, per person, per model and per dataset, with a
-  CSV download. Everyone sees their own; a superuser sees everyone, and who has what
-  access on each dataset. Fed by a ledger with one row per answer and no question text,
+  CSV download. Everyone sees their own total at the foot of the Ask sidebar; a superuser
+  gets the link, sees everyone, and gives and takes access on each dataset there. Fed by a
+  ledger with one row per answer and no question text,
   kept for good. See [The usage page](#the-usage-page).
 
 Questions take roughly 10 to 40 seconds, because the model makes several Chiron tool
@@ -973,6 +974,11 @@ access), whether a row may see identifying columns, and admin (superuser) for an
 but themselves, so nobody can lock everyone out; full access and admin take a second
 click. Every change goes into a change log under the table, with who made it, and
 into the server's output.
+
+The Ask page itself tells everyone their own total at the foot of its sidebar: questions
+asked through Ask and what they cost, all time, refreshed as each answer finishes. The
+link to the usage page sits beside it only for those who may see everyone's; the page's
+back link leads to Chiron's dataset list (`CHIRON_MCP_UI_URL`).
 
 Behind it is a ledger, `usage.sqlite` in the state directory (`CHIRON_MCP_USAGE_DB`
 moves it or switches it off), with one row per answer: who, which dataset, at what
