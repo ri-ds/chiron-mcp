@@ -2068,8 +2068,29 @@ function start(d) {
   updateComposer();
   syncThreads();
 }
-fetch('datasets?dataset=' + encodeURIComponent(DATASET))
-  .then(r => r.json()).then(start).catch(() => start(null));
+// Right after a fresh sign-on, the first requests can run before Chiron has set its
+// session cookie (its sign-on middleware does that on the first Chiron request), so a
+// page that finds nobody logged in shows itself and asks again, a few times, rather
+// than settling for an empty sidebar until someone reloads.
+let BOOT_TRIES = 0;
+function boot() {
+  fetch('datasets?dataset=' + encodeURIComponent(DATASET), { cache: 'no-store' })
+    .then(r => r.json())
+    .then(d => {
+      if (!(d && d.identity) && BOOT_TRIES < 4) {
+        BOOT_TRIES += 1;
+        if (BOOT_TRIES === 1) start(d);
+        setTimeout(boot, 1500 * BOOT_TRIES);
+        return;
+      }
+      start(d);
+    })
+    .catch(() => {
+      if (BOOT_TRIES < 4) { BOOT_TRIES += 1; if (BOOT_TRIES === 1) start(null); setTimeout(boot, 1500 * BOOT_TRIES); }
+      else start(null);
+    });
+}
+boot();
 </script>
 </body>
 </html>
