@@ -1348,26 +1348,30 @@ function ensureFull(turn, again) {
   if (!id) return;
   const cur = TRACES[id];
   if (cur && cur.loading) return;
-  if (cur && cur.steps && cur.done && !again) return;
+  // A record that is there and done needs no fetch; one that errored is fetched again
+  // only on purpose (Retry, or a scheduled try), never by a repaint: a repaint after an
+  // error would otherwise fetch again at once, without end.
+  if (cur && !again && (cur.error || (cur.steps && cur.done))) return;
   const tries = (cur && cur.tries) || 0;
   TRACES[id] = { loading: true, tries };
   fetch('trace?id=' + encodeURIComponent(id), { cache: 'no-store' })
     .then(r => r.json())
     .then(d => {
-      if (d && d.steps) { TRACES[id] = d; d.tries = 0; if (!d.done) scheduleRefetch(turn, tries); }
+      if (d && d.steps) { TRACES[id] = d; d.tries = tries + 1; if (!d.done) scheduleRefetch(turn, tries + 1); }
       else TRACES[id] = { error: (d && d.error) || 'The trace could not be read.', tries: tries + 1 };
     })
     .catch(() => {
       TRACES[id] = { error: 'The trace could not be fetched from the Ask server.', tries: tries + 1 };
-      scheduleRefetch(turn, tries);
+      scheduleRefetch(turn, tries + 1);
     })
     .then(() => repaintTrace(turn));
 }
+// At most five scheduled tries, 2, 4, 8, 10 and 10 seconds apart, while the panel is open.
 function scheduleRefetch(turn, tries) {
   if (tries >= 5) return;
   setTimeout(() => {
     const ui = TRACE_UI[turn.id], cur = turn.trace && TRACES[turn.trace.id];
-    if (ui && ui.open && !(cur && cur.steps && cur.done)) ensureFull(turn, true);
+    if (ui && ui.open && !(cur && cur.loading) && !(cur && cur.steps && cur.done)) ensureFull(turn, true);
   }, Math.min(10000, 1000 * Math.pow(2, tries)));
 }
 // Copy within the click itself, through a selected text area (synchronous, and it works
