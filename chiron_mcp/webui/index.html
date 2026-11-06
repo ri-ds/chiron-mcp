@@ -1370,13 +1370,14 @@ function scheduleRefetch(turn, tries) {
     if (ui && ui.open && !(cur && cur.steps && cur.done)) ensureFull(turn, true);
   }, Math.min(10000, 1000 * Math.pow(2, tries)));
 }
-// Copy with the clipboard where the browser allows it (inside the Chiron frame that
-// needs clipboard-write), else through a selected text area.
+// Copy within the click itself, through a selected text area (synchronous, and it works
+// inside the Chiron frame without any permission), then through the clipboard API when
+// that is refused; the API alone can hang in a frame, which left the button silent.
 function copyText(text) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    return navigator.clipboard.writeText(text).catch(() => copyViaSelection(text));
-  }
-  return copyViaSelection(text);
+  return copyViaSelection(text).catch(() => {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    throw new Error('copy blocked');
+  });
 }
 function copyViaSelection(text) {
   return new Promise((resolve, reject) => {
