@@ -283,6 +283,25 @@ _AGG = ("COUNT(*) AS answers, "
         "MAX(ended) AS last")
 
 
+def last_total(thread: str, user: str) -> float | None:
+    """The conversation's running cost after its latest recorded answer, for a follow-up
+    whose earlier traces are gone (the ledger outlives them). None when unknown."""
+    p = path()
+    if not thread or not user or p is None or not p.exists():
+        return None
+    try:
+        con = _connect(p)
+        try:
+            row = con.execute(
+                "SELECT cost_total FROM answers WHERE thread = ? AND user = ? AND cost_total IS NOT NULL "
+                "ORDER BY ended DESC, id DESC LIMIT 1", (thread, user)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return None
+    return float(row[0]) if row and row[0] is not None else None
+
+
 def summary(*, since: str | None = None, until: str | None = None, user: str | None = None,
             dataset: str | None = None, recent: int = 100) -> dict:
     """What the usage page shows for a period: totals, per person, per model, per

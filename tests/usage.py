@@ -181,6 +181,12 @@ check("a line that is not an answer is ignored",
 # --- retention, and the off switch ---------------------------------------------------
 os.environ["CHIRON_MCP_USAGE_RETENTION_DAYS"] = "1"
 old = time.time() - 3 * 86400
+t0 = time.time()
+usage.record({"answer": "c-1", "thread": "th-1", "user": "alice", "dataset": DS, "status": "ok", "cost_usd": 0.1, "cost_total": 0.1}, started=t0 - 60, ended=t0 - 59)
+usage.record({"answer": "c-2", "thread": "th-1", "user": "alice", "dataset": DS, "status": "ok", "cost_usd": 0.15, "cost_total": 0.25}, started=t0 - 30, ended=t0 - 29)
+check("last_total gives the conversation's running cost after its latest answer",
+      usage.last_total("th-1", "alice") == 0.25 and usage.last_total("th-1", "bob") is None and usage.last_total("th-x", "alice") is None,
+      (usage.last_total("th-1", "alice"), usage.last_total("th-1", "bob")))
 usage.record({"answer": "old-1", "user": "alice", "dataset": DS, "status": "ok"}, started=old, ended=old)
 check("rows past the retention window are pruned", usage.prune() == 1 and "old-1" not in {x["id"] for x in rows()})
 del os.environ["CHIRON_MCP_USAGE_RETENTION_DAYS"]

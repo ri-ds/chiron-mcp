@@ -387,6 +387,10 @@ class Trace:
         # Claude Code reports cost summed over the whole resumed conversation; the last
         # traced answer's total is what to subtract to get this answer's share.
         self._prior_cost = prior[-1].get("cost") if prior else None
+        if self._prior_cost is None and followup:
+            # The earlier answers' traces are gone (cleared, or pruned under an older
+            # retention rule) but the ledger still has the conversation's running cost.
+            self._prior_cost = usage.last_total(thread, user)
         # Steps already written to the call log (chiron_mcp.calllog): one line each.
         self._logged: set[str] = set()
         self.data: dict = {

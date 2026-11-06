@@ -420,8 +420,10 @@ function renderRecent(d) {
     tr.appendChild(cell(shortModel(r.model)));
     const st = r.status || '–';
     tr.appendChild(cell(el('span', 'status ' + st, st === 'ok' ? 'ok' : st), ''));
-    const calls = cell(num(r.model_calls) + ' + ' + (r.chiron_calls == null ? '–' : num(r.chiron_calls)) + (r.chiron_errors ? ' (' + r.chiron_errors + ' failed)' : ''), 'n');
-    calls.title = 'model calls + Chiron calls';
+    const calls = cell(num(r.model_calls) + ' + ' + (r.chiron_calls == null ? '–' : num(r.chiron_calls)) + (r.chiron_errors ? ' (' + r.chiron_errors + ' refused)' : ''), 'n');
+    calls.title = 'model calls + Chiron calls' + (r.chiron_errors
+      ? '. Refused: a Chiron call the tool turned down (an ambiguous or unsupported input) and the model then asked differently; the answer itself was fine'
+      : '');
     tr.appendChild(calls);
     const tok = cell(num((r.tokens_in || 0) + (r.cache_read || 0) + (r.cache_write || 0)) + ' / ' + num(r.tokens_out), 'n');
     tok.title = 'in / out';
