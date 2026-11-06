@@ -78,8 +78,11 @@ What the Ask tab does:
   negation done right ("without hypertension" is 7,861, not the 4,758 a naive filter gives).
 - **Follow-up questions.** The chat is a conversation: "them", "those patients", "now only
   women" refer to the previous answer's cohort. **New chat** starts another, and past
-  conversations stay in a searchable sidebar. Under each answer, three suggested
-  follow-ups; each new chat offers six fresh starters, one per feature.
+  conversations stay in a searchable sidebar. The server keeps every conversation for
+  good (or for `CHIRON_MCP_THREAD_TTL_HOURS` idle hours when that is set) and lists a
+  person's own, so they follow the person to any browser; one this browser has not seen
+  is opened from the server. Under each answer, three suggested follow-ups; each new
+  chat offers six fresh starters, one per feature.
 - **Breakdowns** by one or two variables ("by gender", "by gender and race"): exact distinct
   patients per group and per cell, as a table and chart, with patients who have no recorded
   value called out so the table adds up.
