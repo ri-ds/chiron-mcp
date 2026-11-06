@@ -873,13 +873,18 @@ class Trace:
 
     # -- what the page gets --------------------------------------------------------------
 
-    def _clean(self, obj):
+    # Bookkeeping a record is found and owned by. Redacting these broke every lookup
+    # once sign-on gave people email-shaped usernames: the owner became "[email]".
+    _RAW = frozenset({"id", "user", "thread", "dataset", "access_level", "model", "version"})
+
+    def _clean(self, obj, top: bool = False):
         if isinstance(obj, str):
             return self._redact(obj)
         if isinstance(obj, list):
             return [self._clean(x) for x in obj]
         if isinstance(obj, dict):
-            return {k: self._clean(v) for k, v in obj.items()}
+            return {k: (v if top and k in self._RAW and isinstance(v, str) else self._clean(v))
+                    for k, v in obj.items()}
         return obj
 
     @staticmethod
@@ -904,14 +909,14 @@ class Trace:
     def head(self) -> dict:
         keys = ("id", "question", "dataset", "followup", "turn", "previous", "thread", "inherited")
         with self._lock:
-            return self._clean({k: self.data.get(k) for k in keys})
+            return self._clean({k: self.data.get(k) for k in keys}, top=True)
 
     def tail(self) -> dict:
         """What the page needs once the answer is done: checks, totals, decisions."""
         keys = ("id", "done", "ended", "model", "claude_version", "stats", "checks", "figures",
                 "calls", "thread", "error", "followup", "followup_lost", "turn")
         with self._lock:
-            return self._clean({k: self.data.get(k) for k in keys})
+            return self._clean({k: self.data.get(k) for k in keys}, top=True)
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -919,7 +924,7 @@ class Trace:
             out["steps"] = copy.deepcopy(self._order)
             for s in out["steps"]:
                 s.pop("output_numbers", None)
-            return self._clean(out)
+            return self._clean(out, top=True)
 
     def save(self, root: Path) -> Path | None:
         def go():
@@ -1544,6 +1549,36 @@ def turns(root: Path, thread: str, user: str) -> list[dict]:
                       "warn": sum(1 for c in checks if c.get("level") == "warn")},
         })
     return sorted(out, key=lambda t: t["at"])
+
+
+REDACTED_OWNER = "[email]"
+
+
+def repair_owners(root: Path, owner_of) -> int:
+    """Give back their owner to records saved while the owner was redacted to "[email]"
+    (sign-on usernames are email-shaped): `owner_of(thread)` names the conversation's
+    owner from the registry. Returns how many files were repaired."""
+    fixed = 0
+    for path in Path(root).glob("*/*.json"):
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if data.get("user") != REDACTED_OWNER:
+            continue
+        owner = owner_of(data.get("thread"))
+        if not owner:
+            continue
+        data["user"] = owner
+        try:
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(data))
+            tmp.chmod(0o600)
+            tmp.replace(path)
+            fixed += 1
+        except OSError:
+            continue
+    return fixed
 
 
 def delete_thread(root: Path, thread: str) -> None:

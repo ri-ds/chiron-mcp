@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -107,6 +108,24 @@ def offline() -> None:
                   [t["q"] for t in turns] == ["Q1", "Q2"] and [t["answer"] for t in turns] == ["A1", "A2"]
                   and all(t["trace"]["id"] and t["done"] for t in turns), turns)
             check("[traces] nobody else's", tracing.turns(root, "t3", "dave") == [])
+            # A sign-on username is email-shaped; the record must still be found and owned.
+            who = "jane.doe.cchmc@pcgcid.org"
+            tr3 = tracing.Trace(question="Q3", dataset="ds", user=who, thread="t4", followup=False, prior=[],
+                                redact=lambda t: re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[email]", t))
+            tr3.data["answer"] = "Write to jane.doe.cchmc@pcgcid.org"
+            tr3.finish(0, "")
+            tr3.save(root)
+            got = tracing.find(root, tr3.id, who)
+            check("[traces] an email-shaped owner survives redaction, while emails in the text do not",
+                  bool(got) and got.get("user") == who and "[email]" in (got.get("answer") or "")
+                  and tracing.turns(root, "t4", who) and tracing.find(root, tr3.id, "[email]") is None,
+                  (got or {}).get("user"))
+            # Records saved before the fix name "[email]" as owner: the repair gives them back.
+            path = next(Path(root).glob(f"*/{tr3.id}.json"))
+            broken = json.loads(path.read_text()); broken["user"] = "[email]"; path.write_text(json.dumps(broken))
+            n = tracing.repair_owners(root, lambda tid: {"t4": who}.get(tid))
+            check("[traces] repair_owners restores the owner from the registry",
+                  n == 1 and bool(tracing.find(root, tr3.id, who)), n)
             # A conversation registered before titles were kept gets one from its first trace.
             T3 = W._Threads()
             T3._data["t3"] = {"user": "carol", "dataset": "ds", "last": time.time(), "cohort": None}

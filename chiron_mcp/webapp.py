@@ -2453,6 +2453,9 @@ def main() -> int:
     if THINKING_DISPLAY is None:
         THINKING_DISPLAY = "summarized"
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    repaired = tracing.repair_owners(_trace_root(), lambda tid: (THREADS._data.get(tid) or {}).get("user"))
+    if repaired:
+        print(f"traces: {repaired} record(s) given back their owner", file=sys.stderr)
     pruned = usage.prune()
     print(f"Chiron Ask running at http://localhost:{PORT}")
     if REQUIRE_SESSION:
