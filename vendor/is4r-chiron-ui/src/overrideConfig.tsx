@@ -35,6 +35,8 @@ function AskRoute() {
   return (
     <iframe
       title="Ask Chiron"
+      // The Ask page's "Copy JSON" writes to the clipboard from inside this frame.
+      allow="clipboard-write"
       src={`${ASK_URL}/?dataset=${encodeURIComponent(dataset_id ?? "")}`}
       style={{
         width: "100%",

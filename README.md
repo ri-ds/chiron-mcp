@@ -568,7 +568,7 @@ The Ask server (`python -m chiron_mcp.webapp`) adds:
 |---|---|---|
 | `CHIRON_MCP_WEB_PORT` | `8900` | Port for the chat page |
 | `CHIRON_MCP_ALLOW_SUPERUSER` | off | Lets a *logged-in* superuser use Ask as themselves. The fallback identity can never be a superuser |
-| `CHIRON_MCP_THREAD_TTL_HOURS` | `12` | How long a conversation can be continued. After that its transcript is deleted |
+| `CHIRON_MCP_THREAD_TTL_HOURS` | `0` (for good) | Idle hours after which a conversation, its transcript and its traces are deleted. `0`, `never` or unset keeps them until the person clears the conversation |
 | `CHIRON_MCP_TURN_SECONDS` | `240` | How long one answer may take before it is stopped and the page says to ask again |
 | `CHIRON_MCP_STATE_DIR` | `~/.cache/chiron-ask` | Conversation index, answer traces (`traces/`) and the neutral working directory Claude runs in |
 | `CHIRON_MCP_TRACE` | on | `0` stops recording answer traces (the **Trace** under each answer), and with them the call log |
@@ -907,7 +907,7 @@ alone, in under a minute; `--layer` picks layers.
   both on the host, as the bundled demo does, or both in containers on the same mount. Keep a
   backup (`sqlite3 db ".backup copy"`) either way.
 - **Ask conversations are stored as Claude Code transcripts**, which contain patient data.
-  They are deleted when you delete the conversation or after `CHIRON_MCP_THREAD_TTL_HOURS`; see
+  They are deleted when you delete the conversation, or after `CHIRON_MCP_THREAD_TTL_HOURS` idle hours when that is set; see
   `docs/chiron-ui-integration.md` for the details and a cleanup command for older ones.
 - **Remote deployment is not supported.** Execution is in-process, so the server must run
   where it can reach both databases, and the [HTTP endpoint](#http-endpoint) listens on

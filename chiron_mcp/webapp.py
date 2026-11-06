@@ -1321,7 +1321,20 @@ def _trace_root() -> Path:
     return _state_dir() / "traces"
 
 
-THREAD_TTL_HOURS = float(os.environ.get("CHIRON_MCP_THREAD_TTL_HOURS", "12"))
+def _ttl_hours(raw: str | None) -> float | None:
+    """Idle hours before a conversation (its transcript and traces) is deleted; None
+    keeps them for good: 0, "never", "off" or unset. Set CHIRON_MCP_THREAD_TTL_HOURS."""
+    text = (raw if raw is not None else "").strip().lower()
+    if text in ("", "0", "never", "off", "none", "forever"):
+        return None
+    try:
+        hours = float(text)
+    except ValueError:
+        return None
+    return hours if hours > 0 else None
+
+
+THREAD_TTL_HOURS = _ttl_hours(os.environ.get("CHIRON_MCP_THREAD_TTL_HOURS"))
 
 
 class _Threads:
@@ -1333,8 +1346,12 @@ class _Threads:
     conversation starts, so one person can never resume another's.
 
     Claude Code saves each session's transcript to disk, tool results included, which
-    means patient-level data. So a thread's transcript is deleted when it is cleared or
-    once it has been idle for THREAD_TTL_HOURS, and its answers' traces with it.
+    means patient-level data. So a thread's transcript is deleted when it is cleared,
+    and, when THREAD_TTL_HOURS is set, once it has been idle that long; its answers'
+    traces go with it. Unset (the default), conversations are kept for good.
+
+    The registry also holds a title (the first question) and the number of answers, so
+    a person's conversations can be listed without reading their traces.
     """
 
     def __init__(self):
@@ -1362,22 +1379,59 @@ class _Threads:
             t = self._data.get(tid)
             return bool(
                 t and t["user"] == user and t.get("dataset") == dataset
-                and time.time() - t["last"] < THREAD_TTL_HOURS * 3600
+                and (THREAD_TTL_HOURS is None or time.time() - t["last"] < THREAD_TTL_HOURS * 3600)
             )
 
     def touch(self, tid: str, user: str, dataset: str | None,
-              cohort: dict | None = None) -> None:
+              cohort: dict | None = None, question: str | None = None) -> None:
         """Record activity, and the cohort behind the latest Query button if there was one.
 
         The cohort is a filter definition (concept ids and values), not patient data.
+        The first question becomes the conversation's title; every answer counts.
         """
         import time
 
         with self._guard:
             prev = self._data.get(tid) or {}
+            title = prev.get("title") or (question or "").strip()[:160] or None
             self._data[tid] = {"user": user, "dataset": dataset, "last": time.time(),
-                               "cohort": cohort or prev.get("cohort")}
+                               "cohort": cohort or prev.get("cohort"),
+                               "title": title, "turns": int(prev.get("turns") or 0) + (1 if question else 0),
+                               "first": prev.get("first") or time.time()}
             self._save()
+
+    def mine(self, user: str, dataset: str | None = None) -> list[dict]:
+        """A person's own conversations, newest first, from the registry alone."""
+        import time
+
+        with self._guard:
+            items = [(tid, dict(t)) for tid, t in self._data.items()
+                     if t.get("user") == user and (dataset is None or t.get("dataset") == dataset)]
+        out = []
+        for tid, t in items:
+            if not t.get("title"):
+                # Registered before titles were kept: take the first traced question, once.
+                first = next((x.get("q") for x in tracing.turns(_trace_root(), tid, user) if x.get("q")), None)
+                if first:
+                    t["title"] = first[:160]
+                    with self._guard:
+                        if tid in self._data:
+                            self._data[tid]["title"] = t["title"]
+                            self._save()
+            out.append({"thread": tid, "dataset": t.get("dataset"), "title": t.get("title"),
+                        "turns": int(t.get("turns") or 0), "last": t.get("last"), "first": t.get("first") or t.get("last"),
+                        "expired": bool(THREAD_TTL_HOURS is not None
+                                        and time.time() - (t.get("last") or 0) >= THREAD_TTL_HOURS * 3600)})
+        return sorted(out, key=lambda x: -(x["last"] or 0))
+
+    def turns(self, tid: str, user: str) -> list[dict] | None:
+        """The answers of one of a person's conversations, from its traces; None when the
+        conversation is not theirs or does not exist."""
+        with self._guard:
+            t = self._data.get(tid)
+        if not t or t.get("user") != user:
+            return None
+        return tracing.turns(_trace_root(), tid, user)
 
     def cohort(self, tid: str) -> dict | None:
         with self._guard:
@@ -1434,6 +1488,8 @@ class _Threads:
     def prune(self) -> None:
         import time
 
+        if THREAD_TTL_HOURS is None:
+            return
         cutoff = time.time() - THREAD_TTL_HOURS * 3600
         with self._guard:
             stale = [tid for tid, t in self._data.items() if t["last"] < cutoff]
@@ -1536,6 +1592,22 @@ def _drain(trace):
     """The trace's changed steps as page events."""
     for step in trace.drain():
         yield "trace", step
+
+
+def _saving(events, trace, every: float = 5.0):
+    """Pass events through, writing the trace to disk every few seconds, so a crash, a
+    restart or a closed page still leaves a readable record of what happened so far."""
+    import time as _time
+
+    last = _time.monotonic()
+    for ev in events:
+        yield ev
+        if TRACE and trace is not tracing.OFF and _time.monotonic() - last >= every:
+            try:
+                trace.save(_trace_root())
+            except Exception:  # noqa: BLE001
+                pass
+            last = _time.monotonic()
 
 
 def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: dict,
@@ -1831,8 +1903,8 @@ def ask_stream(
                 cmd = _claude_command(claude, prompt, session, cfg, model, tools=offered)
                 outcome = {}
                 trace.launched(cmd, prompt, SYSTEM_PROMPT, resume)
-                yield from _claude_turn(cmd, username, allow_superuser, outcome, inherited, tid, trace,
-                                        known=_numbers_in(question) | _group_counts(tid), env=env)
+                yield from _saving(_claude_turn(cmd, username, allow_superuser, outcome, inherited, tid, trace,
+                                                known=_numbers_in(question) | _group_counts(tid), env=env), trace)
                 if outcome.get("answered") or not _thinking_flag_refused(outcome):
                     break
                 # A Claude Code too old for --thinking-display: ask again without it, and
@@ -1892,9 +1964,9 @@ def ask_stream(
             cmd = _claude_command(claude, note, ["--resume", tid], cfg, model, tools=offered)
             outcome = {}
             trace.launched(cmd, note, SYSTEM_PROMPT, True)
-            yield from _claude_turn(cmd, username, allow_superuser, outcome,
-                                    THREADS.cohort(tid), tid, trace, env=env)
-        THREADS.touch(tid, username, dataset, outcome.get("cohort"))
+            yield from _saving(_claude_turn(cmd, username, allow_superuser, outcome,
+                                            THREADS.cohort(tid), tid, trace, env=env), trace)
+        THREADS.touch(tid, username, dataset, outcome.get("cohort"), question=question)
         if TRACE:
             trace.finish(outcome.get("rc"), outcome.get("stderr", ""))
             trace.save(_trace_root())
@@ -2028,6 +2100,10 @@ class Handler(BaseHTTPRequestHandler):
             if not self._same_site():
                 return self.send_error(403, "cross-site request refused")
             return self._trace(parse_qs(url.query))
+        if url.path == "/threads":
+            if not self._same_site():
+                return self.send_error(403, "cross-site request refused")
+            return self._threads(parse_qs(url.query))
 
         self.send_error(404)
 
@@ -2061,6 +2137,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        # Every JSON answer is live state (who is asking, a trace, the usage figures):
+        # no browser or proxy may serve an old copy.
+        self.send_header("Cache-Control", "no-store, must-revalidate")
         self._cors()
         self.end_headers()
         self.wfile.write(body)
@@ -2287,14 +2366,32 @@ class Handler(BaseHTTPRequestHandler):
         tid = body.get("thread") or ""
         return self._json({"forgotten": bool(tid) and THREADS.forget(tid, who)})
 
+    def _threads(self, params):
+        """The person's own conversations on a dataset (title, when, how many answers,
+        expired or not), or with ?thread= the answers of one of them, rebuilt from its
+        traces, so a conversation follows the person to another browser or machine."""
+        who, _ = request_identity(self.headers.get("Cookie"))
+        if not who:
+            return self._json({"error": NOT_LOGGED_IN})
+        tid = (params.get("thread") or [None])[0]
+        if tid:
+            turns = THREADS.turns(tid, who)
+            if turns is None:
+                return self._json({"error": "No such conversation of yours."})
+            return self._json({"thread": tid, "turns": turns})
+        dataset = (params.get("dataset") or [None])[0] or None
+        return self._json({"identity": who, "ttl_hours": THREAD_TTL_HOURS,
+                           "threads": THREADS.mine(who, dataset)})
+
     def _trace(self, params):
         """One answer's full trace, for the person who asked it (see trace.py)."""
         who, _ = request_identity(self.headers.get("Cookie"))
         data = tracing.find(_trace_root(), (params.get("id") or [""])[0], who)
         if data is None:
+            kept = ("for good, until the conversation is cleared" if THREAD_TTL_HOURS is None
+                    else f"{THREAD_TTL_HOURS:g} hours after the conversation's last question")
             return self._json({"error": (
-                "No trace for this answer. Traces are kept only as long as their conversation "
-                f"({THREAD_TTL_HOURS:g} hours after its last question), and only for the person "
+                f"No trace for this answer. Traces are kept {kept}, and only for the person "
                 "who asked.")})
         return self._json(data)
 

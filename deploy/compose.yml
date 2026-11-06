@@ -91,7 +91,7 @@ services:
       # every question must come from someone logged into Chiron; no fallback account
       CHIRON_MCP_REQUIRE_SESSION: "1"
       CHIRON_MCP_MAX_ACCESS_LEVEL: ${ASK_MAX_ACCESS_LEVEL:-deid}
-      CHIRON_MCP_THREAD_TTL_HOURS: ${ASK_THREAD_TTL_HOURS:-12}
+      CHIRON_MCP_THREAD_TTL_HOURS: ${ASK_THREAD_TTL_HOURS:-0}
       CHIRON_MCP_TURN_SECONDS: ${ASK_TURN_SECONDS:-240}
       # The models the page may switch between, as ids with labels, set in .env:
       #   ASK_MODELS=us.anthropic.claude-opus-5-5=Opus 5.5,us.anthropic.claude-haiku-5-5=Haiku 5.5

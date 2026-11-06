@@ -81,6 +81,8 @@
     display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .chat-item .meta { display: block; font-size: 11.5px; color: var(--faint); }
+  .chat-item.expired .title { color: var(--muted); }
+  .chat-item.expired .meta { color: var(--warn, #8a5300); }
   .chat-item:hover > button.open { background: #eceff1; }
   .chat-item.active > button.open { background: var(--accent-soft); color: var(--ink); }
   .chat-item.active .title { font-weight: 500; }
@@ -592,7 +594,35 @@ function load() {
   if (!activeChat()) activeId = null;
 }
 
+// Conversations this tab deleted: a merge must not bring them back from another tab's copy.
+const DELETED = new Set();
+// Another Ask tab (or the Chiron page in a second window) may have saved since this one
+// loaded. Before writing, take in what it holds: its conversations this tab lacks, and
+// its newer copy of any held by both, so no tab's save drops another tab's chat.
+function mergeStored(mine) {
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem(storeKey()) || 'null'); } catch (_) { stored = null; }
+  const theirs = (stored && Array.isArray(stored.chats)) ? stored.chats : [];
+  if (!theirs.length) return mine;
+  const byId = new Map(mine.map(c => [c.id, c]));
+  const byThread = new Map(mine.filter(c => c.thread).map(c => [c.thread, c]));
+  theirs.forEach(t => {
+    if (!t || !t.id || DELETED.has(t.id)) return;
+    const m = byId.get(t.id) || (t.thread && byThread.get(t.thread));
+    if (!m) mine.push(t);
+    else if ((t.updated || 0) > (m.updated || 0) && !(busy && busy.chatId === m.id)) Object.assign(m, t);
+  });
+  return mine;
+}
+window.addEventListener('storage', e => {
+  if (e.key !== storeKey() || busy) return;
+  chats = mergeStored(chats);
+  chats.sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  renderSidebar();
+});
+
 function save() {
+  chats = mergeStored(chats);
   chats.sort((a, b) => b.updated - a.updated);
   let keep = chats.slice(0, MAX_CHATS);
   chats.slice(MAX_CHATS).forEach(forgetOnServer);
@@ -692,7 +722,7 @@ function renderSidebar() {
   shown.forEach(c => {
     const g = groupOf(c.updated);
     if (g !== lastGroup) { chatsEl.appendChild(el('div', 'group-label', g)); lastGroup = g; }
-    const item = el('div', 'chat-item' + (c.id === activeId ? ' active' : ''));
+    const item = el('div', 'chat-item' + (c.id === activeId ? ' active' : '') + (c.expired ? ' expired' : ''));
     if (confirming === c.id) {
       const box = el('div', 'confirm');
       box.appendChild(el('span', null, 'Delete this chat?'));
@@ -705,7 +735,10 @@ function renderSidebar() {
     } else {
       const open = el('button', 'open'); open.type = 'button';
       open.appendChild(el('span', 'title', c.title));
-      open.appendChild(el('span', 'meta', `${when(c.updated)} · ${c.turns.length} question${c.turns.length === 1 ? '' : 's'}`));
+      const n = c.turns.length || c.count || 0;
+      open.appendChild(el('span', 'meta', c.expired
+        ? `${when(c.updated)} · expired: a follow-up starts a new conversation`
+        : `${when(c.updated)} · ${n} question${n === 1 ? '' : 's'}`));
       open.onclick = () => selectChat(c.id);
       if (c.id === activeId) open.setAttribute('aria-current', 'true');
       item.appendChild(open);
@@ -734,6 +767,63 @@ function selectChat(id) {
   updateComposer();
   qBox.focus();
 }
+
+// Conversations follow the person. The server lists their own (title, when, how many
+// answers, expired or not); one this browser does not hold is rebuilt from its traces
+// when opened. Nothing a browser holds is dropped: what the server no longer has is
+// shown as expired, and a follow-up to it starts a new conversation and says so.
+async function syncThreads() {
+  if (!ME) return;
+  let d = null;
+  try { d = await fetch('threads?dataset=' + encodeURIComponent(DATASET)).then(r => r.json()); }
+  catch (_) { return; }
+  if (!d || d.error || !Array.isArray(d.threads)) return;
+  const known = new Map(d.threads.map(t => [t.thread, t]));
+  let changed = false;
+  chats.forEach(c => {
+    if (!c.thread) return;
+    const t = known.get(c.thread);
+    const expired = t ? !!t.expired : true;
+    if (!!c.expired !== expired) { c.expired = expired; changed = true; }
+    if (t && t.last && t.last * 1000 > (c.updated || 0) + 1000) { c.updated = t.last * 1000; changed = true; }
+    if (t && t.turns && !c.turns.length && c.count !== t.turns) { c.count = t.turns; changed = true; }
+    if (t && t.title && c.remote && !c.turns.length && c.title !== titleFor(t.title)) { c.title = titleFor(t.title); changed = true; }
+  });
+  d.threads.forEach(t => {
+    if (chats.some(c => c.thread === t.thread)) return;
+    chats.push({ id: uid(), title: titleFor(t.title || 'Conversation'), created: (t.first || t.last || 0) * 1000,
+                 updated: (t.last || 0) * 1000, thread: t.thread, turns: [], count: t.turns || 0,
+                 remote: true, expired: !!t.expired });
+    changed = true;
+  });
+  chats.sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  if (changed) {
+    save(); renderSidebar();
+    const c = activeChat();
+    if (c && (c.expired || c.remote)) { renderThread(); updateComposer(); }
+  }
+}
+async function loadTurns(chat) {
+  if (!chat || !chat.thread || chat.turns.length || chat.loading) return;
+  chat.loading = true; chat.loadError = ''; renderThread();
+  let d = null;
+  try { d = await fetch('threads?thread=' + encodeURIComponent(chat.thread)).then(r => r.json()); }
+  catch (_) { d = null; }
+  chat.loading = false;
+  if (!d || d.error || !Array.isArray(d.turns)) {
+    chat.loadError = (d && d.error) || 'The conversation could not be read from the Ask server.';
+    if (activeId === chat.id) renderThread();
+    return;
+  }
+  chat.turns = d.turns.slice(-MAX_TURNS).map(t => ({
+    id: uid(), q: t.q || '', answer: t.answer || '', cohort: null, link: null, error: t.error || '',
+    steps: [], pending: false, at: t.at || chat.updated, fresh: !!t.fresh, trace: t.trace || null, restored: true,
+  }));
+  if (chat.turns.length) chat.title = titleFor(chat.turns[0].q);
+  chat.remote = false;
+  save(); renderSidebar();
+  if (activeId === chat.id) { renderThread(); updateComposer(); }
+}
 function newChat() {
   confirming = null;
   pickStarters();
@@ -747,6 +837,7 @@ function newChat() {
 }
 function deleteChat(id) {
   const c = chats.find(x => x.id === id);
+  DELETED.add(id);
   forgetOnServer(c);
   chats = chats.filter(x => x.id !== id);
   confirming = null;
@@ -766,8 +857,18 @@ function renderThread() {
   threadEl.textContent = '';
   const chat = activeChat();
   $('chat-title').textContent = chat ? chat.title : 'New chat';
+  if (chat && !chat.turns.length && (chat.loading || chat.remote)) {
+    threadEl.appendChild(el('div', 'note', chat.loadError || 'Opening this conversation from the Ask server…'));
+    if (!chat.loading && !chat.loadError) loadTurns(chat);
+    $('to-bottom').hidden = true;
+    return;
+  }
   if (!chat || !chat.turns.length) { threadEl.appendChild(hero()); scroller.scrollTop = 0; $('to-bottom').hidden = true; return; }
   chat.turns.forEach(t => threadEl.appendChild(turnNode(t)));
+  if (chat.expired) {
+    threadEl.appendChild(el('div', 'note',
+      'This conversation has expired on the Ask server. Your next question starts a new conversation, without these earlier questions.'));
+  }
   settle();
 }
 
@@ -824,6 +925,9 @@ function paintBot(body, turn) {
     body.appendChild(el('div', 'note',
       'This conversation had expired, so this was answered on its own, without the earlier questions.'));
   }
+  if (turn.restored && !turn.pending) {
+    body.appendChild(el('div', 'note', 'Opened from the Ask server. The Query button of this earlier answer is not kept; its trace is.'));
+  }
   if (turn.answer) {
     const a = el('div', 'answer');
     render(a, turn.answer);
@@ -872,7 +976,9 @@ function updateComposer() {
   sendBtn.disabled = stoppable ? false : (!qBox.value.trim() || !!busy);
   // One answer at a time; if it is streaming in another chat, say so rather than
   // leaving the box mysteriously disabled.
-  qBox.placeholder = !busy ? (activeChat() ? 'Ask a follow-up…' : 'Ask about this dataset…')
+  const cur = activeChat();
+  qBox.placeholder = !busy ? (cur ? (cur.expired ? 'This conversation expired: a new question starts a new one…' : 'Ask a follow-up…')
+                                  : 'Ask about this dataset…')
     : busy.chatId === activeId ? 'Answering…' : 'Waiting for the answer in another chat…';
 }
 function autosize() { qBox.style.height = 'auto'; qBox.style.height = Math.min(qBox.scrollHeight, 200) + 'px'; }
@@ -925,7 +1031,7 @@ function ask(text) {
     // it (idle past its expiry, or deleted), so this answer starts without the earlier
     // questions. Say so, or "them" in the question would silently mean nothing.
     if (chat.thread && id !== chat.thread) turn.fresh = true;
-    chat.thread = id; save();
+    chat.thread = id; chat.expired = false; chat.remote = false; save();
   });
   src.addEventListener('step', e => {
     const tool = parse(e); if (!tool) return;
@@ -962,6 +1068,7 @@ function ask(text) {
       fail: checks.filter(c => c.level === 'fail').length,
       warn: checks.filter(c => c.level === 'warn').length,
     };
+    bumpMyUsage(t.stats && t.stats.cost_usd);
     delete TRACES[t.id];   // fetch the finished record, not one taken mid-answer
     save();
     repaintTrace(turn);
@@ -1232,15 +1339,55 @@ function traceView(turn) {
   if (live) return Object.assign({ partial: true }, live.head, live.tail || {}, { steps: live.steps, done: !!live.tail });
   return null;
 }
-function ensureFull(turn) {
+// Fetched whenever the panel opens and the copy here is missing, errored or not yet
+// done; a record still being written is fetched again a few times, with backoff, while
+// the panel stays open. The old one-shot fetch left a panel stuck on whatever the first
+// try returned.
+function ensureFull(turn, again) {
   const id = turn.trace && turn.trace.id;
-  if (!id || TRACES[id]) return;
-  TRACES[id] = { loading: true };
-  fetch('trace?id=' + encodeURIComponent(id))
+  if (!id) return;
+  const cur = TRACES[id];
+  if (cur && cur.loading) return;
+  if (cur && cur.steps && cur.done && !again) return;
+  const tries = (cur && cur.tries) || 0;
+  TRACES[id] = { loading: true, tries };
+  fetch('trace?id=' + encodeURIComponent(id), { cache: 'no-store' })
     .then(r => r.json())
-    .then(d => { TRACES[id] = d && d.steps ? d : { error: (d && d.error) || 'The trace could not be read.' }; })
-    .catch(() => { TRACES[id] = { error: 'The trace could not be fetched from the Ask server.' }; })
+    .then(d => {
+      if (d && d.steps) { TRACES[id] = d; d.tries = 0; if (!d.done) scheduleRefetch(turn, tries); }
+      else TRACES[id] = { error: (d && d.error) || 'The trace could not be read.', tries: tries + 1 };
+    })
+    .catch(() => {
+      TRACES[id] = { error: 'The trace could not be fetched from the Ask server.', tries: tries + 1 };
+      scheduleRefetch(turn, tries);
+    })
     .then(() => repaintTrace(turn));
+}
+function scheduleRefetch(turn, tries) {
+  if (tries >= 5) return;
+  setTimeout(() => {
+    const ui = TRACE_UI[turn.id], cur = turn.trace && TRACES[turn.trace.id];
+    if (ui && ui.open && !(cur && cur.steps && cur.done)) ensureFull(turn, true);
+  }, Math.min(10000, 1000 * Math.pow(2, tries)));
+}
+// Copy with the clipboard where the browser allows it (inside the Chiron frame that
+// needs clipboard-write), else through a selected text area.
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => copyViaSelection(text));
+  }
+  return copyViaSelection(text);
+}
+function copyViaSelection(text) {
+  return new Promise((resolve, reject) => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+    ta.remove();
+    ok ? resolve() : reject(new Error('copy blocked'));
+  });
 }
 function findTurn(id) {
   for (const c of chats) { const t = c.turns.find(x => x.id === id); if (t) return t; }
@@ -1310,7 +1457,13 @@ function tracePanel(turn, ui) {
   box.appendChild(traceHead(turn, data));
   if (!data) {
     const st = TRACES[turn.trace && turn.trace.id];
-    box.appendChild(el('div', 'tr-sec tr-msg', st && st.error ? st.error : 'Loading the trace…'));
+    const msg = el('div', 'tr-sec tr-msg', st && st.error ? st.error + ' ' : 'Loading the trace…');
+    if (st && st.error) {
+      const retry = el('button', 'mini-btn', 'Try again'); retry.type = 'button';
+      retry.onclick = () => ensureFull(turn, true);
+      msg.appendChild(retry);
+    }
+    box.appendChild(msg);
     return box;
   }
   const lvl = TRACE_LEVEL;
@@ -1321,6 +1474,11 @@ function tracePanel(turn, ui) {
   box.appendChild(timelineSection(turn, data, ui));
   box.appendChild(storySection(turn, data, ui, lvl));
   if (lvl === 'debug') box.appendChild(debugSection(data, ui));
+  // Each level says what the next one adds, so a press on the switch always shows.
+  if (lvl === 'summary') box.appendChild(el('div', 'tr-sec tr-msg',
+    'Detailed adds the model\'s reasoning, each tool\'s input and result, and where each figure came from. Debug adds the full inputs and outputs, token usage, the prompt, the command and the raw stream.'));
+  else if (lvl === 'detailed') box.appendChild(el('div', 'tr-sec tr-msg',
+    'Debug adds the full inputs and outputs, token usage, the prompt, the command and the raw stream.'));
   if (data.partial && turn.trace && TRACES[turn.trace.id] && TRACES[turn.trace.id].loading) {
     box.appendChild(el('div', 'tr-sec tr-msg', 'Fetching the full record (tool outputs, raw stream)…'));
   }
@@ -1416,19 +1574,24 @@ function traceHead(turn, data) {
   head.appendChild(el('div', 'tr-meta', meta.join(' · ')));
   const tools = el('div', 'tr-tools');
   const full = turn.trace && TRACES[turn.trace.id];
-  const ready = !!(full && full.steps && full.done);
-  const copy = el('button', 'mini-btn', 'Copy JSON'); copy.type = 'button'; copy.disabled = !ready;
-  copy.title = 'Copy the whole trace, to paste into a bug report or compare models';
+  // The full record when it is there; else what has streamed in, marked partial.
+  const complete = !!(full && full.steps && full.done);
+  const record = complete ? full : (data && data.steps ? Object.assign({ partial: true }, data) : null);
+  const text = () => JSON.stringify(record, null, 2);
+  const copy = el('button', 'mini-btn', 'Copy JSON'); copy.type = 'button'; copy.disabled = !record;
+  copy.title = complete ? 'Copy the whole trace, to paste into a bug report or compare models'
+                        : 'Copy what has been recorded so far (the full record is still being fetched)';
   copy.onclick = () => {
-    navigator.clipboard.writeText(JSON.stringify(full, null, 2))
-      .then(() => { copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy JSON'), 1500); })
-      .catch(() => { copy.textContent = 'Copy blocked: use Download'; });
+    copyText(text())
+      .then(() => { copy.textContent = complete ? 'Copied' : 'Copied (partial)'; setTimeout(() => (copy.textContent = 'Copy JSON'), 1800); })
+      .catch(() => { copy.textContent = 'Copy blocked: use Download'; setTimeout(() => (copy.textContent = 'Copy JSON'), 2500); });
   };
-  const dl = el('button', 'mini-btn', 'Download'); dl.type = 'button'; dl.disabled = !ready;
+  const dl = el('button', 'mini-btn', 'Download'); dl.type = 'button'; dl.disabled = !record;
+  dl.title = complete ? 'Save the whole trace as a JSON file' : 'Save what has been recorded so far as a JSON file';
   dl.onclick = () => {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(full, null, 2)], { type: 'application/json' }));
-    a.download = `chiron-ask-trace-${full.id}.json`;
+    a.href = URL.createObjectURL(new Blob([text()], { type: 'application/json' }));
+    a.download = `chiron-ask-trace-${(record && record.id) || turn.id}${complete ? '' : '-partial'}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
@@ -1856,21 +2019,35 @@ function renderUsageLink(d) {
   $('usage-link').hidden = !(ME && d && d.usage && d.usage.everyone);
 }
 let myUsageTimer = null;
-async function loadMyUsage() {
+let MY_USAGE = null;   // { n, cost, at }: the person's own total, as last read or bumped
+function paintMyUsage() {
   const box = $('my-usage');
-  if (!ME) { box.hidden = true; return; }
-  let d = null;
-  try { d = await fetch('usage.json?period=all&recent=0&user=' + encodeURIComponent(ME)).then(r => r.json()); }
-  catch (_) { d = null; }
-  const t = d && !d.error && d.totals;
-  if (!t || t.answers == null) { box.hidden = true; return; }
-  const n = Number(t.answers) || 0, cost = Number(t.cost_usd) || 0;
+  if (!ME || !MY_USAGE) { box.hidden = true; return; }
+  const { n, cost } = MY_USAGE;
   box.textContent = n ? n + (n === 1 ? ' question' : ' questions') + ' · $'
                         + (cost >= 0.01 || cost === 0 ? cost.toFixed(2) : cost.toFixed(3))
                       : 'No questions yet';
+  box.title = 'Your own total, all time: ' + n + (n === 1 ? ' question' : ' questions') + ', $' + cost.toFixed(4)
+    + (MY_USAGE.at ? ' (updated ' + new Date(MY_USAGE.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ')' : '');
   box.hidden = false;
 }
-// The ledger row is written as the answer finishes; a moment later the total has it.
+async function loadMyUsage() {
+  if (!ME) { paintMyUsage(); return; }
+  let d = null;
+  try { d = await fetch('usage.json?period=all&recent=0&user=' + encodeURIComponent(ME), { cache: 'no-store' }).then(r => r.json()); }
+  catch (_) { d = null; }
+  const t = d && !d.error && d.totals;
+  if (!t || t.answers == null) return;   // keep what is shown rather than blank it
+  MY_USAGE = { n: Number(t.answers) || 0, cost: Number(t.cost_usd) || 0, at: Date.now() };
+  paintMyUsage();
+}
+// The moment an answer ends its cost is added here; the ledger is re-read right after,
+// so the figure never waits for a reload and never drifts from the ledger.
+function bumpMyUsage(cost) {
+  if (!MY_USAGE) return;
+  MY_USAGE = { n: MY_USAGE.n + 1, cost: MY_USAGE.cost + (Number(cost) || 0), at: Date.now() };
+  paintMyUsage();
+}
 function refreshMyUsage() { clearTimeout(myUsageTimer); myUsageTimer = setTimeout(loadMyUsage, 1500); }
 
 // Who is asking decides whose conversations to show, so nothing renders until then.
@@ -1889,6 +2066,7 @@ function start(d) {
   renderSidebar();
   renderThread();
   updateComposer();
+  syncThreads();
 }
 fetch('datasets?dataset=' + encodeURIComponent(DATASET))
   .then(r => r.json()).then(start).catch(() => start(null));

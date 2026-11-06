@@ -905,7 +905,7 @@ class Trace:
     def tail(self) -> dict:
         """What the page needs once the answer is done: checks, totals, decisions."""
         keys = ("id", "done", "ended", "model", "claude_version", "stats", "checks", "figures",
-                "calls", "thread", "error")
+                "calls", "thread", "error", "followup", "followup_lost", "turn")
         with self._lock:
             return self._clean({k: self.data.get(k) for k in keys})
 
@@ -1019,13 +1019,17 @@ def _stats(tr: Trace) -> dict:
 
 def _share(total, followup: bool, before):
     """This answer's cost: all of it for a new conversation, else the growth since the
-    previous traced answer. None when that cannot be known."""
+    previous traced answer. A cumulative figure smaller than the previous one means the
+    CLI counted this run alone, so that is the answer's cost. None only when the
+    previous answer's figure is unknown."""
     if total is None:
         return None
     if not followup:
         return round(total, 6)
-    if before is None or before > total:
+    if before is None:
         return None
+    if before > total:
+        return round(total, 6)
     return round(total - before, 6)
 
 
@@ -1510,6 +1514,32 @@ def prior(root: Path, thread: str, user: str) -> list[dict]:
                     "started": data.get("started") or 0,
                     "cost": (data.get("stats") or {}).get("cost_usd_cumulative")})
     return sorted(out, key=lambda p: p["started"])
+
+
+def turns(root: Path, thread: str, user: str) -> list[dict]:
+    """A conversation's answers in brief, oldest first, in the shape the page keeps a
+    turn: the question, the answer, the error if any, when, and the trace's summary. The
+    cohort and report buttons are not kept here, so a turn rebuilt from this has none."""
+    out = []
+    for path in (Path(root) / _safe(thread)).glob("*.json"):
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if data.get("user") != user:
+            continue
+        checks = data.get("checks") or []
+        steps = data.get("steps") or []
+        out.append({
+            "id": data.get("id"), "q": data.get("question"), "answer": data.get("answer"),
+            "error": data.get("error"), "at": int((data.get("started") or 0) * 1000),
+            "fresh": bool(data.get("followup_lost")), "done": bool(data.get("done")),
+            "trace": {"id": data.get("id"), "ms": data.get("ended"), "model": data.get("model"),
+                      "n": len(steps),
+                      "fail": sum(1 for c in checks if c.get("level") == "fail"),
+                      "warn": sum(1 for c in checks if c.get("level") == "warn")},
+        })
+    return sorted(out, key=lambda t: t["at"])
 
 
 def delete_thread(root: Path, thread: str) -> None:

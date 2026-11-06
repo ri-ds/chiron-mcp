@@ -160,6 +160,7 @@ ProxyPass /.well-known/oauth-authorization-server/chiron http://localhost:8088/.
 | Add the answers given before the ledger existed | `docker compose logs --no-log-prefix ask \| docker compose exec -T ask python /app/scripts/usage_backfill.py` (safe to repeat) |
 | Prove what each kind of account can and cannot get out of Ask | `docker compose exec -T ask env ASK_URL=http://localhost:8900 CHIRON_API=http://chiron:8000 python /app/tests/permissions.py` (six identities, one question set, about ten minutes; makes and removes its own `perm_*` accounts) |
 | Attack it: every way past one's access level (tool calls, questions, the web server) | `docker compose exec -T ask env ASK_URL=http://localhost:8900 CHIRON_API=http://chiron:8000 python /app/tests/permissions_adversarial.py` (about five minutes; `--no-model` runs the tool and web-server layers alone in under a minute; makes and removes its own `perm_*` accounts and reports) |
+| Keep conversations for a limited time instead of for good | `ASK_THREAD_TTL_HOURS=168` in `.env` (idle hours; unset or `0` keeps every conversation, its transcript and its traces until the person clears it), then `docker compose up -d ask` |
 | Stop, keeping everything | `docker compose stop` |
 | Start again | `docker compose up -d` |
 | Update to the latest code | `git pull && ./setup.sh` with the same options as before |
