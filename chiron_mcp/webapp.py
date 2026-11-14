@@ -333,6 +333,9 @@ rules, checks it and counts. Translate the question faithfully:
   other record's end (a discharge). Never approximate timing with years or plain AND.
 - Follow-ups ("how many of them", "of those", "break them down"): pass start_from with
   the group of the answer they refer to; the groups so far are listed with the question.
+  When the question refers to earlier patients but this conversation has no earlier
+  group (a new conversation, or one that expired), say so in one sentence and ask which
+  patients are meant; never take them from the Results tab or guess.
   When the user names a group ("the widowed patients"), use the group that is exactly
   those patients, not simply the latest one; if no group is exactly them (only a
   narrower one, such as "widowed and died"), describe them afresh in where. Say in a few
@@ -1911,6 +1914,10 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                     # patients than the ones the answer describes. If the answer leads
                     # with one group of a breakdown, offer that group's cohort instead.
                     figure = headline_figure(text)
+                    # "Of the 841 patients with asthma, 445 are women": the cohort's count may
+                    # be the second figure of the opening, not the first. Named in the first
+                    # paragraph, the cohort is the one the answer describes.
+                    opening = _numbers_in((text or "").strip().split("\n\n")[0])
                     decision.update(
                         source=(f"the cohort passed to {call[0]}" if call else
                                 "the previous answer's cohort" if state else None),
@@ -1918,7 +1925,9 @@ def _claude_turn(cmd: list[str], username: str, allow_superuser: bool, outcome: 
                         cohort=tracing.cohort_lines(state.get("cohort_def")) if state else None,
                         figure=figure, verified=verified["subject_count"] if verified else None,
                         verify_error=why[0] if why else None)
-                    if verified and verified["subject_count"] != figure:
+                    if verified and verified["subject_count"] != figure and verified["subject_count"] in opening:
+                        decision["mentioned"] = True
+                    elif verified and verified["subject_count"] != figure:
                         verified = None
                         sub = tracker.breakdown and figure is not None and subgroup_cohort(
                             tracker.breakdown, figure, username, allow_superuser)
