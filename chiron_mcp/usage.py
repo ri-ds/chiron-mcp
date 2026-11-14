@@ -315,11 +315,20 @@ def flag(*, user: str, dataset: str | None, thread: str | None, trace: str | Non
     try:
         con = _connect(p)
         try:
+            kind = kind if kind in FLAG_KINDS else "other"
+            note = (note or "")[:1000] or None
+            # The same person reporting the same answer again changes their report, rather
+            # than adding another; a handled one is reopened.
+            prev = con.execute("SELECT id FROM flags WHERE trace = ? AND user = ? ORDER BY id DESC LIMIT 1",
+                               (trace, user)).fetchone() if trace else None
+            if prev:
+                con.execute("UPDATE flags SET at = ?, kind = ?, note = ?, status = 'open', handled_at = NULL, "
+                            "handled_by = NULL WHERE id = ?", (iso(time.time()), kind, note, prev["id"]))
+                return int(prev["id"])
             cur = con.execute(
                 "INSERT INTO flags (at, user, dataset, thread, trace, kind, note, question, answer, "
                 "model, access_level, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')",
-                (iso(time.time()), user, dataset, thread, trace,
-                 kind if kind in FLAG_KINDS else "other", (note or "")[:1000] or None,
+                (iso(time.time()), user, dataset, thread, trace, kind, note,
                  (question or "")[:2000] or None, (answer or "")[:6000] or None, model, access_level))
             return int(cur.lastrowid)
         finally:

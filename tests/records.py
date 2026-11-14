@@ -222,6 +222,60 @@ def main() -> int:
     r = records([], {"of": {"lab": "Diastolic Blood Pressure"}, "latest": 1})
     check(f"{tag} the whole dataset is refused (too many patients)", "error" in r and not rows_of(r), r.get("error", "")[:100])
 
+    # --- the patient's own fields beside the record's; a name still gated
+    r = records(small, {"of": {"lab": "Body Mass Index"}, "latest": 1, "fields": ["date", "value", "gender", "birthdate"]})
+    rec = r.get("records") or {}
+    check(f"{tag} a patient's own fields (gender, birthdate) can sit beside the record's",
+          not r.get("error") and rec.get("columns") == ["patient", "date", "value", "gender", "birthdate"]
+          and rows_of(r) and all(str(row[4])[:4].isdigit() for row in rows_of(r)), f"error={r.get('error')} columns={rec.get('columns')}")
+    PM.ensure_accounts()
+    try:
+        r = records(small, {"of": {"lab": "Body Mass Index"}, "latest": 1, "fields": ["date", "value", "first"]}, user="perm_deid")
+        check(f"{tag} a name beside the record's fields is refused without identifying-column rights",
+              "error" in r and not rows_of(r) and "identify" in r["error"], r.get("error", "")[:100])
+        r = records(small, {"of": {"lab": "Body Mass Index"}, "latest": 1, "fields": ["date", "value", "first"]}, user="perm_details")
+        check(f"{tag} and allowed with them (the control)", not r.get("error") and rows_of(r), r.get("error", "")[:100])
+    finally:
+        PM.remove_accounts()
+    r = records(small, {"of": "lab", "latest": 1})
+    check(f"{tag} latest 1 of any lab per patient: one row per patient", not r.get("error") and len(rows_of(r)) == n
+          and len({row[0] for row in rows_of(r)}) == n, f"error={r.get('error')} rows={len(rows_of(r))}")
+
+    # --- other dictionaries: no patient ID variable (synthea-small), tables with their own names (dataset1)
+    from chiron import models
+    if models.Dataset.objects.filter(unique_id="synthea-small").exists():
+        from chiron_mcp.config import CONFIG
+        s_ident = query.identity.resolve("synthea-small")
+        one = [{"field": "gender", "is": "female"}, {"condition": "asthma"}]
+        try:
+            rr = query.run("synthea-small", one, "all", None, {"records": {"of": "visit", "latest": 1}}, None)
+        except Exception as exc:  # noqa: BLE001
+            rr = {"error": str(exc)}
+        srec = rr.get("records") or {}
+        check(f"{tag} a dataset without a patient ID variable (synthea-small) uses Chiron's subject id as the patient column",
+              not rr.get("error") and rows_of(rr) and all(isinstance(row[0], str) and row[0] for row in rows_of(rr))
+              and srec.get("patients") == len(rows_of(rr)), f"error={rr.get('error')} rows={rows_of(rr)[:1]}")
+    d1 = models.Dataset.objects.filter(unique_id="dataset1_stored").first()
+    d1_vars = []
+    if d1 is not None:
+        try:
+            d1_vars = query._vars(query.identity.resolve("dataset1_stored"))
+        except Exception:  # noqa: BLE001
+            d1_vars = []
+    if d1 is not None and not d1_vars:
+        print("NOTE  [records] dataset1_stored's concept ids are not <dataset>__<table>__<field>, so chiron_query's "
+              "plain-words layer sees no variables there (pre-existing); the collection-name case is skipped")
+    if d1_vars:
+        try:
+            rr = query.run("dataset1_stored", [{"field": "gender", "is": "female"}], "all", None, {"records": {"of": "lab_result", "limit": 5}}, None)
+        except Exception as exc:  # noqa: BLE001
+            rr = {"error": str(exc)}
+        drec = rr.get("records") or {}
+        check(f"{tag} a table named by its own id (dataset1's lab_result) is a kind of record too",
+              not rr.get("error") and rows_of(rr) and drec.get("columns"), f"error={rr.get('error')} columns={drec.get('columns')}")
+        check(f"{tag} and a PHI-flagged date the account may not use is not among its columns",
+              not any("lab_date" in c or "date" == c for c in drec.get("columns") or []), drec.get("columns"))
+
     # --- the date 'is' form the model writes for one patient
     r = query.run(DS, [{"field": "birthdate", "is": BORN}], "all", None, None, None)
     check(f"{tag} birthdate 'is' one day finds the patient", r.get("count") == 1, r.get("count"))

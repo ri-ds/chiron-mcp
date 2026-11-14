@@ -1507,8 +1507,8 @@ def _records(ident, S, cd, show: dict, count: int, notes: list) -> dict:
                               "rule or timing between records belongs in `where`, which chooses the patients.")
         coll = clause.collection
     else:
-        coll = TABLE_KEYS.get(D.norm(str(of)))
-        if coll is None or coll == "subject":
+        coll = TABLE_KEYS.get(D.norm(str(of))) or _collection_named(ident, str(of))
+        if coll is None or coll == "subject" or coll == getattr(ident.dataset.root_collection, "permanent_id", None):
             raise AccessError(f"{of!r} is not a kind of record. " + RECORDS_HELP)
     if not _vars(ident, coll):
         raise AccessError(f"This dataset has no {coll} records.")
@@ -1616,7 +1616,8 @@ def _records(ident, S, cd, show: dict, count: int, notes: list) -> dict:
     else:
         sel = None
     base = stmt.subquery("all_rows")
-    count_stmt = select(func.count(), func.count(distinct(base.c._patient))).select_from(base)
+    count_stmt = select(func.count(), func.count(distinct(base.c._patient)),
+                        func.count(distinct(base.c._record))).select_from(base)
     if sel is not None:
         order_by = [sel._patient, sel._date.desc().nulls_last() if newest else sel._date.asc().nulls_last(), sel._record]
     else:
@@ -1626,8 +1627,9 @@ def _records(ident, S, cd, show: dict, count: int, notes: list) -> dict:
     paged = stmt.order_by(*order_by).limit(limit)
     engine = get_sql_alchemy_db_engine(cu.dataset)
     with engine.connect() as conn:
-        total, patients = conn.execute(count_stmt).one()
+        total, patients, distinct_records = conn.execute(count_stmt).one()
         rows = conn.execute(paged).fetchall()
+    kinds = [None] * (skip + 1) + [v.kind for v in fields]
     out_rows = []
     for r in rows:
         row = []
@@ -1635,7 +1637,10 @@ def _records(ident, S, cd, show: dict, count: int, notes: list) -> dict:
             if i < skip:
                 continue
             fn = after[i]
-            row.append(_plain_value(fn(v) if fn and v is not None else v))
+            val = _plain_value(fn(v) if fn and v is not None else v)
+            if isinstance(val, float) and val.is_integer() and kinds[i] in ("date", "year"):
+                val = int(val)  # a date shown as its year (a PHI date for a de-identified account)
+            row.append(val)
         out_rows.append(row)
     result = {
         "of": kind, "columns": ["patient"] + labels, "rows": out_rows,
@@ -1652,6 +1657,10 @@ def _records(ident, S, cd, show: dict, count: int, notes: list) -> dict:
     if int(patients) < count:
         notes.append(f"{count - int(patients):,} of the group's {count:,} patients have no such record; "
                      "they have no rows here.")
+    if int(distinct_records) and int(total) > int(distinct_records):
+        result["records_distinct"] = int(distinct_records)
+        notes.append(f"{int(total):,} rows for {int(distinct_records):,} records: a record with several values "
+                     "of one column appears once per value. Count records, not rows.")
     return result
 
 
@@ -1690,13 +1699,33 @@ def _record_fields(ident, S, cu, coll: str, asked) -> list[Var]:
     names = asked if isinstance(asked, list) else [asked]
     chosen = []
     for name in names:
-        var = resolve_field(ident, str(name), coll)
+        try:
+            var = resolve_field(ident, str(name), coll)
+        except AccessError as exc:
+            try:
+                var = resolve_field(ident, str(name), "subject")  # the patient's own field, beside the record's
+            except AccessError:
+                raise exc from None
         if var.concept.get_display_processor(cu) is None:
             raise AccessError(f"{var.label()} cannot be shown as a column.")
         if var.cid not in [c.cid for c in chosen]:
             chosen.append(var)
     S._require_columns_viewable(ident, [v.concept for v in chosen])
     return chosen
+
+
+def _collection_named(ident, text: str) -> str | None:
+    """A collection of the dataset by its own id or name, for dictionaries whose tables
+    are not Synthea's (dataset1's lab_result)."""
+    from chiron import models
+
+    n = D.norm(text)
+    if not n:
+        return None
+    for c in models.Collection.objects.filter(dataset=ident.dataset):
+        if n in (D.norm(c.permanent_id), D.norm(c.name)):
+            return c.permanent_id
+    return None
 
 
 def _subject_ids(cu, cd: list) -> list:

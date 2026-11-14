@@ -373,12 +373,16 @@ function renderFlags(d) {
     head.appendChild(btn);
     item.appendChild(head);
     if (f.note) item.appendChild(el('div', 'flag-note', f.note));
-    const q = el('div', 'flag-q'); q.appendChild(el('span', 'lbl', 'Question ')); q.appendChild(document.createTextNode(f.question || '–'));
-    item.appendChild(q);
-    const a = el('details', 'flag-a');
-    a.appendChild(el('summary', '', 'The answer' + (f.trace ? ' · trace ' + String(f.trace).slice(0, 8) : '')));
-    a.appendChild(el('pre', '', f.answer || '–'));
-    item.appendChild(a);
+    if (f.text_withheld) {
+      item.appendChild(el('div', 'flag-q dim', 'The question and the answer are shown to superusers only.'));
+    } else {
+      const q = el('div', 'flag-q'); q.appendChild(el('span', 'lbl', 'Question ')); q.appendChild(document.createTextNode(f.question || '–'));
+      item.appendChild(q);
+      const a = el('details', 'flag-a');
+      a.appendChild(el('summary', '', 'The answer' + (f.trace ? ' · trace ' + String(f.trace).slice(0, 8) : '')));
+      a.appendChild(el('pre', '', f.answer || '–'));
+      item.appendChild(a);
+    }
     if (f.status === 'handled') item.appendChild(el('div', 'dim', 'Handled ' + when(f.handled_at) + (f.handled_by ? ' by ' + person(f.handled_by) : '')));
     list.appendChild(item);
   });

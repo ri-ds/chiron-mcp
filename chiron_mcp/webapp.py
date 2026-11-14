@@ -859,8 +859,14 @@ def find_account(text: str):
     text = (text or "").strip()
     if not text:
         return None
-    return (get_user_model().objects.filter(is_active=True)
-            .filter(Q(username__iexact=text) | Q(email__iexact=text)).order_by("id").first())
+    users = get_user_model().objects.filter(is_active=True)
+    exact = users.filter(username__iexact=text).order_by("id").first()
+    if exact is not None:
+        return exact
+    by_email = list(users.filter(email__iexact=text).order_by("id")[:2])
+    if len(by_email) > 1:
+        raise AccessError(f"Several accounts use the email {text!r}; share by username instead.")
+    return by_email[0] if by_email else None
 
 
 def access_of(dataset: str | None, username: str | None) -> tuple[str | None, bool]:
@@ -2170,7 +2176,7 @@ def _thinking_flag_refused(outcome: dict) -> bool:
 
 
 # The session-cookie lookup lives in identity, shared with the OAuth login page.
-from chiron_mcp.identity import session_username  # noqa: E402,F401
+from chiron_mcp.identity import AccessError, session_username  # noqa: E402,F401
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -2400,7 +2406,13 @@ class Handler(BaseHTTPRequestHandler):
         if not everyone:
             out.pop("ledger", None)
         else:
+            # The question and the answer a person reported are theirs, at their access
+            # level: shown to superusers; a member of the usage group sees the rest.
             out["flags"] = usage.flags(200)
+            if not (info and info.get("superuser")):
+                for f in out["flags"]:
+                    f["question"] = f["answer"] = None
+                    f["text_withheld"] = True
         out.update({
             "identity": who, "everyone": everyone, "period": scope["period"],
             "filter_user": scope["user"], "filter_dataset": scope["dataset"],
@@ -2580,7 +2592,10 @@ class Handler(BaseHTTPRequestHandler):
         text = str(body.get("with") or "").strip()
         if not text:
             return self._json({"error": "Say who, by their Chiron username or email."})
-        account = find_account(text)
+        try:
+            account = find_account(text)
+        except AccessError as exc:
+            return self._json({"error": str(exc)})
         if account is None:
             return self._json({"error": f"No Chiron account is called {text!r}. Use the person's username or "
                                         "email exactly as Chiron knows it."})

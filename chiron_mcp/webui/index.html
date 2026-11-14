@@ -1063,6 +1063,12 @@ function renderThread() {
     $('to-bottom').hidden = true;
     return;
   }
+  if (chat && !chat.turns.length && (chat.readonly || chat.view)) {
+    threadEl.appendChild(banner(chat));
+    threadEl.appendChild(el('div', 'note', 'Nothing to show: this conversation has no recorded answers.'));
+    $('to-bottom').hidden = true;
+    return;
+  }
   if (!chat || !chat.turns.length) { threadEl.appendChild(hero()); scroller.scrollTop = 0; $('to-bottom').hidden = true; return; }
   if (chat.readonly || chat.view) threadEl.appendChild(banner(chat));
   chat.turns.forEach(t => threadEl.appendChild(turnNode(t)));
@@ -1531,13 +1537,26 @@ function drawChart(canvas, spec) {
     const lo = Math.min(...days), hi = Math.max(...days);
     const y0 = new Date(lo * 864e5).getUTCFullYear(), y1 = new Date(hi * 864e5).getUTCFullYear();
     const span = Math.max(1, y1 - y0);
-    const step = span <= 10 ? 1 : span <= 20 ? 2 : span <= 50 ? 5 : span <= 100 ? 10 : 20;
     const ticks = [];
-    for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) ticks.push({ value: Date.UTC(y, 0, 1) / 864e5 });
+    let monthly = false;
+    if (hi - lo <= 2 * 366) {
+      // readings within about two years: a tick at the first of each month, labelled by date
+      monthly = true;
+      const first = new Date(lo * 864e5);
+      for (let m = Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1) / 864e5, y = first.getUTCFullYear(), k = first.getUTCMonth();
+           m <= hi + 31; k += 1, m = Date.UTC(y + Math.floor(k / 12), k % 12, 1) / 864e5) {
+        ticks.push({ value: m });
+        if (ticks.length > 30) break;
+      }
+    } else {
+      const step = span <= 10 ? 1 : span <= 20 ? 2 : span <= 50 ? 5 : span <= 100 ? 10 : 20;
+      for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) ticks.push({ value: Date.UTC(y, 0, 1) / 864e5 });
+    }
+    const pad = Math.max(1, (hi - lo) * 0.02);
     xScale = {
-      type: 'linear', min: lo - span * 2, max: hi + span * 2, grid: { display: false },
+      type: 'linear', min: lo - pad, max: hi + pad, grid: { display: false },
       afterBuildTicks: scale => { scale.ticks = ticks; },
-      ticks: { callback: v => dayLabel(v, span <= 1), maxRotation: 0, autoSkip: false },
+      ticks: { callback: v => monthly ? dayLabel(v, true).slice(0, 7) : dayLabel(v, false), maxRotation: 0, autoSkip: true },
     };
   }
   new Chart(canvas, {
@@ -1545,6 +1564,8 @@ function drawChart(canvas, spec) {
     data: dated ? { datasets } : { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
+      // A printable copy must not be caught mid-animation.
+      animation: document.body.classList.contains('view-mode') ? false : undefined,
       plugins: {
         legend: { display: multi || spec.type === 'doughnut', labels: { boxWidth: 12, boxHeight: 12 } },
         title: { display: !!spec.title, text: spec.title || '', font: { size: 14, weight: '600' }, color: '#1d2328' },
@@ -2398,7 +2419,7 @@ function printWhenDrawn() {
   // Charts draw after the text is in place; print once they have.
   if (printWhenDrawn.done) return;
   printWhenDrawn.done = true;
-  setTimeout(() => { try { window.focus(); window.print(); } catch (_) {} }, 900);
+  setTimeout(() => { try { window.focus(); window.print(); } catch (_) {} }, 1500);
 }
 // Right after a fresh sign-on, the first requests can run before Chiron has set its
 // session cookie (its sign-on middleware does that on the first Chiron request), so a
