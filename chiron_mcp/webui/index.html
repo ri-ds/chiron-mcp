@@ -877,7 +877,8 @@ function selectChat(id) {
 // is the owner's; a shared conversation can be exported but not shared on.
 function renderTopTools() {
   const chat = activeChat();
-  const show = !!(chat && chat.thread && !busy && !document.body.classList.contains('view-mode'));
+  // Not for a conversation the server no longer holds (expired): nothing to share or print.
+  const show = !!(chat && chat.thread && !chat.expired && !busy && !document.body.classList.contains('view-mode'));
   $('top-tools').hidden = !show;
   if (!show) { closeShare(); return; }
   $('share-btn').hidden = !!chat.readonly;
