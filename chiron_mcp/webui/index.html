@@ -127,6 +127,75 @@
   }
   .icon-btn:hover { background: var(--panel); }
   .menu-btn { display: none; }
+  /* Share and Export, for the open conversation */
+  .top-tools { display: flex; gap: 6px; margin-left: 8px; flex: none; position: relative; }
+  .top-btn {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer;
+  }
+  .top-btn:hover { border-color: var(--accent-line); background: var(--accent-soft); color: var(--ink); }
+  .top-btn[aria-expanded="true"] { border-color: var(--accent-line); background: var(--accent-soft); }
+  .popover {
+    position: absolute; top: 40px; left: 0; z-index: 30; width: 320px; max-width: calc(100vw - 32px);
+    background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 12px 14px; font-size: 13px;
+  }
+  .popover h3 { margin: 0 0 4px; font-size: 13.5px; font-weight: 600; }
+  .popover p { margin: 0 0 10px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .popover .row { display: flex; gap: 6px; }
+  .popover input {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 9px;
+    border: 1px solid var(--line); border-radius: 8px; color: var(--ink);
+  }
+  .popover .people { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .popover .people li { display: flex; align-items: center; gap: 8px; }
+  .popover .people li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .popover .people li small { color: var(--muted); }
+  .popover .msg { margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .popover .msg.bad { color: var(--danger); }
+  .banner {
+    max-width: 800px; margin: 0 auto; padding: 10px 24px 0; font-size: 13px; color: var(--ink-2);
+  }
+  .banner > div {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+    display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+  }
+  .banner b { font-weight: 600; }
+  .withheld { font-size: 13px; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; }
+  /* reporting an answer */
+  .feedback { margin-top: 8px; font-size: 12px; color: var(--faint); display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .feedback .link-btn { color: var(--faint); text-decoration: none; }
+  .feedback .link-btn:hover { color: var(--ink-2); text-decoration: underline; }
+  .flag-form {
+    margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel);
+    font-size: 13px; display: flex; flex-direction: column; gap: 8px; max-width: 560px;
+  }
+  .flag-form .kinds { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .flag-form label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .flag-form textarea {
+    font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px;
+    resize: vertical; min-height: 40px; background: var(--bg); color: var(--ink);
+  }
+  .flag-form small { color: var(--muted); font-size: 11.5px; }
+  .flag-form .row { display: flex; gap: 6px; align-items: center; }
+  .chat-item .meta .by { color: var(--accent-strong); }
+  /* read-only view of one conversation (Export PDF, shared links) */
+  body.view-mode .sidebar, body.view-mode .composer-wrap, body.view-mode .menu-btn,
+  body.view-mode .top-tools, body.view-mode .to-bottom, body.view-mode .feedback, body.view-mode .followups { display: none !important; }
+  body.view-mode .topbar h1 { font-size: 16px; }
+  @media print {
+    html, body { height: auto; overflow: visible; display: block; background: #fff; }
+    .sidebar, .composer-wrap, .menu-btn, .top-tools, .to-bottom, .feedback, .followups, .actions,
+    .trace-slot, .scrim, .who { display: none !important; }
+    .pane { display: block; }
+    main { overflow: visible; }
+    .thread { max-width: none; padding: 12px 0; gap: 22px; }
+    .topbar { height: auto; border: 0; padding: 0 0 8px; }
+    .msg.user .bubble { background: #eee; color: #000; max-width: none; border-radius: 8px; }
+    .chart-box, .table-wrap, .turn { break-inside: avoid; }
+    .banner { padding: 0 0 10px; }
+    .banner > div { background: none; border: 0; padding: 0; }
+  }
 
   main { flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; }
   .thread { max-width: 800px; margin: 0 auto; padding: 28px 24px 24px; display: flex; flex-direction: column; gap: 36px; }
@@ -495,6 +564,18 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <h1 id="chat-title">New chat</h1>
+    <div class="top-tools" id="top-tools" hidden>
+      <button class="top-btn" id="share-btn" type="button" aria-haspopup="dialog" aria-expanded="false"
+              title="Let a colleague read this conversation">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        Share
+      </button>
+      <button class="top-btn" id="export-btn" type="button" title="Open a printable copy of this conversation and save it as a PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>
+        Export PDF
+      </button>
+      <div class="popover" id="share-pop" role="dialog" aria-label="Share this conversation" hidden></div>
+    </div>
     <div class="who" id="who" hidden><b id="who-name"></b><small id="who-level"></small></div>
   </div>
 
@@ -527,7 +608,12 @@ const threadEl = $('thread'), scroller = $('scroller'), qBox = $('q'), sendBtn =
 const chatsEl = $('chats'), searchBox = $('search');
 
 // The dataset is fixed by the route that embedded this page (/<dataset>/ask).
-const DATASET = new URLSearchParams(location.search).get('dataset') || '';
+const PARAMS = new URLSearchParams(location.search);
+const DATASET = PARAMS.get('dataset') || '';
+// ?view=<conversation> shows one conversation read-only (Export PDF opens it in a new
+// tab; a conversation shared by a colleague opens the same way); &print=1 prints it.
+const VIEW_THREAD = PARAMS.get('view') || '';
+const PRINT = PARAMS.get('print') === '1';
 
 // What each Chiron tool call means to someone waiting for an answer.
 const STEP_LABELS = {
@@ -578,7 +664,10 @@ let activeId = null;     // null = a new, empty chat
 let busy = null;         // { chatId, turnId } while an answer streams
 
 const storeKey = () => `chiron-ask:v2:${ME || 'anon'}:${DATASET}`;
-const activeChat = () => chats.find(c => c.id === activeId) || null;
+// Conversations colleagues shared with this person, read-only; never saved in this
+// browser (the server lists them), so they are kept apart from `chats`.
+let SHARED = [];
+const activeChat = () => chats.find(c => c.id === activeId) || SHARED.find(c => c.id === activeId) || null;
 
 function load() {
   try {
@@ -754,6 +843,23 @@ function renderSidebar() {
     }
     chatsEl.appendChild(item);
   });
+  const sharedShown = SHARED.filter(c => !c.view && (!term || (c.title || '').toLowerCase().includes(term)));
+  if (sharedShown.length) {
+    chatsEl.appendChild(el('div', 'group-label', 'Shared with me'));
+    sharedShown.forEach(c => {
+      const item = el('div', 'chat-item' + (c.id === activeId ? ' active' : ''));
+      const open = el('button', 'open'); open.type = 'button';
+      open.appendChild(el('span', 'title', c.title));
+      const meta = el('span', 'meta');
+      meta.appendChild(el('span', 'by', 'by ' + (c.ownerName || c.owner || 'a colleague')));
+      meta.appendChild(document.createTextNode(' · ' + when(c.updated) + ' · read-only'));
+      open.appendChild(meta);
+      open.onclick = () => selectChat(c.id);
+      if (c.id === activeId) open.setAttribute('aria-current', 'true');
+      item.appendChild(open);
+      chatsEl.appendChild(item);
+    });
+  }
 }
 searchBox.addEventListener('input', renderSidebar);
 
@@ -767,6 +873,79 @@ function selectChat(id) {
   updateComposer();
   qBox.focus();
 }
+// Share and Export PDF: for the open conversation once the server knows it. Sharing
+// is the owner's; a shared conversation can be exported but not shared on.
+function renderTopTools() {
+  const chat = activeChat();
+  const show = !!(chat && chat.thread && !busy && !document.body.classList.contains('view-mode'));
+  $('top-tools').hidden = !show;
+  if (!show) { closeShare(); return; }
+  $('share-btn').hidden = !!chat.readonly;
+  const n = (chat.sharedWith || []).length;
+  $('share-btn').lastChild.textContent = n ? ` Shared · ${n}` : ' Share';
+}
+let SHARE_OPEN = false;
+function closeShare() {
+  SHARE_OPEN = false;
+  $('share-pop').hidden = true;
+  $('share-btn').setAttribute('aria-expanded', 'false');
+}
+function renderShare(msg, bad) {
+  const chat = activeChat(), pop = $('share-pop');
+  if (!chat || !SHARE_OPEN) { closeShare(); return; }
+  pop.textContent = '';
+  pop.hidden = false;
+  $('share-btn').setAttribute('aria-expanded', 'true');
+  pop.appendChild(el('h3', null, 'Share this conversation'));
+  pop.appendChild(el('p', null, 'The person reads it in their own Ask sidebar under "Shared with me", without follow-ups. ' +
+    'Each answer shows only if their access on this dataset is at least yours; otherwise it is held back.'));
+  const row = el('div', 'row');
+  const input = el('input'); input.type = 'text'; input.placeholder = 'Chiron username or email'; input.setAttribute('aria-label', 'Chiron username or email');
+  const add = el('button', 'mini-btn', 'Add'); add.type = 'button';
+  const send = async () => {
+    const who = input.value.trim(); if (!who) return;
+    add.disabled = true;
+    const r = await shareWith(chat, who, false);
+    add.disabled = false;
+    if (r.error) renderShare(r.error, true); else { renderShare('Shared with ' + who + '.'); }
+  };
+  add.onclick = send;
+  input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); send(); } };
+  row.append(input, add);
+  pop.appendChild(row);
+  const list = el('ul', 'people');
+  (chat.sharedWith || []).forEach(pers => {
+    const li = el('li');
+    const name = el('span');
+    name.textContent = pers.name || pers.username;
+    if (pers.name && pers.name !== pers.username) { name.appendChild(document.createTextNode(' ')); name.appendChild(el('small', null, pers.username)); }
+    const rm = el('button', 'mini-btn', 'Remove'); rm.type = 'button';
+    rm.onclick = async () => { rm.disabled = true; const r = await shareWith(chat, pers.username, true); renderShare(r.error || ('No longer shared with ' + (pers.name || pers.username) + '.'), !!r.error); };
+    li.append(name, rm);
+    list.appendChild(li);
+  });
+  if (!(chat.sharedWith || []).length) list.appendChild(el('li', 'msg', 'Not shared with anyone yet.'));
+  pop.appendChild(list);
+  if (msg) pop.appendChild(el('div', 'msg' + (bad ? ' bad' : ''), msg));
+  if (!msg) setTimeout(() => input.focus(), 0);
+}
+async function shareWith(chat, who, remove) {
+  let r = null;
+  try {
+    r = await fetch('share', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ thread: chat.thread, with: who, remove: !!remove }) }).then(x => x.json());
+  } catch (_) { r = { error: 'The Ask server could not be reached.' }; }
+  if (r && !r.error && Array.isArray(r.shared_with)) { chat.sharedWith = r.shared_with; save(); renderTopTools(); }
+  return r || { error: 'No answer from the Ask server.' };
+}
+$('share-btn').onclick = () => { SHARE_OPEN = !SHARE_OPEN; if (SHARE_OPEN) renderShare(); else closeShare(); };
+document.addEventListener('click', e => { if (SHARE_OPEN && !$('top-tools').contains(e.target)) closeShare(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && SHARE_OPEN) closeShare(); });
+$('export-btn').onclick = () => {
+  const chat = activeChat(); if (!chat || !chat.thread) return;
+  const url = location.pathname + '?dataset=' + encodeURIComponent(DATASET) + '&view=' + encodeURIComponent(chat.thread) + '&print=1';
+  window.open(url, '_blank', 'noopener');
+};
 
 // Conversations follow the person. The server lists their own (title, when, how many
 // answers, expired or not); one this browser does not hold is rebuilt from its traces
@@ -790,17 +969,32 @@ async function syncThreads() {
     if (t && t.title && c.remote && !c.turns.length && c.title !== titleFor(t.title)) { c.title = titleFor(t.title); changed = true; }
   });
   d.threads.forEach(t => {
-    if (chats.some(c => c.thread === t.thread)) return;
+    const have = chats.find(c => c.thread === t.thread);
+    if (have) {
+      const mine = JSON.stringify(have.sharedWith || []), theirs = JSON.stringify(t.shared_with || []);
+      if (mine !== theirs) { have.sharedWith = t.shared_with || []; changed = true; }
+      return;
+    }
     chats.push({ id: uid(), title: titleFor(t.title || 'Conversation'), created: (t.first || t.last || 0) * 1000,
                  updated: (t.last || 0) * 1000, thread: t.thread, turns: [], count: t.turns || 0,
-                 remote: true, expired: !!t.expired });
+                 remote: true, expired: !!t.expired, sharedWith: t.shared_with || [] });
     changed = true;
   });
   chats.sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  // What colleagues shared: listed by the server, never kept in this browser.
+  const keep = SHARED.filter(c => c.view);
+  (d.shared || []).forEach(t => {
+    const prev = SHARED.find(c => c.thread === t.thread && !c.view);
+    keep.push(Object.assign(prev || { id: 'shared:' + t.thread, turns: [], readonly: true, thread: t.thread }, {
+      title: titleFor(t.title || 'Conversation'), updated: (t.last || 0) * 1000, created: (t.first || t.last || 0) * 1000,
+      owner: t.owner, ownerName: t.owner_name, count: t.turns || 0, expired: !!t.expired }));
+  });
+  if (JSON.stringify(keep.map(c => [c.id, c.title, c.updated])) !== JSON.stringify(SHARED.map(c => [c.id, c.title, c.updated]))) changed = true;
+  SHARED = keep;
   if (changed) {
-    save(); renderSidebar();
+    save(); renderSidebar(); renderTopTools();
     const c = activeChat();
-    if (c && (c.expired || c.remote)) { renderThread(); updateComposer(); }
+    if (c && (c.expired || c.remote || c.readonly)) { renderThread(); updateComposer(); }
   }
 }
 async function loadTurns(chat) {
@@ -815,14 +1009,19 @@ async function loadTurns(chat) {
     if (activeId === chat.id) renderThread();
     return;
   }
-  chat.turns = d.turns.slice(-MAX_TURNS).map(t => ({
-    id: uid(), q: t.q || '', answer: t.answer || '', cohort: null, link: null, error: t.error || '',
-    steps: [], pending: false, at: t.at || chat.updated, fresh: !!t.fresh, trace: t.trace || null, restored: true,
-  }));
-  if (chat.turns.length) chat.title = titleFor(chat.turns[0].q);
+  chat.turns = d.turns.slice(-MAX_TURNS).map(t => t.withheld
+    ? { id: uid(), withheld: t.withheld, at: t.at || chat.updated, steps: [], pending: false }
+    : { id: uid(), q: t.q || '', answer: t.answer || '', cohort: null, link: null, error: t.error || '',
+        steps: [], pending: false, at: t.at || chat.updated, fresh: !!t.fresh, trace: t.trace || null, restored: true });
+  const first = chat.turns.find(t => !t.withheld);
+  if (first) chat.title = titleFor(first.q);
+  else if (d.title) chat.title = titleFor(d.title);
+  if (d.read_only) { chat.readonly = true; chat.owner = d.owner; chat.ownerName = d.owner_name; chat.withheld = d.withheld || 0; }
+  if (Array.isArray(d.shared_with)) chat.sharedWith = d.shared_with;
   chat.remote = false;
-  save(); renderSidebar();
-  if (activeId === chat.id) { renderThread(); updateComposer(); }
+  if (!chat.readonly) save();
+  renderSidebar(); renderTopTools();
+  if (activeId === chat.id) { renderThread(); updateComposer(); if (PRINT && chat.view) printWhenDrawn(); }
 }
 function newChat() {
   confirming = null;
@@ -857,20 +1056,40 @@ function renderThread() {
   threadEl.textContent = '';
   const chat = activeChat();
   $('chat-title').textContent = chat ? chat.title : 'New chat';
-  if (chat && !chat.turns.length && (chat.loading || chat.remote)) {
+  renderTopTools();
+  if (chat && !chat.turns.length && (chat.loading || chat.remote || chat.readonly)) {
     threadEl.appendChild(el('div', 'note', chat.loadError || 'Opening this conversation from the Ask server…'));
     if (!chat.loading && !chat.loadError) loadTurns(chat);
     $('to-bottom').hidden = true;
     return;
   }
   if (!chat || !chat.turns.length) { threadEl.appendChild(hero()); scroller.scrollTop = 0; $('to-bottom').hidden = true; return; }
+  if (chat.readonly || chat.view) threadEl.appendChild(banner(chat));
   chat.turns.forEach(t => threadEl.appendChild(turnNode(t)));
-  if (chat.expired) {
+  if (chat.expired && !chat.readonly) {
     threadEl.appendChild(el('div', 'note',
       'This conversation has expired on the Ask server. Your next question starts a new conversation, without these earlier questions.'));
   }
+  if (chat.view || PRINT) { scroller.scrollTop = 0; $('to-bottom').hidden = true; return; }
   settle();
 }
+
+// The line above a conversation opened read-only: whose it is, which dataset, when.
+function banner(chat) {
+  const wrap = el('div', 'banner'), box = el('div');
+  const bits = [];
+  if (chat.readonly && chat.ownerName) bits.push(['Shared by', chat.ownerName]);
+  else if (chat.view && ME) bits.push(['Asked by', (WHO && WHO.name) || ME]);
+  bits.push(['Dataset', DATASET_NAME]);
+  const last = chat.turns.length ? chat.turns[chat.turns.length - 1].at : chat.updated;
+  if (last) bits.push(['Last answer', new Date(last).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })]);
+  bits.push([chat.turns.filter(t => !t.withheld).length + ' question' + (chat.turns.length === 1 ? '' : 's'), chat.readonly ? 'read-only' : 'Ask Chiron']);
+  bits.forEach(([k, v]) => { const sp = el('span'); sp.appendChild(el('b', null, k + ': ')); sp.appendChild(document.createTextNode(v)); box.appendChild(sp); });
+  if (chat.withheld) box.appendChild(el('span', null, chat.withheld + ' answer' + (chat.withheld === 1 ? '' : 's') + ' held back (above your access level)'));
+  wrap.appendChild(box);
+  return wrap;
+}
+let WHO = null;
 
 function hero() {
   const h = el('div', 'hero');
@@ -898,6 +1117,7 @@ function hero() {
 function turnNode(turn) {
   const wrap = el('div', 'turn');
   wrap.dataset.turn = turn.id;
+  if (turn.withheld) { wrap.appendChild(el('div', 'withheld', turn.withheld)); return wrap; }
   const u = el('div', 'msg user'); u.appendChild(el('div', 'bubble', turn.q));
   const b = el('div', 'msg bot');
   const body = el('div', 'body');
@@ -953,6 +1173,54 @@ function paintBot(body, turn) {
     body.appendChild(box);
   }
   body.appendChild(traceSlot(turn));
+  if (turn.trace && turn.trace.id && chat && !chat.readonly && !chat.view) body.appendChild(flagRow(turn));
+}
+
+// "Report a problem" under an answer: the question, the answer and the trace id go to
+// the people who run Ask, so a wrong figure or a question Ask could not serve is seen
+// without anyone having to write an email.
+const FLAG_KINDS = [['wrong', 'Wrong figure or answer'], ['incomplete', 'Incomplete'],
+                    ['could_not', 'Could not do what I asked'], ['other', 'Something else']];
+function flagRow(turn) {
+  const row = el('div', 'feedback');
+  if (turn.flagged) { row.appendChild(el('span', null, 'Reported to the Ask administrators. Thank you.')); return row; }
+  const link = el('button', 'link-btn', 'Report a problem with this answer'); link.type = 'button';
+  link.onclick = () => { row.replaceWith(flagForm(turn)); };
+  row.appendChild(link);
+  return row;
+}
+function flagForm(turn) {
+  const form = el('form', 'flag-form');
+  form.appendChild(el('b', null, 'What is wrong with this answer?'));
+  const kinds = el('div', 'kinds');
+  FLAG_KINDS.forEach(([v, label], i) => {
+    const l = el('label'); const r = document.createElement('input'); r.type = 'radio'; r.name = 'kind-' + turn.id; r.value = v; if (i === 0) r.checked = true;
+    l.append(r, document.createTextNode(label)); kinds.appendChild(l);
+  });
+  form.appendChild(kinds);
+  const note = el('textarea'); note.placeholder = 'Optional: what you expected, or what you were after'; note.setAttribute('aria-label', 'Details');
+  form.appendChild(note);
+  form.appendChild(el('small', null, 'Sends this question, the answer and its trace id to the Ask administrators. Nothing else from this conversation.'));
+  const row = el('div', 'row');
+  const send = el('button', 'mini-btn', 'Send report'); send.type = 'submit';
+  const cancel = el('button', 'mini-btn', 'Cancel'); cancel.type = 'button';
+  const msg = el('span', null, '');
+  row.append(send, cancel, msg);
+  form.appendChild(row);
+  cancel.onclick = () => form.replaceWith(flagRow(turn));
+  form.onsubmit = async e => {
+    e.preventDefault();
+    send.disabled = true; msg.textContent = 'Sending…';
+    const kind = (form.querySelector('input[type=radio]:checked') || {}).value || 'other';
+    let r = null;
+    try {
+      r = await fetch('flag', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ trace: turn.trace.id, kind, note: note.value.trim() }) }).then(x => x.json());
+    } catch (_) { r = { error: 'The Ask server could not be reached.' }; }
+    if (r && r.flagged) { turn.flagged = r.id || true; save(); form.replaceWith(flagRow(turn)); }
+    else { send.disabled = false; msg.textContent = (r && r.error) || 'Could not send.'; }
+  };
+  return form;
 }
 
 // Repaint one answer wherever it is on screen (it is not, if another chat is open).
@@ -977,9 +1245,14 @@ function updateComposer() {
   // One answer at a time; if it is streaming in another chat, say so rather than
   // leaving the box mysteriously disabled.
   const cur = activeChat();
-  qBox.placeholder = !busy ? (cur ? (cur.expired ? 'This conversation expired: a new question starts a new one…' : 'Ask a follow-up…')
-                                  : 'Ask about this dataset…')
+  const readonly = !!(cur && (cur.readonly || cur.view));
+  qBox.disabled = readonly;
+  if (readonly) sendBtn.disabled = true;
+  qBox.placeholder = readonly ? 'Shared with you, read-only. Start a new chat to ask your own questions.'
+    : !busy ? (cur ? (cur.expired ? 'This conversation expired: a new question starts a new one…' : 'Ask a follow-up…')
+                   : 'Ask about this dataset…')
     : busy.chatId === activeId ? 'Answering…' : 'Waiting for the answer in another chat…';
+  renderTopTools();
 }
 function autosize() { qBox.style.height = 'auto'; qBox.style.height = Math.min(qBox.scrollHeight, 200) + 'px'; }
 qBox.addEventListener('input', () => { autosize(); updateComposer(); });
@@ -994,6 +1267,7 @@ $('composer').addEventListener('submit', e => {
 function ask(text) {
   const q = (text !== undefined ? text : qBox.value).trim();
   if (!q || busy) return;
+  if (activeChat() && (activeChat().readonly || activeChat().view)) return;
 
   let chat = activeChat();
   if (!chat) {
@@ -1215,36 +1489,70 @@ function render(target, markdown) {
   });
 }
 
+const ISO_DAY = /^\d{4}(-\d{2}){0,2}$/;
+// A date as a number of days, so readings sit where their dates fall; no date adapter.
+function dayOf(x) {
+  const m = /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/.exec(String(x));
+  return m ? Date.UTC(+m[1], m[2] ? +m[2] - 1 : 0, m[3] ? +m[3] : 1) / 864e5 : NaN;
+}
+function dayLabel(d, withDay) {
+  const t = new Date(d * 864e5);
+  return withDay ? t.toISOString().slice(0, 10) : String(t.getUTCFullYear());
+}
 function drawChart(canvas, spec) {
   // Two forms: one series as data:[{x,y}], or several as x:[...] with
   // series:[{label, y:[...]}] (a two-variable breakdown, one series per row), which
-  // gets a legend so no bar is ever unlabelled.
+  // gets a legend so no bar is ever unlabelled. A line whose x values are dates (a
+  // patient's readings over time) is drawn on a time axis, one point per reading at the
+  // day it was taken, ticks at whole years, with the y axis fitted to the values.
   const multi = Array.isArray(spec.series) && Array.isArray(spec.x);
   const rows = spec.data || [];
+  const labels = multi ? spec.x : rows.map(r => r.x);
+  const dated = (spec.type === 'line' || spec.type === 'scatter') && labels.length > 1 && labels.every(x => ISO_DAY.test(String(x)));
   const palette = ['#00796b', '#7b1fa2', '#f57c00', '#1976d2', '#c2185b', '#689f38', '#5d4037', '#455a64'];
+  const many = labels.length > 120;
+  const days = dated ? labels.map(dayOf) : [];
+  const point = (x, y, i) => dated ? { x: days[i], y, d: String(x) } : y;
   const datasets = multi
     ? spec.series.map((sr, k) => ({
-        label: sr.label || '', data: sr.y || [],
+        label: sr.label || '', data: (sr.y || []).map((y, i) => point(labels[i], y, i)),
         backgroundColor: palette[k % palette.length], borderColor: palette[k % palette.length],
-        borderWidth: spec.type === 'line' ? 2 : 0, borderRadius: 4, tension: 0.25,
+        borderWidth: spec.type === 'line' ? 2 : 0, borderRadius: 4, tension: dated ? 0.1 : 0.25,
+        pointRadius: dated ? (many ? 1.5 : 3) : 3, spanGaps: true,
       }))
     : [{
-        label: spec.label || '', data: rows.map(r => r.y),
+        label: spec.label || '', data: rows.map((r, i) => point(r.x, r.y, i)),
         backgroundColor: spec.type === 'doughnut' ? palette : '#00796b', borderColor: '#00796b',
-        borderWidth: spec.type === 'line' ? 2 : 0, borderRadius: 4, tension: 0.25,
+        borderWidth: spec.type === 'line' ? 2 : 0, borderRadius: 4, tension: dated ? 0.1 : 0.25,
+        pointRadius: dated ? (many ? 1.5 : 3) : 3, spanGaps: true,
       }];
+  let xScale = { grid: { display: false } };
+  if (dated) {
+    const lo = Math.min(...days), hi = Math.max(...days);
+    const y0 = new Date(lo * 864e5).getUTCFullYear(), y1 = new Date(hi * 864e5).getUTCFullYear();
+    const span = Math.max(1, y1 - y0);
+    const step = span <= 10 ? 1 : span <= 20 ? 2 : span <= 50 ? 5 : span <= 100 ? 10 : 20;
+    const ticks = [];
+    for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step) ticks.push({ value: Date.UTC(y, 0, 1) / 864e5 });
+    xScale = {
+      type: 'linear', min: lo - span * 2, max: hi + span * 2, grid: { display: false },
+      afterBuildTicks: scale => { scale.ticks = ticks; },
+      ticks: { callback: v => dayLabel(v, span <= 1), maxRotation: 0, autoSkip: false },
+    };
+  }
   new Chart(canvas, {
-    type: spec.type || 'bar',
-    data: { labels: multi ? spec.x : rows.map(r => r.x), datasets },
+    type: spec.type === 'scatter' ? 'line' : (spec.type || 'bar'),
+    data: dated ? { datasets } : { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: multi || spec.type === 'doughnut', labels: { boxWidth: 12, boxHeight: 12 } },
         title: { display: !!spec.title, text: spec.title || '', font: { size: 14, weight: '600' }, color: '#1d2328' },
+        tooltip: dated ? { callbacks: { title: items => items.length && items[0].raw ? String(items[0].raw.d) : '' } } : {},
       },
       scales: spec.type === 'doughnut' ? {} : {
-        x: { grid: { display: false } },
-        y: { beginAtZero: true, grid: { color: '#eef1f3' },
+        x: xScale,
+        y: { beginAtZero: !dated, grid: { color: '#eef1f3' },
              title: { display: !!spec.label && !multi, text: spec.label || '' } },
       },
     },
@@ -1531,7 +1839,7 @@ function whatSection(turn, data) {
     });
     rows.push(['Chiron', list]);
     rows.push(['Data', c.rows
-      ? `${num(c.rows)} patient row${c.rows === 1 ? '' : 's'} came back because a list was asked for: only the requested columns, within this account's access level`
+      ? `${num(c.rows)} row${c.rows === 1 ? '' : 's'} of patient data came back because a list or a patient's records were asked for: only the requested columns, within this account's access level`
       : 'only counts and aggregates came back; no patient rows left Chiron']);
   }
   const f = c.figures || {};
@@ -2066,12 +2374,31 @@ function start(d) {
   loadMyUsage();
   POOL = (d && d.pool) || [];
   FEATURES = (d && d.features) || {};
+  WHO = (d && d.user) || null;
+  if (VIEW_THREAD) { enterView(); return; }
   load();
   pickStarters();
   renderSidebar();
   renderThread();
   updateComposer();
   syncThreads();
+}
+// One conversation, read-only, by itself: the printable copy behind Export PDF, and the
+// page a shared link opens. Nothing of it is kept in this browser.
+function enterView() {
+  document.body.classList.add('view-mode');
+  const chat = { id: 'view:' + VIEW_THREAD, thread: VIEW_THREAD, title: 'Conversation', turns: [], view: true,
+                 readonly: true, updated: Date.now(), created: Date.now() };
+  SHARED = [chat];
+  activeId = chat.id;
+  renderThread();
+  updateComposer();
+}
+function printWhenDrawn() {
+  // Charts draw after the text is in place; print once they have.
+  if (printWhenDrawn.done) return;
+  printWhenDrawn.done = true;
+  setTimeout(() => { try { window.focus(); window.print(); } catch (_) {} }, 900);
 }
 // Right after a fresh sign-on, the first requests can run before Chiron has set its
 // session cookie (its sign-on middleware does that on the first Chiron request), so a

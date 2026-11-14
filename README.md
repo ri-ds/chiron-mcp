@@ -620,6 +620,44 @@ See `.env.example`. A superuser is refused in analyst mode; point it at a dedica
 | `chiron_run_saved_report` | Run a saved report by id |
 | `chiron_column_options` | How one variable can be shown as a column: its default and every aggregation, with the settings each takes |
 
+### A patient's records, one row each
+
+`chiron_query` with `show={"records": {"of": {"lab": "Diastolic Blood Pressure"}}}` returns one
+row per record of the cohort's patients, every column paired as recorded: a lab's date, value
+and units; a visit's start, stop, type and description; a diagnosis and its dates
+(`"of": "visit"`, `"condition"`, `"medication"`, `"procedure"`, a name, a value or date range;
+`"latest": N` or `"earliest": N` per patient; `"fields": [...]` or `"all"`; `"limit"` up to 500).
+It exists because Chiron's table engine cannot give this: a record column in a patient row is a
+list of distinct values, so dates and values arrive as two unrelated lists, and the rows of a
+record table are limited by the cohort's own conditions on it (the readings above 80 of the
+patients with a reading above 80). So the cohort's patients are taken first, with Chiron's query
+builder, and their records are read in a second statement from the same builder with an empty
+cohort: the record table, its lookup tables joined on the record id, each column mapped by its
+display processor (a PHI date for a de-identified account comes back as a year), the filters of
+`of`, and the permission clause again. Records are for one patient or a small group (100
+patients; 500 with latest/earliest) and are refused beyond that with the alternatives, never
+sampled; identifying columns are never in the default set and refused when asked for.
+`tests/records.py` compares the rows with a direct read of the warehouse.
+
+### What Ask can answer, and what it cannot yet
+
+| Question kind | How it is answered |
+|---|---|
+| How many patients (any conditions, counts of records, timing between records) | `chiron_query` count |
+| Split by a category, the most common conditions or medications | `show={"breakdown"}`, `{"top"}` |
+| Lowest, highest, average of a lab or a number | `{"range"}` |
+| Which values exist (labs, units, visit types, payers) | `{"values"}` |
+| A list of patients with a few fields | `{"list"}` |
+| A patient's readings over time, visits, diagnoses, prescriptions, procedures, the latest or first result, a timeline | `{"records"}` |
+| The Results tab, saved reports, the query builder | `{"results"}`, `{"report"}`, `{"query_builder"}` |
+
+Not available yet, and the model is told to say so in one sentence rather than improvise: the
+time between two of a patient's records (days from diagnosis to death), age at an event, totals
+of costs per patient, counts per year per patient, and a breakdown of patients who have either of
+two things across different variables (each is counted instead). The usage page counts the
+answers in which the model said something could not be done, and people can report an answer
+from under it (see [The usage page](#the-usage-page)); both are how the next gap is seen early.
+
 ### The Results tab
 
 Both write tools require `CHIRON_MCP_ALLOW_SAVE=1`.
@@ -875,6 +913,11 @@ alone, in under a minute; `--layer` picks layers.
 
 ## Known limits
 
+- **Records are for one patient or a small group.** `show={"records"}` refuses a cohort of more
+  than 100 patients (500 with latest/earliest per patient) and returns at most 500 rows, with
+  the total, so the model never charts a sample as if it were everything.
+- **Dated records need event dates.** `latest`/`earliest` and a value-over-time chart need the
+  data dictionary to name the record's date field (`DATE_FIELD` in `dictionary.py`).
 - **Crosstab needs a configured root collection.** `run_analysis` reads
   `dataset.root_collection.event_id_field` and dereferences it without a null check. Datasets that
   leave it unset get a clear refusal instead of an `AttributeError`.
@@ -1036,6 +1079,27 @@ and `/usage/access.json` the who-has-what table with the change log; all three f
 the same rule about whose rows a person may see. `POST /usage/access` with
 `{"username", "dataset", "level"}`, `{"username", "dataset", "subject_details"}` or
 `{"username", "superuser"}` is the change, superusers only, same-site only.
+
+**Reported answers and answers that reached a limit.** Under every answer, "Report a problem"
+lets the person who asked send that question, the answer and its trace id to those who see
+everyone's usage (wrong figure, incomplete, could not do it, something else, with a line of
+text): `POST /flag {"trace", "kind", "note"}`, for one's own answers only. They appear at the
+foot of the Usage tab with a "Mark handled" button (`POST /usage/flag {"id", "status"}`). The
+rule that administrators never open other people's traces holds: the person chose what to show.
+Beside it, the ledger marks each answer in which the model said Chiron, Ask or it could not do
+something, or gave only part of it (a phrase check on the answer at finish, no text stored:
+`limited` in the row, the "Said it could not" tile on the page). A rising count is the early
+warning; the reports say what.
+
+**Sharing a conversation, and a PDF of it.** The owner of a conversation can let colleagues
+read it ("Share" in the Ask top bar, by Chiron username or email; `POST /share {"thread",
+"with", "remove"?}`). It appears in their sidebar under "Shared with me", read-only, no
+follow-ups. Each answer is shown only if the reader's access on that dataset is at least the
+level it was answered at (kept in the trace) and the reader may see identifying columns whenever
+the owner may; otherwise it is held back with a note. The traces stay with the owner. "Export
+PDF" opens the conversation by itself in a new tab (`?view=<conversation>&print=1`, the same
+read-only view, with a print stylesheet) and prints it once the charts are drawn; the browser's
+print dialog saves it as a PDF.
 
 ## Troubleshooting
 

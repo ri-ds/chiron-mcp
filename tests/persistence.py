@@ -209,6 +209,53 @@ def live() -> None:
     r = E.get_json(f"{E.ASK}/trace?id={trace_id}", other)
     check(f"{tag} nor its traces", "error" in r and not r.get("steps"), r.get("error"))
 
+    # Sharing: the owner names a person; that person sees it under "shared", read-only,
+    # with each answer only at or above the access it was answered at; the owner can undo it.
+    r = E.post_json(f"{E.ASK}/share", {"thread": tid, "with": "no-such-account-here"}, me)
+    check(f"{tag} sharing with an unknown account is refused and says so", "error" in r and "No Chiron account" in r["error"], r)
+    r = E.post_json(f"{E.ASK}/share", {"thread": tid, "with": "agguser"}, me)
+    check(f"{tag} /share adds a person by username", [p["username"] for p in r.get("shared_with") or []] == ["agguser"], r)
+    listed = E.get_json(f"{E.ASK}/threads?dataset={E.DS}", me)
+    mine = [t for t in listed.get("threads") or [] if t["thread"] == tid]
+    check(f"{tag} the owner's listing says who it is shared with", mine and [p["username"] for p in mine[0].get("shared_with") or []] == ["agguser"], mine)
+    others = E.get_json(f"{E.ASK}/threads?dataset={E.DS}", other)
+    shared = [t for t in others.get("shared") or [] if t["thread"] == tid]
+    check(f"{tag} the other account now lists it under shared, with the owner named",
+          len(shared) == 1 and shared[0]["owner"] == "demouser" and shared[0]["title"] == "How many patients have asthma?", shared)
+    r = E.get_json(f"{E.ASK}/threads?thread={tid}", other)
+    shown = [t for t in r.get("turns") or [] if t.get("answer")]
+    held = [t for t in r.get("turns") or [] if t.get("withheld")]
+    check(f"{tag} the shared view is read-only, every turn shown or held back by access level, no trace in it",
+          r.get("read_only") is True and r.get("owner") == "demouser" and len(shown) + len(held) == 2
+          and r.get("withheld") == len(held) and not any("trace" in t for t in shown), (r.get("read_only"), len(shown), len(held), r.get("withheld")))
+    r = E.get_json(f"{E.ASK}/trace?id={trace_id}", other)
+    check(f"{tag} a shared conversation gives no access to its traces", "error" in r and not r.get("steps"), r.get("error"))
+    r = E.post_json(f"{E.ASK}/share", {"thread": tid, "with": "demouser"}, other)
+    check(f"{tag} the viewer cannot share it on", "error" in r, r)
+    r = E.post_json(f"{E.ASK}/share", {"thread": tid, "with": "agguser", "remove": True}, me)
+    others = E.get_json(f"{E.ASK}/threads?dataset={E.DS}", other)
+    r2 = E.get_json(f"{E.ASK}/threads?thread={tid}", other)
+    check(f"{tag} unsharing takes it out of the other account's list and reach",
+          r.get("shared_with") == [] and tid not in {t["thread"] for t in others.get("shared") or []} and "error" in r2, (r, r2.get("error")))
+
+    # Reporting an answer: the owner flags it; those who see everyone's usage see the flag.
+    r = E.post_json(f"{E.ASK}/flag", {"trace": trace_id, "kind": "could_not", "note": "persistence test"}, me)
+    check(f"{tag} /flag reports one's own answer", r.get("flagged") is True and r.get("id"), r)
+    fid = r.get("id")
+    r = E.post_json(f"{E.ASK}/flag", {"trace": trace_id, "kind": "wrong"}, other)
+    check(f"{tag} another account cannot flag it", "error" in r and not r.get("flagged"), r)
+    admin = E.mint_session("admin")
+    u = E.get_json(f"{E.ASK}/usage.json?period=all&recent=1", admin)
+    flag = next((f for f in u.get("flags") or [] if f.get("id") == fid), None)
+    check(f"{tag} the usage data of an admin lists the flag with the question, the answer and the note",
+          flag and flag["kind"] == "could_not" and flag["question"] == "How many patients have asthma?" and flag.get("answer")
+          and flag["note"] == "persistence test" and flag["status"] == "open", flag and {k: flag.get(k) for k in ("kind", "question", "status")})
+    check(f"{tag} and counts the answers that said something could not be done", isinstance((u.get("totals") or {}).get("limited"), int), (u.get("totals") or {}).get("limited"))
+    u2 = E.get_json(f"{E.ASK}/usage.json?period=all&recent=1", me)
+    check(f"{tag} a person's own usage data carries no flags", "flags" not in u2, list(u2)[:6])
+    r = E.post_json(f"{E.ASK}/usage/flag", {"id": fid, "status": "handled"}, admin)
+    check(f"{tag} an admin marks it handled", r.get("ok") is True and any(f["id"] == fid and f["status"] == "handled" for f in r.get("flags") or []), r.get("ok"))
+
     r = E.post_json(f"{E.ASK}/forget", {"thread": tid}, me)
     listed = E.get_json(f"{E.ASK}/threads?dataset={E.DS}", me)
     gone = tid not in {t["thread"] for t in listed.get("threads") or []}

@@ -99,6 +99,15 @@ services:
       CHIRON_MCP_ASK_MODELS: ${ASK_MODELS:-}
       # A Django group whose members see everyone's usage at /ask/usage, as superusers do.
       CHIRON_MCP_USAGE_GROUP: ${ASK_USAGE_GROUP:-}
+      # A model server of your own instead of Anthropic or Bedrock (Ollama, or LiteLLM in
+      # front of vLLM and the like): its address and, if it wants one, a token. Both
+      # unset: the Claude login or the Bedrock settings in your override apply. See
+      # "Ask on your own model server" in README.md.
+      ANTHROPIC_BASE_URL: ${ASK_BASE_URL:-}
+      ANTHROPIC_AUTH_TOKEN: ${ASK_AUTH_TOKEN:-}
+      # Off when a model server is used: prompt caching and the betas are Anthropic's.
+      DISABLE_PROMPT_CACHING: ${ASK_DISABLE_PROMPT_CACHING:-}
+      CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: ${ASK_DISABLE_BETAS:-}
     volumes:
       # The Claude login (made once with: docker compose exec -it ask claude), the Ask
       # server's conversation state and the usage ledger live in this home directory.

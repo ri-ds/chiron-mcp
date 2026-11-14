@@ -153,6 +153,18 @@
     th, td { padding: 6px 8px; }
     .who small { display: none; }
   }
+  .flags { display: flex; flex-direction: column; gap: 10px; }
+  .flag { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .flag.handled { opacity: .7; }
+  .flag-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .flag-head b { font-weight: 600; }
+  .flag-head .btn { margin-left: auto; }
+  .flag-note { margin-top: 6px; color: var(--ink); white-space: pre-wrap; }
+  .flag-q { margin-top: 6px; color: var(--ink-2); }
+  .flag-q .lbl { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+  .flag-a { margin-top: 6px; }
+  .flag-a summary { cursor: pointer; color: var(--accent-strong); font-size: 12.5px; }
+  .flag-a pre { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: 12.5px; background: var(--panel); border-radius: 8px; padding: 8px 10px; margin: 6px 0 0; max-height: 320px; overflow: auto; }
 </style>
 </head>
 <body>
@@ -206,6 +218,11 @@
     <section class="card">
       <h2>Recent answers <span class="sub" id="recent-sub"></span></h2>
       <div class="scroll" id="recent"></div>
+    </section>
+    <section class="card hide" id="flags-card">
+      <h2>Reported answers <span class="sub" id="flags-sub"></span></h2>
+      <p class="sub" style="margin: 0 0 8px; color: var(--muted); font-size: 12.5px">What people flagged under an answer with "Report a problem": the question, the answer and why. Each one is a question kind to serve better or a bug to fix.</p>
+      <div class="scroll" id="flags"></div>
       <p class="note">One row per answer, with no question text and no results. The trace under an answer in Ask has those, for the person who asked, while the conversation lives.</p>
     </section>
   </section>
@@ -317,13 +334,55 @@ function renderTiles(d) {
   tiles.push(['Spend', money(t.cost_usd || 0), t.answers ? money(t.avg_cost) + ' per answer' : '']);
   tiles.push(['Answer time', t.answers ? secs(t.avg_ms) : '–', 'average']);
   tiles.push(['Errors', num(t.errors || 0), t.answers ? pct(t.errors || 0, t.answers) + ' of answers' : '']);
+  tiles.push(['Said it could not', num(t.limited || 0), t.answers ? pct(t.limited || 0, t.answers) + ' of answers' : '']);
   tiles.forEach(([label, value, sub]) => {
     const tile = el('div', 'tile');
     tile.appendChild(el('small', '', label));
     tile.appendChild(el('b', '', value));
     tile.appendChild(el('span', '', sub));
+    if (label === 'Said it could not') tile.title = 'Answers in which the model said Chiron, Ask or it could not do something, or gave only part of it: a question kind the tools do not serve yet. The reported answers below say which.';
     box.appendChild(tile);
   });
+}
+
+// ---- reported answers -------------------------------------------------------------------
+const FLAG_WORDS = { wrong: 'Wrong figure or answer', incomplete: 'Incomplete', could_not: 'Could not do it', other: 'Something else' };
+function renderFlags(d) {
+  const card = $('flags-card'), box = $('flags'), rows = d.flags || [];
+  card.classList.toggle('hide', !d.everyone);
+  if (!d.everyone) return;
+  box.textContent = '';
+  const open = rows.filter(f => f.status !== 'handled').length;
+  $('flags-sub').textContent = rows.length ? (open + ' open · ' + rows.length + ' in all') : '';
+  if (!rows.length) { box.appendChild(el('div', 'empty', 'Nothing reported yet.')); return; }
+  const list = el('div', 'flags');
+  rows.forEach(f => {
+    const item = el('div', 'flag' + (f.status === 'handled' ? ' handled' : ''));
+    const head = el('div', 'flag-head');
+    head.appendChild(el('b', '', FLAG_WORDS[f.kind] || f.kind || 'Reported'));
+    head.appendChild(el('span', 'dim', ' · ' + person(f.user) + ' · ' + (f.dataset || '–') + ' · ' + when(f.at) + (f.model ? ' · ' + shortModel(f.model) : '')));
+    const btn = el('button', 'btn small', f.status === 'handled' ? 'Reopen' : 'Mark handled'); btn.type = 'button';
+    btn.onclick = async () => {
+      btn.disabled = true;
+      let r = null;
+      try { r = await fetch('usage/flag', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ id: f.id, status: f.status === 'handled' ? 'open' : 'handled' }) }).then(x => x.json()); }
+      catch (_) { r = null; }
+      if (r && r.ok) renderFlags(Object.assign({}, d, { flags: r.flags })); else btn.disabled = false;
+    };
+    head.appendChild(btn);
+    item.appendChild(head);
+    if (f.note) item.appendChild(el('div', 'flag-note', f.note));
+    const q = el('div', 'flag-q'); q.appendChild(el('span', 'lbl', 'Question ')); q.appendChild(document.createTextNode(f.question || '–'));
+    item.appendChild(q);
+    const a = el('details', 'flag-a');
+    a.appendChild(el('summary', '', 'The answer' + (f.trace ? ' · trace ' + String(f.trace).slice(0, 8) : '')));
+    a.appendChild(el('pre', '', f.answer || '–'));
+    item.appendChild(a);
+    if (f.status === 'handled') item.appendChild(el('div', 'dim', 'Handled ' + when(f.handled_at) + (f.handled_by ? ' by ' + person(f.handled_by) : '')));
+    list.appendChild(item);
+  });
+  box.appendChild(list);
 }
 
 function renderChart(d) {
@@ -628,6 +687,7 @@ function render(d) {
   renderBreakdown(d);
   renderPeople(d);
   renderRecent(d);
+  renderFlags(d);
   $('tab-access').classList.toggle('hide', !d.everyone);
 }
 

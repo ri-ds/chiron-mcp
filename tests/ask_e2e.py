@@ -126,8 +126,15 @@ def truths() -> dict[str, dict[str, int]]:
         ).replace("DESC", f'l."{P}medication__description"')
 
     albuterol = med("lower(DESC) like 'albuterol%'")
+    # the patient born 1929-12-14: her diastolic readings, for the records conversation
+    her_diastolic = sql(
+        f'select count(*) from subject s join "lkp_{P}subject__birthdate" b on b._collection_id = s._id '
+        f'join observation o on o._subject_id = s._subject_id join "lkp_{P}observation__description" d '
+        f'on d._collection_id = o._id where b."{P}subject__birthdate" = \'1929-12-14\' '
+        f'and lower(d."{P}observation__description") like \'diastolic%\'')
     return {
         "_grid": grid,
+        "her_diastolic": {"right": her_diastolic},
         # "now show their medications": right if scoped to the asthma cohort, and the
         # whole-dataset figure is what an answer that forgot "their" would give
         "asthma_albuterol": {"right": count_of(asthma, albuterol)},
@@ -210,6 +217,10 @@ class Case:
     pattern: str | None = None     # regex the answer must match (case-insensitive)
     absent: list[str] = field(default_factory=list)  # facts that must NOT be stated
     partial_rows: list[list[int]] = field(default_factory=list)  # one table row each
+    forbid: list[str] = field(default_factory=list)   # phrases that must NOT appear (case-insensitive)
+    min_dates: int = 0             # distinct YYYY-MM-DD dates the answer must carry
+    chart_points: int = 0          # the first chart: at least this many points, dated when > 10
+    chart_key: str | None = None   # truth key: the first chart has exactly that many points, or one fewer
 
 
 @dataclass
@@ -407,6 +418,35 @@ def check(r: Result, case: Case, ev: dict, cookie: str, truth: dict, dataset: st
             r.fail(f"answer never mentions {word!r}")
     if case.pattern and not re.search(case.pattern, answer, re.I | re.S):
         r.fail(f"answer does not match {case.pattern!r}")
+    for phrase in case.forbid:
+        if phrase.lower() in low:
+            r.fail(f"answer says {phrase!r}, which the tools no longer justify")
+    if case.min_dates:
+        dates = set(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", answer))
+        if len(dates) < case.min_dates:
+            r.fail(f"answer carries {len(dates)} dated events, expected at least {case.min_dates}")
+        else:
+            r.ok_note(f"{len(dates)} dated events")
+    if case.chart_points or case.chart_key:
+        blocks = re.findall(r"```chart\s*([\s\S]*?)```", answer)
+        try:
+            spec = json.loads(blocks[0]) if blocks else {}
+        except ValueError:
+            spec = {}
+        pts = spec.get("data") or []
+        want = truth[case.chart_key]["right"] if case.chart_key else case.chart_points
+        if not blocks:
+            r.fail("no chart block")
+        elif spec.get("type") != "line":
+            r.fail(f"a value over time should be a line chart, got {spec.get('type')!r}")
+        elif case.chart_key and len(pts) not in (want, want - 1):
+            r.fail(f"chart has {len(pts)} points, the patient has {want} readings (one may be left out as impossible, no more)")
+        elif not case.chart_key and len(pts) < want:
+            r.fail(f"chart has {len(pts)} points, expected at least {want}")
+        elif want > 10 and not all(re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(p.get("x"))) for p in pts if isinstance(p, dict)):
+            r.fail("chart x values are not the readings' dates")
+        else:
+            r.ok_note(f"line chart with {len(pts)} dated points")
 
     found = numbers(answer)
     cohort = ev.get("cohort")
@@ -996,6 +1036,17 @@ CASES = [
         Case("t2", "Chart that, and state the total", "count", "asthma",
              pattern=r"```chart"),
     ]),
+    # --- a patient's records over time: the feedback of 2026-11-13 (dates paired with values)
+    Case("records", "show the health trajectory of the patient born on 1929-12-14", "plain",
+         must_mention=["asthma", "albuterol"], min_dates=12,
+         forbid=["separate lists", "can't pair", "cannot pair", "only as types", "doesn't include their dates"],
+         turns=[
+             Case("t2", "Show her lab results, such as BMI and blood pressure", "plain", must_mention=["BMI"],
+                  forbid=["separate lists", "can't pair", "cannot pair", "can't show how", "not each dated"]),
+             Case("t3", "graph the diastolic blood pressure values over time", "plain", chart_key="her_diastolic",
+                  forbid=["separate lists", "can't pair", "cannot pair", "by decade", "made-up"]),
+             Case("t4", "how many females in the cohort?", "plain", pattern=r"\b1\b"),
+         ]),
     # --- breakdowns, checked cell by cell
     Case("breakdown_1d", "Break down asthma patients by gender", "breakdown", "asthma"),
     # one asthma patient has no recorded gender; the answer must say so or the table

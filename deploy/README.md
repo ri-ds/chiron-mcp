@@ -161,6 +161,9 @@ ProxyPass /.well-known/oauth-authorization-server/chiron http://localhost:8088/.
 | Prove what each kind of account can and cannot get out of Ask | `docker compose exec -T ask env ASK_URL=http://localhost:8900 CHIRON_API=http://chiron:8000 python /app/tests/permissions.py` (six identities, one question set, about ten minutes; makes and removes its own `perm_*` accounts) |
 | Attack it: every way past one's access level (tool calls, questions, the web server) | `docker compose exec -T ask env ASK_URL=http://localhost:8900 CHIRON_API=http://chiron:8000 python /app/tests/permissions_adversarial.py` (about five minutes; `--no-model` runs the tool and web-server layers alone in under a minute; makes and removes its own `perm_*` accounts and reports) |
 | Keep conversations for a limited time instead of for good | `ASK_THREAD_TTL_HOURS=168` in `.env` (idle hours; unset or `0` keeps every conversation, its transcript and its traces until the person clears it), then `docker compose up -d ask` |
+| See what people reported under answers ("Report a problem") and the answers that said something could not be done | open `<PUBLIC_URL>/ask/usage` as `admin`: the "Said it could not" tile, and "Reported answers" at the foot of the Usage tab, each with the question, the answer and a "Mark handled" button |
+| Run Ask on a model server of your own (no Bedrock, no Anthropic account) | `ASK_BASE_URL` (and `ASK_AUTH_TOKEN`, `ASK_MODELS`) in `.env`, then `docker compose up -d ask`; see "Ask on your own model server" below |
+| Check that a patient's records come back paired (dates with values) and gated | `docker compose exec -T ask python /app/tests/records.py` (in-process, no model; compares the tool's rows with the warehouse) |
 | Give a Synthea dataset a "patient ID" variable (first in Demographics) | `docker cp scripts/add_patient_id.py chiron-ask-chiron-1:/tmp/ && docker compose exec -T chiron python /tmp/add_patient_id.py synthea-10k --category demographics --first` (`--dry-run` first; `--remove` takes it out again; copies dataset1_stored's patient_id settings, fills the IDs Chiron kept at load time, no ETL re-run) |
 | Stop, keeping everything | `docker compose stop` |
 | Start again | `docker compose up -d` |
@@ -187,6 +190,58 @@ trace under the answer names the model that answered. Only listed models can be 
 On Bedrock, the AWS role must be allowed to call each listed model. A model Bedrock
 refuses is dropped from the menu for as long as the server runs, and the question is
 answered by the next one (Opus when it is listed); the trace under the answer says so.
+
+## Ask on your own model server
+
+Ask's engine is the Claude Code CLI, and it talks to any server that speaks Anthropic's
+Messages API, so a site without Bedrock or an Anthropic account can point it at a model
+server of its own. Two forms work, both proven with the benchmark arena in this repository's
+companion `chiron-benchmark`:
+
+- **Ollama** speaks the API natively: `ASK_BASE_URL=http://ollama.example.org:11434`.
+- **vLLM, TGI, or an OpenAI-style gateway**: put [LiteLLM](https://docs.litellm.ai) in front
+  (it translates Anthropic's API to OpenAI's) and point Ask at it:
+  `ASK_BASE_URL=http://litellm:4000`, `ASK_AUTH_TOKEN=<its key>`.
+
+In `deploy/.env`:
+
+```
+ASK_BASE_URL=http://ollama.example.org:11434
+ASK_AUTH_TOKEN=not-needed            # whatever the server wants; Ollama wants none
+ASK_DISABLE_PROMPT_CACHING=1          # caching and the betas are Anthropic's
+ASK_DISABLE_BETAS=1
+ASK_MODELS=qwen3-next:80b=Qwen3-Next 80B,gpt-oss:120b=gpt-oss 120B
+```
+
+then `docker compose up -d ask`, with no Claude login and no Bedrock settings. A question
+runs with every model slot pinned to the chosen model, as with Bedrock; the trace under an
+answer names the model and the server it answered from. A LiteLLM service for the second
+form, in `compose.override.yml`:
+
+```yaml
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ["--config", "/litellm.yaml", "--port", "4000"]
+    volumes: ["./litellm.yaml:/litellm.yaml:ro"]
+    environment: { LITELLM_MASTER_KEY: "sk-local" }
+  ask:
+    environment: { ANTHROPIC_BASE_URL: "http://litellm:4000", ANTHROPIC_AUTH_TOKEN: "sk-local" }
+```
+
+```yaml
+# litellm.yaml: one entry per model Ask may offer, named as ASK_MODELS names it
+model_list:
+  - model_name: qwen3-next-80b
+    litellm_params: { model: openai/Qwen/Qwen3-Next-80B-A3B-Instruct, api_base: http://vllm:8000/v1, api_key: none }
+```
+
+What to expect: the model has to call tools well and hold a 64k context (the data brief,
+the tool results and a long conversation). Measured on the 49-question benchmark on
+Synthea 100k, Haiku 5.5 scores 48, Qwen3-VL 235B 41, Qwen3-Coder Next 41, Qwen3-Next 80B
+(3B active, cheap to serve) 39, and gpt-oss-20b on a laptop 22 with 20 timeouts. A
+Qwen3-class model of 80B or more is the recommendation; run `chiron-benchmark` against the
+server before committing to one.
 
 ## Undo it all after testing
 

@@ -1000,6 +1000,16 @@ def chiron_query(
           {"range": {"lab": "HbA1c"}}                 lowest and highest recorded value
           {"values": "lab"}                           the labs recorded (also "units",
                                                       "visit type", "condition", ...)
+          {"records": {"of": {"lab": "HbA1c"}}}        one row per record of these patients,
+                                                      dated: a lab's date, value and units
+                                                      together; also "visit", "condition",
+                                                      "medication", "procedure", a name or
+                                                      a value/date range in "of";
+                                                      "latest": N / "earliest": N per
+                                                      patient; "fields": [...] or "all";
+                                                      "limit" (200, at most 500). For values
+                                                      over time, timelines, latest results.
+                                                      One patient or a small group only.
           {"results": {"columns": [...], "sort": [...]}}   put them in the Results tab
           {"report": {"name": "X", "columns": [...]}}      save them as a report
           {"report": {"name": "X", "update": true}}         change that report's filters

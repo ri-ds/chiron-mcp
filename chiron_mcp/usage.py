@@ -37,7 +37,7 @@ COLUMNS = (
     "id", "thread", "user", "dataset", "access_level", "started", "ended", "turn",
     "followup", "status", "model", "model_calls", "chiron_calls", "chiron_errors",
     "retries", "tokens_in", "cache_read", "cache_write", "tokens_out", "thinking",
-    "cost_usd", "cost_total", "ms", "model_ms", "chiron_ms", "rc", "source",
+    "cost_usd", "cost_total", "ms", "model_ms", "chiron_ms", "rc", "source", "limited",
 )
 
 _SCHEMA = """
@@ -55,11 +55,21 @@ CREATE TABLE IF NOT EXISTS answers (
     thinking INTEGER,
     cost_usd REAL, cost_total REAL,
     ms INTEGER, model_ms INTEGER, chiron_ms INTEGER, rc INTEGER,
-    source TEXT
+    source TEXT,
+    limited INTEGER
 );
 CREATE INDEX IF NOT EXISTS answers_ended ON answers (ended);
 CREATE INDEX IF NOT EXISTS answers_user ON answers (user, ended);
+CREATE TABLE IF NOT EXISTS flags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT, user TEXT, dataset TEXT, thread TEXT, trace TEXT,
+    kind TEXT, note TEXT, question TEXT, answer TEXT, model TEXT, access_level TEXT,
+    status TEXT DEFAULT 'open', handled_at TEXT, handled_by TEXT
+);
 """
+# Columns added after a ledger was first made: CREATE TABLE IF NOT EXISTS leaves an old
+# table as it was, so each is added when missing.
+_ADDED = {"answers": {"limited": "INTEGER"}}
 
 # The call log's names for an answer's fields, where they differ from the columns.
 _FROM_LOG = {"answer": "id", "level": "access_level", "in": "tokens_in", "out": "tokens_out"}
@@ -110,6 +120,11 @@ def _connect(p: Path) -> sqlite3.Connection:
                 except OSError:
                     pass
                 con.executescript(_SCHEMA)
+                for table, cols in _ADDED.items():
+                    have = {r[1] for r in con.execute(f"PRAGMA table_info({table})").fetchall()}
+                    for col, typ in cols.items():
+                        if col not in have:
+                            con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
                 try:
                     p.chmod(0o600)
                 except OSError:
@@ -150,7 +165,7 @@ def row_from(fields: dict, *, started: str | None = None, ended: str | None = No
         row[_FROM_LOG.get(k, k)] = v
     for c in ("turn", "followup", "model_calls", "chiron_calls", "chiron_errors", "retries",
               "tokens_in", "cache_read", "cache_write", "tokens_out", "thinking", "ms",
-              "model_ms", "chiron_ms", "rc"):
+              "model_ms", "chiron_ms", "rc", "limited"):
         row[c] = _int(row.get(c))
     row["cost_usd"] = _float(row.get("cost_usd"))
     row["cost_total"] = _float(row.get("cost_total"))
@@ -280,7 +295,81 @@ _AGG = ("COUNT(*) AS answers, "
         "COALESCE(SUM(tokens_in), 0) + COALESCE(SUM(cache_read), 0) + COALESCE(SUM(cache_write), 0) AS tokens_in, "
         "COALESCE(SUM(tokens_out), 0) AS tokens_out, "
         "SUM(model_calls) AS model_calls, SUM(chiron_calls) AS chiron_calls, "
+        "COALESCE(SUM(limited), 0) AS limited, "
         "MAX(ended) AS last")
+
+
+# --- flags: an answer a person reported as wrong, incomplete or refused ----------------------
+FLAG_KINDS = {"wrong": "Wrong figure or answer", "incomplete": "Incomplete",
+              "could_not": "Could not do what was asked", "other": "Something else"}
+
+
+def flag(*, user: str, dataset: str | None, thread: str | None, trace: str | None, kind: str,
+         note: str | None, question: str | None, answer: str | None, model: str | None,
+         access_level: str | None) -> int | None:
+    """One reported answer, with the question and the answer the person chose to send.
+    Returns the flag's id, or None when the ledger is off or the write failed."""
+    p = path()
+    if p is None:
+        return None
+    try:
+        con = _connect(p)
+        try:
+            cur = con.execute(
+                "INSERT INTO flags (at, user, dataset, thread, trace, kind, note, question, answer, "
+                "model, access_level, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')",
+                (iso(time.time()), user, dataset, thread, trace,
+                 kind if kind in FLAG_KINDS else "other", (note or "")[:1000] or None,
+                 (question or "")[:2000] or None, (answer or "")[:6000] or None, model, access_level))
+            return int(cur.lastrowid)
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"usage ledger: {exc}", file=sys.stderr)
+        return None
+
+
+def flags(limit: int = 200, status: str | None = None, user: str | None = None) -> list[dict]:
+    """Reported answers, newest first; `status` open or handled, `user` one person's."""
+    p = path()
+    if p is None or not p.exists():
+        return []
+    where, args = [], []
+    if status:
+        where.append("status = ?")
+        args.append(status)
+    if user:
+        where.append("user = ?")
+        args.append(user)
+    sql = "SELECT * FROM flags" + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT ?"
+    try:
+        con = _connect(p)
+        try:
+            return [dict(r) for r in con.execute(sql, args + [int(limit)]).fetchall()]
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"usage ledger: {exc}", file=sys.stderr)
+        return []
+
+
+def set_flag(flag_id: int, status: str, actor: str) -> bool:
+    """Mark a reported answer handled (or open again)."""
+    p = path()
+    if p is None or status not in ("open", "handled"):
+        return False
+    try:
+        con = _connect(p)
+        try:
+            cur = con.execute("UPDATE flags SET status = ?, handled_at = ?, handled_by = ? WHERE id = ?",
+                              (status, iso(time.time()) if status == "handled" else None,
+                               actor if status == "handled" else None, int(flag_id)))
+            return cur.rowcount > 0
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"usage ledger: {exc}", file=sys.stderr)
+        return False
 
 
 def last_total(thread: str, user: str) -> float | None:

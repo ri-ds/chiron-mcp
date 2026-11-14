@@ -32,6 +32,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import re
 import shutil
 import threading
@@ -355,7 +356,8 @@ class Trace:
 
     def __init__(self, *, question: str, dataset: str | None, user: str, thread: str,
                  followup: bool, prior: list[dict] | None = None, inherited: dict | None = None,
-                 redact=None, groups: dict | None = None, access_level: str | None = None):
+                 redact=None, groups: dict | None = None, access_level: str | None = None,
+                 details: bool | None = None):
         prior = prior or []
         self.id = uuid.uuid4().hex
         # The conversation's groups so far (g1, g2: what was counted and how many), so a
@@ -396,7 +398,7 @@ class Trace:
         self.data: dict = {
             "id": self.id, "version": VERSION, "started": time.time(),
             "question": question, "dataset": dataset, "user": user, "thread": thread,
-            "access_level": access_level,
+            "access_level": access_level, "details": details,
             "followup": followup, "turn": len(prior) + 1 if followup else 1,
             "previous": [p.get("question") for p in prior],
             # A follow-up whose earlier answers were not all traced (asked before tracing
@@ -844,6 +846,7 @@ class Trace:
             self.data["stats"] = _stats(self)
             self.data["figures"] = _figure_sources(self)
             self.data["calls"] = _calls(self)
+            self.data["limited"] = limitation_phrases(self.data.get("answer") or "")
             self.data["checks"] = _checks(self) + _data_checks(self)
             st, res = self.data["stats"], self.data.get("result") or {}
             u = res.get("usage") or {}
@@ -862,7 +865,8 @@ class Trace:
                 thinking=st.get("thinking_tokens"), cost_usd=st.get("cost_usd"),
                 cost_total=st.get("cost_usd_cumulative"),
                 ms=int(round(self.data["ended"])), model_ms=int(round(st.get("model_ms") or 0)),
-                chiron_ms=int(round(st.get("chiron_ms") or 0)), rc=rc)
+                chiron_ms=int(round(st.get("chiron_ms") or 0)), rc=rc,
+                limited=1 if self.data.get("limited") else 0)
             calllog.write("answer", **row)
             started = self.data.get("started")
             usage.record(row, started=started,
@@ -1194,7 +1198,9 @@ def _calls(tr: Trace) -> dict:
     with no built-in tools, only Chiron's."""
     d, steps = tr.data, tr._order
     model = d.get("model") or ""
-    via = "Bedrock" if re.match(r"^(us|eu|apac|global|jp|au)\.", model) or "anthropic." in model else "Anthropic"
+    base = os.environ.get("ANTHROPIC_BASE_URL", "").strip()
+    via = ("Bedrock" if re.match(r"^(us|eu|apac|global|jp|au)\.", model) or "anthropic." in model
+           else (re.sub(r"^https?://", "", base).split("/")[0] if base else "Anthropic"))
     tools = [s for s in steps if s["kind"] == "tool"]
     figs = d.get("figures") or []
     by = {k: sum(1 for f in figs if f.get("status") == k) for k in ("tool", "question", "earlier", "derived", "missing")}
@@ -1213,6 +1219,31 @@ def _calls(tr: Trace) -> dict:
     }
 
 
+_LIMIT_SUBJECT = r"(?:Chiron|Ask|the (?:query )?tools?|this tool|the server)"
+_LIMIT_VERB = (r"(?:can(?:'|\u2019)?t|cannot|can not|couldn(?:'|\u2019)?t|could not|doesn(?:'|\u2019)?t|does not|"
+               r"didn(?:'|\u2019)?t|did not|won(?:'|\u2019)?t|isn(?:'|\u2019)?t able|not able|unable|no way|"
+               r"not possible|not available|only (?:gives|gave|returns|returned|as|summar)|separate lists|"
+               r"not paired|aren(?:'|\u2019)?t paired)")
+_LIMIT_RE = re.compile(
+    rf"\b{_LIMIT_SUBJECT}\b[^.\n]{{0,80}}?\b{_LIMIT_VERB}\b"
+    rf"|\b(?:I|it|this|that)\s+(?:can(?:'|\u2019)?t|cannot|couldn(?:'|\u2019)?t|could not|am unable to|was unable to)"
+    r"\s+(?:graph|chart|plot|show|list|pair|tell|give|get|find|compute|calculate|match|relate|work out|determine)\b",
+    re.I)
+
+
+def limitation_phrases(text: str) -> list[str]:
+    """The sentences of an answer in which the model says Chiron, Ask or it could not do
+    something, or gave only part of it: the sign of a question kind the tools do not serve
+    yet. Counted in the usage ledger (never the text), and listed in the trace's checks."""
+    out = []
+    for sentence in re.split(r"(?<=[.!?])\s+|\n+", text or ""):
+        if _LIMIT_RE.search(sentence):
+            out.append(sentence.strip()[:200])
+        if len(out) >= 3:
+            break
+    return out
+
+
 def _data_checks(tr: Trace) -> list[dict]:
     """Plain statements of what the answer rested on, for the Checks list: what each
     query built on, whether patient rows left Chiron, and where the figures came from."""
@@ -1220,6 +1251,10 @@ def _data_checks(tr: Trace) -> list[dict]:
     c = d.get("calls") or {}
     tools = c.get("tools") or []
     out: list[dict] = []
+    if d.get("limited"):
+        out.append(_check("info", "The answer says something could not be done",
+                          "Counted on the usage page as an answer that reached a limit; the sentence: "
+                          + " | ".join(d["limited"])))
     for t in tools:
         b = t.get("builds_on")
         if not b:
@@ -1236,8 +1271,8 @@ def _data_checks(tr: Trace) -> list[dict]:
         rows = c.get("rows") or 0
         if rows:
             cols = sorted({col for t in tools for col in t.get("columns") or []})
-            out.append(_check("info", f"{rows:,} patient row{'s' if rows != 1 else ''} came back from Chiron, "
-                              "because a list was asked for",
+            out.append(_check("info", f"{rows:,} row{'s' if rows != 1 else ''} of patient data came back from Chiron, "
+                              "because a list or a patient's records were asked for",
                               "Only the columns asked for, within this account's access level"
                               + (f": {', '.join(cols[:12])}" if cols else "") + "."))
         else:
@@ -1247,6 +1282,25 @@ def _data_checks(tr: Trace) -> list[dict]:
                               "group counts or an aggregate."))
     # Where the figures came from is already a check of its own (_checks); the
     # "What happened" block repeats the split from `calls`.
+    return out
+
+
+def _record_figures(tr: Trace) -> set:
+    """Figures that are counts of records, not of patients: how many rows a tool returned,
+    and a records result's total, returned and patients. An answer about one patient's
+    readings rightly leads with one of these."""
+    out: set = set()
+    for s in tr._order:
+        if s["kind"] != "tool":
+            continue
+        if s.get("rows"):
+            out.add(int(s["rows"]))
+        data = s.get("output")
+        rec = data.get("records") if isinstance(data, dict) else None
+        if isinstance(rec, dict):
+            for k in ("total", "returned", "patients"):
+                if isinstance(rec.get(k), int):
+                    out.add(rec[k])
     return out
 
 
@@ -1468,7 +1522,7 @@ def _checks(tr: Trace) -> list[dict]:
     # What the server did with the answer.
     c = post.get("cohort") or {}
     if c.get("verified") is not None and c.get("figure") is not None and c.get("verified") != c.get("figure") \
-            and c.get("offered") is None:
+            and c.get("offered") is None and c.get("figure") not in _record_figures(tr):
         out.append(_check("warn", f"The answer leads with {c['figure']:,}, but the cohort behind it has "
                           f"{c['verified']:,} patients",
                           "So no Query button was offered. Either the answer reports a figure from another "
@@ -1543,6 +1597,7 @@ def turns(root: Path, thread: str, user: str) -> list[dict]:
             "id": data.get("id"), "q": data.get("question"), "answer": data.get("answer"),
             "error": data.get("error"), "at": int((data.get("started") or 0) * 1000),
             "fresh": bool(data.get("followup_lost")), "done": bool(data.get("done")),
+            "access_level": data.get("access_level"), "details": data.get("details"),
             "trace": {"id": data.get("id"), "ms": data.get("ended"), "model": data.get("model"),
                       "n": len(steps),
                       "fail": sum(1 for c in checks if c.get("level") == "fail"),

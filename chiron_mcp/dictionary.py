@@ -42,6 +42,15 @@ DATE_FIELD = {"condition": "start", "medication": "start", "procedure": "start",
               "observation": "date", "encounter": "start"}
 # The variable holding a lab or vital's number.
 VALUE_FIELD = {"observation": "value"}
+# The columns a row of records shows by default (chiron_query's show={"records": ...}): the
+# record's dates, its name, its value and units. Others on request, or "all".
+RECORD_FIELDS = {
+    "observation": ("date", "description", "value", "units"),
+    "condition": ("start", "stop", "description"),
+    "medication": ("start", "stop", "description", "reasondescription"),
+    "procedure": ("start", "description"),
+    "encounter": ("start", "stop", "encounterclass", "description"),
+}
 
 FIELDS = {
     "subject": {

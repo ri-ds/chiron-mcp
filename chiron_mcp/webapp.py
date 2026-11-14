@@ -169,6 +169,18 @@ answer. If it refuses because a dataset does not exist, say so and do not answer
 another dataset. Use the lower-level tools below only when chiron_query says it cannot
 express the question, and for the Results tab and saved reports.
 
+A patient's records, one row each with their dates (a value over time, a timeline, the
+latest result, when something was diagnosed): chiron_query with show={"records": {"of":
+{"lab": "Diastolic Blood Pressure"}}} (or "of": "visit", "condition", "medication",
+"procedure", {"visit": "emergency"}; "latest": 1 per patient; "fields": [...] or "all").
+Each row pairs the record's date with its value. A table from chiron_run_table collapses a
+record column into a list of distinct values per patient, which loses that pairing, so use
+records for anything dated. Records are for one patient or a small group; the tool says
+the limit. For a value over time draw a line chart with one point per reading (dates as x,
+the unit in the label) and never summarise by decade when the readings are there. Not
+available yet (say so in one sentence, offer the nearest thing): the time between two of a
+patient's records, age at an event, cost totals per patient, counts per year per patient.
+
 The dataset's variables, their exact concept ids and their filter types are listed after
 the question. Use them directly: do not call chiron_find_concepts or
 chiron_describe_concept to discover variables. Call chiron_describe_concept only if a
@@ -345,7 +357,29 @@ What to show. These answer in the chat and change nothing in Chiron:
 - lowest, highest or average of a lab or number: show={"range": {"lab": "HbA1c"}} or
   show={"range": "income"}
 - which values exist (labs, units, visit types, payers): show={"values": "lab"}
+- a patient's records, one row each with their dates ("her blood pressure over time", "his
+  visits", "their latest HbA1c", "the health trajectory", "when was it diagnosed"):
+  show={"records": {"of": {"lab": "Diastolic Blood Pressure"}}} (or "of": "visit",
+  "condition", "medication", "procedure", {"visit": "emergency"}, {"lab": "HbA1c", "op":
+  ">", "value": 9}); "latest": 1 or "earliest": 1 for one per patient; "fields": [...] or
+  "all" for other columns; "limit" up to 500. Each row pairs the record's date with its
+  value, so dates and values are never two separate lists. Records are for one patient
+  or a small group (the tool says the limit when a group is too large: then narrow it,
+  ask for latest N per patient, or give the range instead).
 Write to Results or a report only when the user asks for their Results tab or a report.
+
+A patient's story ("trajectory", "timeline", "history"): records of their conditions,
+medications, visits and procedures, each with its dates, and their labs when asked; put the
+events in one dated table or list. Beyond about 40 events, give the conditions, medications
+and procedures in full and the visits by year (how many, which kinds), and say that each
+visit can be listed on request. For a value over time: records of that lab, then the line
+chart below, one point per reading. Never summarise by decade or year when the individual
+readings are available; say "average" in a title whenever a figure is one.
+
+Not available yet, so say so in one sentence and offer the nearest thing: the time between
+two of a patient's records (days from diagnosis to death), age at an event, totals of costs
+per patient, counts per year per patient, and a breakdown of patients "either/or" across
+different variables (count each instead).
 
 Results tab and reports, all with chiron_query unless said otherwise:
 - "Put ... in my Results ...": show={"results": {"columns": [...], "sort": [...]}} with
@@ -378,6 +412,15 @@ Answering. The reader wants the figure, not an essay.
    "series":[{"label":"Female","y":[288,73]},{"label":"Male","y":[244,73]}]}
   Never chart one row of a table as if it were the whole. Types: bar, line, doughnut.
   Use one to compare categories, never for a single number.
+  A value over time is a line chart with one point per reading, the dates as x, the unit
+  in the label, from the rows of show={"records": ...}:
+  {"type":"line","title":"Diastolic blood pressure, 92 readings 1930-2005","label":"mm[Hg]",
+   "data":[{"x":"1930-12-14","y":73.8},{"x":"1932-11-13","y":67.8}]}
+  Leave out a value you call impossible only if the text says so, with its date.
+- When something shaped the answer (a limit reached, a tool refusal, a figure that is a
+  summary rather than the readings, a workaround), say exactly what was left out and why
+  in the first two sentences, never in a trailing aside, and never as a limit of Chiron
+  unless the tool said so.
 - Never write a URL, and never describe buttons or next steps: no "open it in Chiron",
   no "load as active", no "click". The page adds Query and Report buttons by itself.
 - Stop when the answer is given. No closing offer or invitation ("let me know", "I can
@@ -392,11 +435,12 @@ user might ask next, for example:
 Make the three different kinds of next step: narrow the cohort with another filter,
 break it down by a category (gender, race, ethnicity, marital status), rank what is
 common among these patients (conditions, medications, visit types), compare with
-another group, or save it as a report (after saving one: rename it, change its
-filters, or delete it). Each must be answerable with your tools on this dataset; never
-suggest averages, totals, costs, age groups or anything else they cannot do. Under 60
-characters each, phrased as the user would type them. Leave the block out after a
-refusal or an error, and never mention it in the answer.
+another group, save it as a report (after saving one: rename it, change its filters,
+or delete it), or, for one patient, their records over time ("Chart her blood pressure
+over time", "List his visits"). Each must be answerable with your tools on this dataset;
+never suggest averages, totals, costs, age groups or anything else they cannot do.
+Under 60 characters each, phrased as the user would type them. Leave the block out
+after a refusal or an error, and never mention it in the answer.
 
 Aggregate-only accounts (access level agg) cannot count or list patients; for them use
 chiron_breakdown, which masks small counts the way Chiron's analysis view does, and say
@@ -791,6 +835,75 @@ def user_info(who: str, allow_superuser: bool) -> dict | None:
             "workspace": ident.can_view_workspace,
         })
     return out
+
+
+def display_name(username: str | None) -> str:
+    """A person's full name as Chiron shows it, else their username."""
+    if not username:
+        return ""
+    try:
+        from django.contrib.auth import get_user_model
+
+        user = get_user_model().objects.filter(username=username).first()
+        return ((user.get_full_name() or "").strip() or username) if user else username
+    except Exception:  # noqa: BLE001
+        return username
+
+
+def find_account(text: str):
+    """The active Chiron account whose username or email is exactly `text` (case
+    ignored), for sharing a conversation; None when there is none."""
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+
+    text = (text or "").strip()
+    if not text:
+        return None
+    return (get_user_model().objects.filter(is_active=True)
+            .filter(Q(username__iexact=text) | Q(email__iexact=text)).order_by("id").first())
+
+
+def access_of(dataset: str | None, username: str | None) -> tuple[str | None, bool]:
+    """(access level, may see identifying columns) of a person on a dataset, as every
+    tool resolves it; (None, False) when they have no access."""
+    if not dataset or not username:
+        return None, False
+    try:
+        from chiron_mcp import identity
+
+        ident = identity.resolve(dataset, username=username, allow_superuser=True)
+        return ident.access_level, bool(ident.can_view_subject_details)
+    except Exception:  # noqa: BLE001
+        return None, False
+
+
+def shared_turns(entry: dict, tid: str, viewer: str) -> tuple[list[dict], int]:
+    """A shared conversation's turns for a viewer, each only if the viewer's access on
+    that dataset is at least the level it was answered at and the viewer may see
+    identifying columns whenever its owner may. A turn held back keeps its place, with
+    a note instead of the question and the answer, so the reader knows it is there."""
+    from chiron_mcp.config import ACCESS_ORDER
+
+    owner = entry.get("user")
+    dataset = entry.get("dataset")
+    owner_level, owner_details = access_of(dataset, owner)
+    viewer_level, viewer_details = access_of(dataset, viewer)
+    out, withheld = [], 0
+    for t in tracing.turns(_trace_root(), tid, owner):
+        level = t.get("access_level") or owner_level
+        details = t.get("details") if t.get("details") is not None else owner_details
+        ok = (viewer_level in ACCESS_ORDER and level in ACCESS_ORDER
+              and ACCESS_ORDER.index(viewer_level) >= ACCESS_ORDER.index(level)
+              and (viewer_details or not details))
+        if ok:
+            # the trace stays with the person who asked
+            out.append({k: v for k, v in t.items() if k not in ("trace", "access_level", "details")})
+        else:
+            withheld += 1
+            out.append({"id": t.get("id"), "at": t.get("at"), "withheld": (
+                "This question was answered at a higher access level than yours on this dataset, "
+                "so it is not shown.")})
+    return out, withheld
 
 
 # Who may see everyone's usage and who has what access: Django superusers, and the
@@ -1397,7 +1510,8 @@ class _Threads:
             self._data[tid] = {"user": user, "dataset": dataset, "last": time.time(),
                                "cohort": cohort or prev.get("cohort"),
                                "title": title, "turns": int(prev.get("turns") or 0) + (1 if question else 0),
-                               "first": prev.get("first") or time.time()}
+                               "first": prev.get("first") or time.time(),
+                               "shared": list(prev.get("shared") or [])}
             self._save()
 
     def mine(self, user: str, dataset: str | None = None) -> list[dict]:
@@ -1420,8 +1534,46 @@ class _Threads:
                             self._save()
             out.append({"thread": tid, "dataset": t.get("dataset"), "title": t.get("title"),
                         "turns": int(t.get("turns") or 0), "last": t.get("last"), "first": t.get("first") or t.get("last"),
+                        "shared_with": [{"username": u, "name": display_name(u)} for u in (t.get("shared") or [])],
                         "expired": bool(THREAD_TTL_HOURS is not None
                                         and time.time() - (t.get("last") or 0) >= THREAD_TTL_HOURS * 3600)})
+        return sorted(out, key=lambda x: -(x["last"] or 0))
+
+    def entry(self, tid: str) -> dict | None:
+        with self._guard:
+            t = self._data.get(tid)
+            return dict(t) if t else None
+
+    def share(self, tid: str, owner: str, username: str, remove: bool = False) -> list[str] | None:
+        """Add a person to (or take them off) a conversation's share list; the owner only.
+        None when the conversation is not theirs."""
+        with self._guard:
+            t = self._data.get(tid)
+            if not t or t.get("user") != owner:
+                return None
+            current = list(t.get("shared") or [])
+            if remove:
+                current = [u for u in current if u != username]
+            elif username not in current:
+                current.append(username)
+            t["shared"] = current
+            self._save()
+            return list(current)
+
+    def shared_with(self, user: str, dataset: str | None = None) -> list[dict]:
+        """Conversations other people shared with this person, newest first."""
+        import time
+
+        with self._guard:
+            items = [(tid, dict(t)) for tid, t in self._data.items()
+                     if user in (t.get("shared") or []) and t.get("user") != user
+                     and (dataset is None or t.get("dataset") == dataset)]
+        out = [{"thread": tid, "dataset": t.get("dataset"), "title": t.get("title") or "Conversation",
+                "turns": int(t.get("turns") or 0), "last": t.get("last"), "first": t.get("first") or t.get("last"),
+                "owner": t.get("user"), "owner_name": display_name(t.get("user")),
+                "expired": bool(THREAD_TTL_HOURS is not None
+                                and time.time() - (t.get("last") or 0) >= THREAD_TTL_HOURS * 3600)}
+               for tid, t in items]
         return sorted(out, key=lambda x: -(x["last"] or 0))
 
     def turns(self, tid: str, user: str) -> list[dict] | None:
@@ -1867,7 +2019,7 @@ def ask_stream(
     # The tools this person gets: the list, plus the aggregate-safe breakdown for an
     # aggregate-only account. Both the MCP server and the CLI's allow-list must agree,
     # or the CLI refuses the call ("requested permissions ... not granted").
-    level = _access_level(dataset, username, allow_superuser)
+    level, details = access_of(dataset, username) if dataset else (None, False)
     offered = TOOLS + [t for t in _tools_for(level) if t not in TOOLS]
     cfg = _mcp_config(username, allow_superuser, thread=tid, extra_tools=offered)
     trace = tracing.OFF
@@ -1879,7 +2031,7 @@ def ask_stream(
                 question=question, dataset=dataset, user=username, thread=tid, followup=resume,
                 prior=tracing.prior(_trace_root(), tid, username) if resume else [],
                 inherited=THREADS.cohort(tid) if resume else None, redact=_redact,
-                groups=_groups_dict(tid) if resume else None, access_level=level)
+                groups=_groups_dict(tid) if resume else None, access_level=level, details=details)
             yield "trace_start", trace.head()
         for _attempt in range(2):
             if resume:
@@ -2113,9 +2265,23 @@ class Handler(BaseHTTPRequestHandler):
             return self._load()
         if url.path == "/forget":
             return self._forget()
+        if url.path == "/share":
+            return self._share()
+        if url.path == "/flag":
+            return self._flag()
         if url.path == "/usage/access":
             return self._usage_access_change()
+        if url.path == "/usage/flag":
+            return self._usage_flag()
         self.send_error(404)
+
+    def _body(self) -> dict | None:
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, TypeError):
+            return None
+        return body if isinstance(body, dict) else None
 
     def _file(self, path: Path, ctype: str):
         if not path.exists():
@@ -2233,6 +2399,8 @@ class Handler(BaseHTTPRequestHandler):
                             dataset=scope["dataset"], recent=recent)
         if not everyone:
             out.pop("ledger", None)
+        else:
+            out["flags"] = usage.flags(200)
         out.update({
             "identity": who, "everyone": everyone, "period": scope["period"],
             "filter_user": scope["user"], "filter_dataset": scope["dataset"],
@@ -2375,13 +2543,100 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": NOT_LOGGED_IN})
         tid = (params.get("thread") or [None])[0]
         if tid:
-            turns = THREADS.turns(tid, who)
-            if turns is None:
-                return self._json({"error": "No such conversation of yours."})
-            return self._json({"thread": tid, "turns": turns})
+            entry = THREADS.entry(tid)
+            if entry and entry.get("user") == who:
+                turns = THREADS.turns(tid, who)
+                return self._json({"thread": tid, "turns": turns or [], "mine": True, "owner": who,
+                                   "owner_name": display_name(who), "title": entry.get("title"),
+                                   "dataset": entry.get("dataset"),
+                                   "shared_with": [{"username": u, "name": display_name(u)} for u in (entry.get("shared") or [])]})
+            if entry and who in (entry.get("shared") or []):
+                turns, withheld = shared_turns(entry, tid, who)
+                return self._json({"thread": tid, "turns": turns, "mine": False, "read_only": True,
+                                   "owner": entry.get("user"), "owner_name": display_name(entry.get("user")),
+                                   "title": entry.get("title"), "dataset": entry.get("dataset"),
+                                   "withheld": withheld})
+            return self._json({"error": "No such conversation of yours."})
         dataset = (params.get("dataset") or [None])[0] or None
+        shared = [t for t in THREADS.shared_with(who, dataset) if access_of(t["dataset"], who)[0]]
         return self._json({"identity": who, "ttl_hours": THREAD_TTL_HOURS,
-                           "threads": THREADS.mine(who, dataset)})
+                           "threads": THREADS.mine(who, dataset), "shared": shared})
+
+    def _share(self):
+        """POST {"thread", "with": username or email, "remove"?}: the owner lets one more
+        person read a conversation (never follow it up), or takes them off again."""
+        if not self._same_site() or not self._origin_ok():
+            return self._json({"error": "Refused: request came from an untrusted origin."})
+        body = self._body()
+        if body is None:
+            return self._json({"error": "Body must be JSON."})
+        who, _ = request_identity(self.headers.get("Cookie"))
+        if not who:
+            return self._json({"error": NOT_LOGGED_IN})
+        tid = str(body.get("thread") or "")
+        entry = THREADS.entry(tid)
+        if not entry or entry.get("user") != who:
+            return self._json({"error": "No such conversation of yours."})
+        text = str(body.get("with") or "").strip()
+        if not text:
+            return self._json({"error": "Say who, by their Chiron username or email."})
+        account = find_account(text)
+        if account is None:
+            return self._json({"error": f"No Chiron account is called {text!r}. Use the person's username or "
+                                        "email exactly as Chiron knows it."})
+        if account.username == who:
+            return self._json({"error": "That is you."})
+        shared = THREADS.share(tid, who, account.username, remove=bool(body.get("remove")))
+        if shared is None:
+            return self._json({"error": "No such conversation of yours."})
+        return self._json({"thread": tid, "shared_with": [{"username": u, "name": display_name(u)} for u in shared]})
+
+    def _flag(self):
+        """POST {"trace", "kind", "note"?}: the person who asked reports an answer. The
+        question, the answer and the trace id go to the usage ledger for those who see
+        everyone's usage; the trace itself stays theirs."""
+        if not self._same_site() or not self._origin_ok():
+            return self._json({"error": "Refused: request came from an untrusted origin."})
+        body = self._body()
+        if body is None:
+            return self._json({"error": "Body must be JSON."})
+        who, _ = request_identity(self.headers.get("Cookie"))
+        if not who:
+            return self._json({"error": NOT_LOGGED_IN})
+        data = tracing.find(_trace_root(), str(body.get("trace") or ""), who)
+        if data is None:
+            return self._json({"error": "The record of this answer is no longer on the Ask server, so it "
+                                        "cannot be reported."})
+        kind = str(body.get("kind") or "other")
+        if kind not in usage.FLAG_KINDS:
+            return self._json({"error": f"kind is one of {', '.join(usage.FLAG_KINDS)}."})
+        fid = usage.flag(user=who, dataset=data.get("dataset"), thread=data.get("thread"), trace=data.get("id"),
+                         kind=kind, note=str(body.get("note") or ""), question=data.get("question"),
+                         answer=data.get("answer") or data.get("error"), model=data.get("model"),
+                         access_level=data.get("access_level"))
+        if fid is None:
+            return self._json({"error": "The report could not be saved (the usage ledger is off)."})
+        print(f"flag #{fid}: {kind} on trace {data.get('id')} ({data.get('dataset')})", file=sys.stderr, flush=True)
+        return self._json({"flagged": True, "id": fid})
+
+    def _usage_flag(self):
+        """POST {"id", "status": "handled" | "open"}: by those who see everyone's usage."""
+        if not self._same_site() or not self._origin_ok():
+            return self._json({"error": "Refused: request came from an untrusted origin."})
+        who, _info, everyone = self._usage_who()
+        if not who:
+            return self._json({"error": NOT_LOGGED_IN})
+        if not everyone:
+            return self._json({"error": "Only those who see everyone's usage can handle reports."})
+        body = self._body()
+        if body is None:
+            return self._json({"error": "Body must be JSON."})
+        try:
+            fid = int(body.get("id"))
+        except (TypeError, ValueError):
+            return self._json({"error": "id is a number."})
+        ok = usage.set_flag(fid, str(body.get("status") or "handled"), who)
+        return self._json({"ok": ok, "flags": usage.flags(200)})
 
     def _trace(self, params):
         """One answer's full trace, for the person who asked it (see trace.py)."""

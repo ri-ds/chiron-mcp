@@ -511,6 +511,14 @@ def date_fields(var: Var, cond: dict) -> tuple[dict, str]:
     what = ""
     if cond.get("has_value"):
         lo, what = date(1800, 1, 1), "has a value"
+    elif cond.get("is") is not None or cond.get("is_any") is not None:
+        # "born on 1929-12-14", "diagnosed in 2018": one day, or one year, as it is written
+        want = cond.get("is") if cond.get("is") is not None else cond.get("is_any")
+        if isinstance(want, (list, tuple)):
+            if len(want) != 1:
+                raise AccessError(f"{var.name} takes one date with 'is' (or a 'between' range), not a list.")
+            want = want[0]
+        lo, hi, what = _day(want), _day(want, end=True), f"on {want}" if not re.fullmatch(r"\d{4}", str(want).strip()) else f"in {want}"
     elif cond.get("year") is not None:
         lo, hi, what = _day(cond["year"]), _day(cond["year"], end=True), f"in {cond['year']}"
     elif cond.get("year_between") or cond.get("between") or cond.get("date_between"):
@@ -535,7 +543,7 @@ def date_fields(var: Var, cond: dict) -> tuple[dict, str]:
             lo = _day(after, end=True) + timedelta(days=1)
         what = " and ".join(x for x in (f"from {lo}" if lo else "", f"to {hi}" if hi else "") if x)
     if lo is None and hi is None:
-        raise AccessError(f"Say which dates for {var.name}: has_value, year, before, after, or between.")
+        raise AccessError(f"Say which dates for {var.name}: 'is' (one day or a year), year, before, after, between, or has_value.")
     if var.kind == "year":
         f = {"query_type": "date_range"}
         if lo:
@@ -1151,6 +1159,10 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
                      "spellings counts twice; for an exact count of one value, ask chiron_query.")
     elif show.get("stats") is not None or show.get("range") is not None:
         out["range"] = _stats(ident, S, cd, show)
+    elif show.get("records") is not None:
+        if isinstance(show["records"], dict) and show.get("limit") is not None and show["records"].get("limit") is None:
+            show = dict(show, records=dict(show["records"], limit=show["limit"]))  # written beside records
+        out["records"] = _records(ident, S, cd, show, int(out.get("count") or 0), notes)
     elif show.get("results") is not None:
         spec = show["results"] if isinstance(show["results"], dict) else {"columns": show["results"]}
         words: list[str] = []
@@ -1211,6 +1223,7 @@ def _show(ident, S, cd, show: dict, out: dict, notes: list) -> dict:
     else:
         raise AccessError("show is {'count': true}, {'breakdown': [...]}, {'top': N, 'of': 'condition'}, "
                           "{'list': [fields], 'limit': N}, {'range': {'lab': 'HbA1c'}}, {'values': 'lab'}, "
+                          "{'records': {'of': {'lab': 'HbA1c'}}} (one row per record, dated), "
                           "{'results': {'columns': [...], 'sort': [...]}}, "
                           "{'report': {'name': ..., 'columns': [...], 'public': false}} or {'query_builder': true}.")
     return out
@@ -1431,6 +1444,328 @@ def _stats(ident, S, cd, show: dict) -> dict:
             "min": st.get("min"), "max": st.get("max"), "average": st.get("avg"),
             "results": st.get("count_non_null"), "patients": st.get("unique_patients"),
             "results_without_a_value": raw.get("count_missing_values")}
+
+
+# --- a patient's records, one row each (values over time, timelines) -----------------------------
+RECORD_LIMIT, RECORD_MAX = 200, 500            # rows returned by default, and at most
+RECORD_PATIENTS, RECORD_PATIENTS_PER = 100, 500  # patients a records call may span (plain; latest/earliest)
+RECORDS_HELP = (
+    "show={'records': {'of': {'lab': 'Diastolic Blood Pressure'}}} gives that lab's results of the "
+    "patients in `where`, one row per result with its date, value and units; 'of' is a kind of record "
+    "('visit', 'condition', 'medication', 'procedure', 'lab'), or an object naming one ({'visit': "
+    "'emergency'}, {'lab': 'HbA1c', 'op': '>', 'value': 9}, {'condition': 'asthma', 'year': 2019}). "
+    "Options: 'latest': N or 'earliest': N (per patient, by date), 'fields': [...] or 'all' (which "
+    "columns), 'limit': N (rows, 200 by default, 500 at most), 'order': 'newest'.")
+
+
+def _records(ident, S, cd, show: dict, count: int, notes: list) -> dict:
+    """One row per record of one kind, for the cohort's patients, every column paired as
+    recorded: a lab's date and value, a visit's start, stop and type, a diagnosis and its
+    dates. For values over time, timelines, latest and first results.
+
+    Chiron's own table engine cannot give this in the chat: a record column in a patient
+    row is a list of distinct values, so dates and values arrive as two unrelated lists,
+    and the rows of a record table are limited by the cohort's own conditions on it (the
+    readings above 80 of the patients with a reading above 80). So the cohort's patients
+    are taken first, with Chiron's query builder (cohort and permissions), and their
+    records are read in a second statement from the same builder with an empty cohort:
+    the record table, its lookup tables joined on the record id, the display processor's
+    own in-query mapping on every column (a PHI date for a de-identified account comes
+    back as a year, as in Chiron), the explicit filters of `of`, and the permission
+    clause again. Identifying columns are never in the default set and refused when asked
+    for. Records are for one patient or a small group, never a silent sample: more
+    patients than the cap is refused with the alternatives."""
+    from sqlalchemy import distinct, func, select
+
+    from chiron import models
+    from chiron.query_definition import Cohort
+    from chiron.query_engine.postgres.database import get_sql_alchemy_db_engine
+    from chiron.query_engine.postgres.sql_alchemy_queries.query_builder import SqlAlchemyQueryBuilder
+
+    spec = show["records"]
+    if isinstance(spec, str):
+        spec = {"of": spec}
+    if not isinstance(spec, dict) or spec.get("of") in (None, "", {}):
+        raise AccessError("records needs 'of', the kind of record. " + RECORDS_HELP)
+    unknown = sorted(set(spec) - {"of", "fields", "limit", "latest", "earliest", "order"})
+    if unknown:
+        raise AccessError(f"records does not take {', '.join(repr(k) for k in unknown)}. " + RECORDS_HELP)
+    of = spec["of"]
+    clause = None
+    if isinstance(of, dict):
+        # {"medication": "any"} or {"visit": null}: the kind alone, no name
+        bare = [k for k in of if D.norm(k) in TABLE_KEYS and of[k] in (None, "", "any", "all")]
+        if len(of) == 1 and bare:
+            of = bare[0]
+    if isinstance(of, dict):
+        clause = parse_condition(ident, of)
+        if clause.collection == "subject":
+            raise AccessError("records are a patient's visits, diagnoses, prescriptions, procedures or lab "
+                              "results; a patient's own fields come with show={'list': [...]}. " + RECORDS_HELP)
+        if clause.count_rule or clause.within:
+            raise AccessError("records takes the kind of record, its name and a value or date range; a count "
+                              "rule or timing between records belongs in `where`, which chooses the patients.")
+        coll = clause.collection
+    else:
+        coll = TABLE_KEYS.get(D.norm(str(of)))
+        if coll is None or coll == "subject":
+            raise AccessError(f"{of!r} is not a kind of record. " + RECORDS_HELP)
+    if not _vars(ident, coll):
+        raise AccessError(f"This dataset has no {coll} records.")
+    per = None
+    for key in ("latest", "earliest"):
+        if spec.get(key) is not None:
+            if per:
+                raise AccessError("Give latest or earliest, not both.")
+            n = int(_num(spec[key]))
+            if n < 1:
+                raise AccessError(f"'{key}' is a number of records per patient, 1 or more.")
+            per = (key, n)
+    try:
+        limit = int(_num(spec.get("limit", RECORD_LIMIT)))
+    except AccessError:
+        raise AccessError("'limit' is a number of rows.") from None
+    limit = max(1, min(limit, RECORD_MAX))
+    order = str(spec.get("order") or "oldest").strip().lower()
+    if order not in ("oldest", "newest", "asc", "desc", "date", "date desc"):
+        raise AccessError("'order' is 'oldest' (the default) or 'newest'.")
+    newest = order in ("newest", "desc", "date desc")
+    cap = RECORD_PATIENTS_PER if per else RECORD_PATIENTS
+    kind = _record_kind(coll, clause)
+    if count > cap:
+        raise AccessError(
+            f"Records are for one patient or a small group: this group has {count:,} patients, and "
+            f"records are given for up to {cap:,}" + ("" if per else f" ({RECORD_PATIENTS_PER:,} with 'latest' or 'earliest' N per patient)")
+            + ". Narrow the group in `where`, ask for latest/earliest N per patient, or ask for the "
+            "range ({'range': {'lab': ...}}), a count or a breakdown instead, and say which you gave.")
+
+    cu = identity.checked_chironuser(ident)
+    coll_obj = models.Collection.objects.get(dataset=ident.dataset, permanent_id=coll)
+    date_var = _var(ident, coll, D.DATE_FIELD.get(coll, "")) if D.DATE_FIELD.get(coll) else None
+    if per and (date_var is None or date_var.concept.get_display_processor(cu) is None):
+        raise AccessError(f"{coll} records have no date here, so latest/earliest cannot be chosen; "
+                          "ask for the records without it.")
+    fields = _record_fields(ident, S, cu, coll, spec.get("fields"))
+    available = [_record_label(v) for v in _vars(ident, coll)
+                 if v.concept.get_display_processor(cu) is not None and not S._identifies_person(v.concept)]
+    labels = [_record_label(v) for v in fields]
+    empty = {"of": kind, "columns": ["patient"] + labels, "rows": [],
+             "total": 0, "returned": 0, "truncated": False, "patients": 0, "patients_in_group": count,
+             "available_fields": available}
+    if count == 0:
+        return empty
+
+    ids = _subject_ids(cu, cd)
+    if not ids:
+        return empty
+
+    b = SqlAlchemyQueryBuilder(cu, Cohort(cu, []), target_collection=coll_obj)
+    info = b.query_info
+    subject = info.get_sql_alchemy_table_for_subject()
+    rec = info.get_sql_alchemy_table_for_collection(coll_obj)
+    core = set(info.get_core_lookup_tables().get(coll, []))
+    joins: list = []
+    seen: set = set()
+
+    def table_for(var: Var):
+        t = info.get_sql_alchemy_table_for_concept(var.concept)
+        parent = subject if var.collection == "subject" else rec
+        if t is not parent and t not in core and id(t) not in seen:
+            joins.append((t, parent.c._id == t.c._collection_id))
+            seen.add(id(t))
+        return t
+
+    date_col = None
+    if date_var is not None and date_var.concept.get_display_processor(cu) is not None:
+        date_col = getattr(table_for(date_var).c, date_var.cid)
+    # Internal columns first (never shown): the patient's and the record's row ids, and the
+    # record's date for ordering; then the shown ones.
+    columns = [subject.c._id.label("_patient"), rec.c._id.label("_record"),
+               (date_col if date_col is not None else rec.c._id).label("_date")]
+    skip = len(columns)
+    after = [None] * skip
+    pid = _var(ident, "subject", "id")
+    if pid is not None and pid.concept.get_display_processor(cu) is not None:
+        columns.append(getattr(table_for(pid).c, pid.cid).label("patient"))
+    else:
+        columns.append(subject.c._subject_id.label("patient"))
+    after.append(None)
+    for v in fields:
+        dp = v.concept.get_display_processor(cu)
+        columns.append(dp.sql_alchemy_map_in_query(getattr(table_for(v).c, v.cid)).label(f"f{len(columns)}"))
+        after.append(dp.sql_alchemy_map_after_query)
+    where = []
+    for var, f, _what in (clause.filters if clause else []):
+        where.append(_sql_filter(getattr(table_for(var).c, var.cid), var, f))
+
+    stmt = select(*columns)
+    stmt = b.from_builder.modify_statement(stmt)
+    stmt = b.where_builder.modify_statement(stmt)
+    for t, on in joins:
+        stmt = stmt.outerjoin(t, on)
+    stmt = stmt.where(subject.c._id.in_(list(ids)), rec.c._id.isnot(None), *where)
+    if per:
+        key, n = per
+        rank = func.row_number().over(
+            partition_by=subject.c._id,
+            order_by=[date_col.desc().nulls_last() if key == "latest" else date_col.asc().nulls_last(), rec.c._id],
+        ).label("_rank")
+        inner = stmt.add_columns(rank).subquery("ranked")
+        stmt = select(*[inner.c[c.name] for c in columns]).where(inner.c._rank <= n)
+        sel = inner.c
+    else:
+        sel = None
+    base = stmt.subquery("all_rows")
+    count_stmt = select(func.count(), func.count(distinct(base.c._patient))).select_from(base)
+    if sel is not None:
+        order_by = [sel._patient, sel._date.desc().nulls_last() if newest else sel._date.asc().nulls_last(), sel._record]
+    else:
+        order_by = [subject.c._id,
+                    (date_col.desc().nulls_last() if newest else date_col.asc().nulls_last()) if date_col is not None else rec.c._id,
+                    rec.c._id]
+    paged = stmt.order_by(*order_by).limit(limit)
+    engine = get_sql_alchemy_db_engine(cu.dataset)
+    with engine.connect() as conn:
+        total, patients = conn.execute(count_stmt).one()
+        rows = conn.execute(paged).fetchall()
+    out_rows = []
+    for r in rows:
+        row = []
+        for i, v in enumerate(list(r)):
+            if i < skip:
+                continue
+            fn = after[i]
+            row.append(_plain_value(fn(v) if fn and v is not None else v))
+        out_rows.append(row)
+    result = {
+        "of": kind, "columns": ["patient"] + labels, "rows": out_rows,
+        "total": int(total), "returned": len(out_rows), "truncated": int(total) > len(out_rows),
+        "patients": int(patients), "patients_in_group": count, "available_fields": available,
+        "ordered": ("by patient, then " + ("newest" if newest else "oldest") + " first") if date_col is not None else "by patient",
+    }
+    if per:
+        result["per_patient"] = f"{per[0]} {per[1]}"
+    if result["truncated"]:
+        notes.append(f"Only the first {len(out_rows)} of {int(total):,} rows ({kind}) are here, ordered {result['ordered']}. "
+                     "Say so in the answer's first sentence, with both figures; to see the rest, narrow the "
+                     "group or the records (a lab's name, a date range), or ask for latest/earliest N per patient.")
+    if int(patients) < count:
+        notes.append(f"{count - int(patients):,} of the group's {count:,} patients have no such record; "
+                     "they have no rows here.")
+    return result
+
+
+def _record_label(v: Var) -> str:
+    """A column's name as the dictionary says it ("visit type" for encounterclass), else
+    the variable's own name."""
+    words = D.FIELDS.get(v.collection, {}).get(v.short)
+    if words and D.norm(v.name) == D.norm(v.short):
+        return words[0]
+    return v.name
+
+
+def _record_kind(coll: str, clause) -> str:
+    words = {"observation": "lab result", "encounter": "visit", "condition": "condition",
+             "medication": "prescription", "procedure": "procedure"}.get(coll, coll)
+    if clause is None or not clause.filters:
+        return f"{words} records"
+    return f"{words} records: " + "; ".join(what for _, _, what in clause.filters)
+
+
+def _record_fields(ident, S, cu, coll: str, asked) -> list[Var]:
+    """The columns of a records row: the dataset's usual ones for that kind of record
+    (dates, name, value, units), every displayable one with 'all', or the ones asked for.
+    An identifying column is never in the defaults and is refused when asked for."""
+    pool = [v for v in _vars(ident, coll) if v.concept.get_display_processor(cu) is not None]
+    if asked in (None, "", []):
+        wanted = list(D.RECORD_FIELDS.get(coll) or [])
+        chosen = [v for short in wanted for v in pool if v.short == short]
+        if not chosen:
+            dated = [D.DATE_FIELD.get(coll), D.NAME_FIELD.get(coll), D.VALUE_FIELD.get(coll)]
+            chosen = [v for short in dated if short for v in pool if v.short == short]
+            chosen += [v for v in sorted(pool, key=lambda v: float(v.concept.order or 0)) if v not in chosen][:8 - len(chosen)]
+        return [v for v in chosen if not S._identifies_person(v.concept)]
+    if isinstance(asked, str) and D.norm(asked) in ("all", "everything", "every field"):
+        return [v for v in sorted(pool, key=lambda v: float(v.concept.order or 0)) if not S._identifies_person(v.concept)]
+    names = asked if isinstance(asked, list) else [asked]
+    chosen = []
+    for name in names:
+        var = resolve_field(ident, str(name), coll)
+        if var.concept.get_display_processor(cu) is None:
+            raise AccessError(f"{var.label()} cannot be shown as a column.")
+        if var.cid not in [c.cid for c in chosen]:
+            chosen.append(var)
+    S._require_columns_viewable(ident, [v.concept for v in chosen])
+    return chosen
+
+
+def _subject_ids(cu, cd: list) -> list:
+    """The cohort's patients (Chiron's row ids), with Chiron's own query builder: the
+    cohort's conditions and the permission clause."""
+    from sqlalchemy import select
+
+    from chiron.query_definition import Cohort
+    from chiron.query_engine.postgres.database import get_sql_alchemy_db_engine
+    from chiron.query_engine.postgres.sql_alchemy_queries.query_builder import SqlAlchemyQueryBuilder
+
+    b = SqlAlchemyQueryBuilder(cu, Cohort(cu, copy.deepcopy(cd)))
+    subject = b.query_info.get_sql_alchemy_table_for_subject()
+    stmt = select(subject.c._id).distinct()
+    stmt = b.from_builder.modify_statement(stmt)
+    stmt = b.where_builder.modify_statement(stmt)
+    with get_sql_alchemy_db_engine(cu.dataset).connect() as conn:
+        return [r[0] for r in conn.execute(stmt).fetchall()]
+
+
+def _sql_filter(col, var: Var, f: dict):
+    """One of chiron_query's own filter dicts (as _filter_for makes them) as a SQLAlchemy
+    condition on the record's column: a name (every spelling), a number range, a date range."""
+    from sqlalchemy import and_, func, or_
+
+    if "selected_categories" in f:
+        cond = col.in_(list(f["selected_categories"]))
+        return ~cond if f.get("exclude_selected") else cond
+    if "chiron_text_field_selection" in f:
+        values = [v for v in str(f["chiron_text_field_selection"]).split("\n") if v != ""]
+        cond = or_(*[func.lower(col) == v.lower() for v in values]) if values else col.isnot(None)
+        return ~cond if f.get("exclude_selected") else cond
+    parts = []
+    if f.get("query_type") == "date_range":
+        lo, hi = f.get("cd_numeric_min"), f.get("cd_numeric_max")
+        if var.kind == "year":
+            year = func.date_part("year", col)
+            if lo is not None:
+                parts.append(year >= int(lo))
+            if hi is not None:
+                parts.append(year <= int(hi))
+        else:
+            if lo is not None:
+                parts.append(col >= datetime.strptime(str(lo), "%m/%d/%Y").date())
+            if hi is not None:
+                parts.append(col <= datetime.strptime(str(hi), "%m/%d/%Y").date())
+    else:
+        if f.get("cd_numeric_min") is not None:
+            parts.append(col >= float(f["cd_numeric_min"]))
+        if f.get("cd_numeric_max") is not None:
+            parts.append(col <= float(f["cd_numeric_max"]))
+    if not parts:
+        raise AccessError(f"A filter on {var.label()} cannot be applied to records; put it in `where`.")
+    return and_(*parts)
+
+
+def _plain_value(v):
+    """A database value as JSON: dates as YYYY-MM-DD, decimals as numbers."""
+    import decimal
+
+    if isinstance(v, datetime):
+        return v.date().isoformat() if (v.hour, v.minute, v.second) == (0, 0, 0) else v.isoformat(sep=" ")
+    if isinstance(v, date):
+        return v.isoformat()
+    if isinstance(v, decimal.Decimal):
+        return float(v)
+    if isinstance(v, float) and v.is_integer() and abs(v) < 1e15:
+        return v
+    return v
 
 
 def _lab_prefilter(clause: Clause) -> tuple | None:
