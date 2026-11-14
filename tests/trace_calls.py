@@ -116,7 +116,7 @@ s4 = run("List 3 patients with COPD who died, with county and date", [
 ], "Three of the **120**: Hamilton, Butler, Warren.", followup=False)
 t = s4["calls"]["tools"][0]
 check("rows are counted with their columns", t["returned"] == "3 patient rows, 2 columns" and t["columns"] == ["county", "deathdate"], t)
-check("the checks say rows came back and why", any(x.startswith("3 patient rows came back") for x in titles(s4)), titles(s4))
+check("the checks say rows came back and why", any(x.startswith("3 rows of patient data came back") for x in titles(s4)), titles(s4))
 check("no 'no rows' claim when rows came back", not any(x.startswith("Only counts") for x in titles(s4)))
 
 # 5. A follow-up answered without any call: said so, with the carried-over cohort.
